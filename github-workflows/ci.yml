@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+      - run: npm test
       # Smoke test: the CLI must at least print help on every OS/Node combo.
       - run: node ./bin/run.js --help
       - run: node ./bin/run.js db --help

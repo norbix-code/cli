@@ -126,6 +126,39 @@ norbix files download invoices/2026/invoice.pdf
 
 Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 
+### The six file commands
+
+| Command | What it does |
+| --- | --- |
+| `norbix files list [path]` | List the files and folders under a path. No path lists the root. |
+| `norbix files info <path>` | Show one file's details: size, type, when it changed. |
+| `norbix files sign <path> [--expires <seconds>]` | Get a temporary web address for the file that anyone with the link can open. |
+| `norbix files upload <local> [remote]` | Upload a file. Without `remote` it keeps its own name in the root folder. |
+| `norbix files download <remote> [local]` | Download a file. Without `local` it keeps its own name in the current folder. |
+| `norbix files delete <path> [--yes]` | Delete one file. Asks first unless you pass `--yes`. |
+
+Upload and download take more than one step, so the file bytes never pass
+through Norbix:
+
+* **upload** — ask for a short-lived upload address, send the bytes straight to
+  storage, then tell Norbix the upload finished.
+* **download** — ask for a short-lived download address, then fetch the bytes
+  from storage.
+
+`--content-type` overrides the type on upload; without it the type is guessed
+from the file name.
+
+## Tests
+
+```sh
+npm test
+```
+
+The tests build the CLI and run each command through oclif with `fetch`
+replaced, so nothing leaves the machine and no account is needed. `HOME` points
+at an empty temporary folder during the run, so your own `~/.norbix` settings
+and login session are never read.
+
 ## Roadmap
 
 - Standalone binaries (no Node needed): Homebrew, curl installer, Scoop/winget

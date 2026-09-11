@@ -1,7 +1,7 @@
 {
   "name": "@norbix.ai/cli",
   "version": "0.1.0",
-  "description": "Norbix CLI — manage your Norbix projects from the terminal. Built on the official TypeScript SDK.",
+  "description": "Norbix CLI \u2014 manage your Norbix projects from the terminal. Built on the official TypeScript SDK.",
   "author": "UAB Isidos",
   "license": "MIT",
   "homepage": "https://norbix.dev",
@@ -40,7 +40,10 @@
     "typecheck": "tsc --noEmit",
     "dev": "npm run build && node ./bin/run.js",
     "prepack": "npm run build && oclif manifest",
-    "postpack": "node -e \"require('node:fs').rmSync('oclif.manifest.json',{force:true})\""
+    "postpack": "node -e \"require('node:fs').rmSync('oclif.manifest.json',{force:true})\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pretest": "npm run build"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",
@@ -50,9 +53,11 @@
     "@oclif/plugin-help": "^6.0.0"
   },
   "devDependencies": {
+    "@oclif/test": "^4.2.0",
     "@types/node": "^22.7.0",
     "oclif": "^4.0.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
   },
   "oclif": {
     "bin": "norbix",
