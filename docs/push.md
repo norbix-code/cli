@@ -59,7 +59,8 @@ norbix push device register --user usr_123 --token dGVzdA== --os iOS --model "iP
 | command | what it does | endpoint |
 |---|---|---|
 | `norbix push campaigns [--page-size <n>] [--after <cursor>]` | list campaigns | `GET /notifications/push/campaigns` |
-| `norbix push campaign <id> [--stats]` | show a campaign, or its delivery statistics | `GET /notifications/push/campaigns/{id}`, `.../stats` |
+| `norbix push campaign <id>` | show a campaign | `GET /notifications/push/campaigns/{id}` |
+| `norbix push campaign <id> --stats` | show its delivery statistics instead | `GET /notifications/push/campaigns/{id}/stats` |
 | `norbix push preview <hash>` | render the title, body and subtitle behind a preview link | `GET /notifications/push/preview` |
 | `norbix push stop <id> [--yes]` | stop a running campaign | `POST /notifications/push/campaigns/{Id}/stop` |
 

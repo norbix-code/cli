@@ -39,6 +39,11 @@ export function recordingNotifications(calls: RecordedCall[], result: unknown = 
 export async function runCommand(
   command: {run: (argv: string[], config: Config) => Promise<unknown>},
   argv: string[] = [],
+  /**
+   * Replace the stubbed `client.hub` — pass `{notifications: {}}` to test what a
+   * command does when the installed SDK is missing the method it wants.
+   */
+  hub?: Record<string, unknown>,
 ): Promise<{calls: RecordedCall[]; output: string[]; result: unknown}> {
   const calls: RecordedCall[] = []
   const output: string[] = []
@@ -47,7 +52,7 @@ export async function runCommand(
 
   const clientSpy = vi
     .spyOn(BaseCommand.prototype as unknown as {client: () => unknown}, 'client')
-    .mockReturnValue({hub: {notifications: recordingNotifications(calls)}})
+    .mockReturnValue({hub: hub ?? {notifications: recordingNotifications(calls)}})
   const logSpy = vi
     .spyOn(BaseCommand.prototype as unknown as {log: (m?: string) => void}, 'log')
     .mockImplementation((message?: string) => {

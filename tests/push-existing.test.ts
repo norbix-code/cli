@@ -5,6 +5,7 @@ import PushCampaign from '../src/commands/push/campaign.js'
 import PushCampaigns from '../src/commands/push/campaigns.js'
 import PushClone from '../src/commands/push/clone.js'
 import PushDelete from '../src/commands/push/delete.js'
+import PushStop from '../src/commands/push/stop.js'
 import PushTemplate from '../src/commands/push/template.js'
 import PushTemplates from '../src/commands/push/templates.js'
 import PushUnarchive from '../src/commands/push/unarchive.js'
@@ -73,5 +74,20 @@ describe('push campaigns', () => {
   it('shows statistics instead with --stats', async () => {
     const {calls} = await runCommand(PushCampaign, [ID, '--stats'])
     expect(calls).toEqual([{method: 'getPushCampaignStatistics', request: {id: ID}}])
+  })
+})
+
+describe('push stop', () => {
+  it('stops a campaign, sending the id as the Id route token', async () => {
+    const {calls} = await runCommand(PushStop, [ID, '--yes'])
+    expect(calls).toEqual([{method: 'stopPushCampaign', request: {id: ID}}])
+  })
+
+  it('explains itself when the installed SDK has no stopPushCampaign', async () => {
+    // The published @norbix.ai/ts does not ship this method yet, so the command
+    // guards for it. Without the guard the user would see "not a function".
+    await expect(
+      runCommand(PushStop, [ID, '--yes'], {notifications: {}}),
+    ).rejects.toThrow(/does not support stopping campaigns yet/)
   })
 })
