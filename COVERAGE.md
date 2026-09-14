@@ -3,16 +3,17 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**117 endpoints have a dedicated CLI command. Every other endpoint is
-reachable with the raw escape hatch:**
+**117 endpoints have a dedicated CLI command. Every SDK method (~180 hub +
+~40 api) is also callable with plain words:**
 
 ```sh
-norbix api "/{version}/logs/settings" --hub
-norbix api "/{version}/scheduler/tasks" --hub --method POST --body '{...}'
+norbix hub database aggregates delete maggr_123 --schemaId sch_456
+norbix hub scheduler tasks get --pageSize 100
 ```
 
-`norbix api` sends the same auth + project/account/env/region headers the SDK
-sends, so nothing is out of reach even before we add more commands.
+And endpoints the SDK does not know yet are reachable with the raw escape
+hatch (`norbix raw "/{version}/logs/settings"` — hub by default). Nothing is
+out of reach.
 
 ## Coverage by doc group
 

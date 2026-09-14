@@ -52,7 +52,29 @@ norbix scheduler list
 | `norbix payments integrations/triggers/trigger/enable/disable` | Payment integrations and triggers |
 | `norbix integrations <module>` | List integrations of any module |
 | `norbix module enable/disable <name>` | Turn a whole project module on or off |
-| `norbix api <path>` | Call ANY endpoint directly (like `gh api`) — full API coverage |
+| `norbix hub <module> <words...>` | Call ANY hub endpoint with plain words (see below) |
+| `norbix api <module> <words...>` | Same for the data-plane API |
+| `norbix raw <path>` | Low-level HTTP escape hatch (hub by default, `--api` for API) |
+
+### Plain-word access to every endpoint
+
+`norbix hub` and `norbix api` resolve SDK methods from plain words — every
+current and future SDK method is callable without waiting for a dedicated
+command:
+
+```sh
+norbix hub                                     # list modules
+norbix hub database                            # list database methods
+norbix hub database aggregates get             # plural  = list
+norbix hub database aggregate get maggr_123    # singular = one item
+norbix hub database aggregates delete maggr_123 --schemaId sch_456
+norbix hub scheduler tasks get --pageSize 100
+norbix hub email templates get                 # email/sms/push route into notifications
+```
+
+The first positional value becomes `id`; `--field value` flags become request
+fields. Destructive verbs (delete, remove, rotate, ...) ask for confirmation
+unless `--yes`. Add `--dry-run` to preview the exact SDK call.
 | `norbix autocomplete` | Set up shell tab-completion (bash/zsh) |
 
 Run `norbix <topic> --help` for flags and examples.
