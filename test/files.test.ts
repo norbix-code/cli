@@ -237,3 +237,132 @@ describe('norbix files delete', () => {
     expect(calls[0].url).toContain('invoice.pdf')
   })
 })
+
+describe('norbix files publish / unpublish', () => {
+  it('publishes one file and prints the link anyone can open', async () => {
+    fakeFetch([['/files/item/public', {id: 'nbpf_7hK2abc', status: 'Success'}]])
+
+    const {error, result} = await runCommand([
+      'files',
+      'publish',
+      'invoices/2026/invoice.pdf',
+      ...globalArgs,
+    ])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0].method).toBe('POST')
+    expect(new URL(calls[0].url).pathname).toBe('/v2/files/item/public')
+    expect(calls[0].body).toEqual({
+      filesIntegrationId: INTEGRATION,
+      path: 'invoices/2026/invoice.pdf',
+    })
+    expect(result).toMatchObject({publicId: 'nbpf_7hK2abc'})
+    // The link ends with the file's own name, not the whole path.
+    expect((result as {publicUrl: string}).publicUrl).toContain(
+      '/v3/files/public/nbpf_7hK2abc/invoice.pdf',
+    )
+  })
+
+  it('publishes a whole folder with --folder and gives a link to put a path after', async () => {
+    fakeFetch([['/files/folder/public', {id: 'nbpf_folder1', status: 'Success'}]])
+
+    const {error, result} = await runCommand(['files', 'publish', 'invoices', '--folder', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(new URL(calls[0].url).pathname).toBe('/v2/files/folder/public')
+    expect(calls[0].body).toEqual({filesIntegrationId: INTEGRATION, path: 'invoices'})
+    expect((result as {publicUrl: string}).publicUrl).toMatch(
+      /\/v3\/files\/public\/nbpf_folder1\/$/,
+    )
+  })
+
+  it('unpublishes one file', async () => {
+    fakeFetch()
+
+    const {error} = await runCommand([
+      'files',
+      'unpublish',
+      'invoices/2026/invoice.pdf',
+      ...globalArgs,
+    ])
+
+    expect(error).toBeUndefined()
+    expect(calls[0].method).toBe('POST')
+    expect(new URL(calls[0].url).pathname).toBe('/v2/files/item/private')
+    expect(calls[0].body).toEqual({
+      filesIntegrationId: INTEGRATION,
+      path: 'invoices/2026/invoice.pdf',
+    })
+  })
+
+  it('unpublishes a whole folder with --folder', async () => {
+    fakeFetch()
+
+    const {error} = await runCommand(['files', 'unpublish', 'invoices', '--folder', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(new URL(calls[0].url).pathname).toBe('/v2/files/folder/private')
+  })
+
+  it('sends the session as a bearer token, as every other command does', async () => {
+    const seen: Array<Record<string, string>> = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      calls.push({method: init?.method ?? 'GET', url})
+      const headers = new Headers(init?.headers ?? {})
+      seen.push(Object.fromEntries(headers.entries()))
+      return new Response(JSON.stringify({id: 'nbpf_7hK2abc'}), {
+        status: 200,
+        headers: {'Content-Type': 'application/json'},
+      })
+    }) as typeof globalThis.fetch
+
+    await runCommand(['files', 'publish', 'invoices/invoice.pdf', ...globalArgs])
+
+    expect(seen[0].authorization).toBe(`Bearer ${API_KEY}`)
+    expect(seen[0]['x-cm-projectid']).toBe(PROJECT)
+    expect(seen[0]['nb-region']).toBe(REGION)
+  })
+
+  it('fails with a clear message when no integration is given', async () => {
+    fakeFetch()
+
+    const {error} = await runCommand([
+      'files',
+      'publish',
+      'invoices/invoice.pdf',
+      '--project',
+      PROJECT,
+      '--api-key',
+      API_KEY,
+      '--region',
+      REGION,
+    ])
+
+    expect(error?.message).toContain('No files integration ID')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('reports what the gateway refused, instead of a blank success', async () => {
+    // The real case: a file cannot be made private on its own while a folder
+    // above it is public (CM-ERRORS-FILES-021).
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      calls.push({method: init?.method ?? 'GET', url})
+      return new Response(
+        JSON.stringify({message: 'This file is public through the folder "invoices".'}),
+        {status: 400, headers: {'Content-Type': 'application/json'}},
+      )
+    }) as typeof globalThis.fetch
+
+    const {error} = await runCommand([
+      'files',
+      'unpublish',
+      'invoices/invoice.pdf',
+      ...globalArgs,
+    ])
+
+    expect(error?.message).toContain('public through the folder')
+  })
+})
