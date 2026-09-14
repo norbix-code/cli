@@ -39,7 +39,7 @@ norbix scheduler list
 | `norbix login` / `logout` / `whoami` | Authenticate and inspect the current context |
 | `norbix config list/get/set/unset` | Manage the local config file |
 | `norbix db find/get/count/insert/update/delete/aggregate` | Work with database collections |
-| `norbix files list/info/upload/download/sign/delete` | Upload, download and manage files |
+| `norbix files list/info/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
 | `norbix env list/use/delete` | Manage project environments |
 | `norbix logs list/trail` | Read project logs, follow one correlation ID |
@@ -148,7 +148,7 @@ norbix files download invoices/2026/invoice.pdf
 
 Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 
-### The six file commands
+### The eight file commands
 
 | Command | What it does |
 | --- | --- |
@@ -158,6 +158,8 @@ Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 | `norbix files upload <local> [remote]` | Upload a file. Without `remote` it keeps its own name in the root folder. |
 | `norbix files download <remote> [local]` | Download a file. Without `local` it keeps its own name in the current folder. |
 | `norbix files delete <path> [--yes]` | Delete one file. Asks first unless you pass `--yes`. |
+| `norbix files publish <path> [--folder]` | Give the file — or the whole folder — a link anyone can open, and print it. |
+| `norbix files unpublish <path> [--folder]` | Take that link away again. |
 
 Upload and download take more than one step, so the file bytes never pass
 through Norbix:
@@ -169,6 +171,46 @@ through Norbix:
 
 `--content-type` overrides the type on upload; without it the type is guessed
 from the file name.
+
+### Publishing a file
+
+`sign` and `publish` both give you a web address, and they are not the same
+thing:
+
+* **`sign`** hands out a *temporary* address that expires by itself. Good for a
+  download button on a page somebody is already signed in to.
+* **`publish`** makes the file public *until you say otherwise*. The address
+  has no expiry and no sign-in: it works in an e-mail, in an `<img src>`, or in
+  a browser on somebody else's phone.
+
+```sh
+norbix files publish invoices/2026/invoice.pdf
+# https://api.norbix.ai/v3/files/public/nbpf_7hK2abc/invoice.pdf
+
+norbix files unpublish invoices/2026/invoice.pdf
+# invoices/2026/invoice.pdf is private again — its link now gives a 404
+```
+
+`--folder` does the same for a whole folder. That is **one** record however
+many files sit under it, and every file inside becomes readable by putting its
+path inside the folder after the link:
+
+```sh
+norbix files publish invoices --folder
+# https://api.norbix.ai/v3/files/public/nbpf_folder1/
+#   → .../nbpf_folder1/2026/invoice.pdf
+```
+
+Four rules worth knowing:
+
+* Publishing the same thing twice gives the same link back — the first one is
+  already in somebody's hands.
+* A file cannot be unpublished on its own while a folder above it is public.
+  The command says so and names the folder to switch off instead.
+* Unpublishing a folder takes back every link inside it, per-file links
+  included.
+* Every dead link answers the same plain `404`: unknown, renamed, unpublished,
+  deleted. A more precise answer would tell a stranger that the file is there.
 
 ## Tests
 
