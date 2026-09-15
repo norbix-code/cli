@@ -37,7 +37,7 @@ slice, and the CLI is untouched apart from this file.
 | norbix-net | `chore/sdk-followups` | `origin/main` | https://github.com/norbix-code/sdk-net/pull/49 | 142 passed, 0 failed |
 | norbix-go | `chore/sdk-followups` | `origin/main` | https://github.com/norbix-code/sdk-go/pull/3 | all packages ok |
 | norbix-js | `chore/sdk-followups` | `origin/main` | https://github.com/norbix-code/sdk-ts/pull/38 | 706 passed (40 files) |
-| cli | `chore/sdk-followups` | `origin/main` | _(this report — link added on open)_ | untouched |
+| cli | `chore/sdk-followups` | `origin/main` | https://github.com/norbix-code/cli/pull/2 | 42 passed (code untouched) |
 | norbix-python | — | — | **no pull request, nothing changed** | 595 passed |
 | typegen | `main` | — | **committed directly**, not pushed — see "Needs you" | `node --test` 4 passed |
 
