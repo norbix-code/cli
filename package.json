@@ -49,7 +49,7 @@
     "@inquirer/prompts": "^7.0.0",
     "@norbix.ai/ts": "^1.2.0",
     "@oclif/core": "^4.0.0",
-    "@oclif/plugin-autocomplete": "^3.0.0",
+    "@oclif/plugin-autocomplete": "^4.0.0",
     "@oclif/plugin-help": "^6.0.0"
   },
   "devDependencies": {
