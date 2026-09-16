@@ -1,3 +1,5 @@
+import {fileURLToPath} from 'node:url'
+
 import {Config} from '@oclif/core'
 import {vi} from 'vitest'
 
@@ -71,6 +73,6 @@ export async function runCommand(
 let cached: Config | undefined
 
 async function loadConfig(): Promise<Config> {
-  cached ??= await Config.load(new URL('..', import.meta.url).pathname)
+  cached ??= await Config.load(fileURLToPath(new URL('..', import.meta.url)))
   return cached
 }
