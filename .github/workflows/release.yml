@@ -1,34 +1,124 @@
-name: Release to npm
+name: Release
 
-# Publishes when you push a version tag:
-#   npm version patch   (or minor / major — updates package.json + creates the tag)
-#   git push --follow-tags
+# Publishes `@norbix.ai/cli` to npm via semantic-release on every push to `main`
+# (and prerelease branches `next` / `beta`). The next version comes from
+# conventional commits since the last `v*` tag: `feat:` → minor, `fix:` → patch,
+# `feat!:` / `BREAKING CHANGE:` → major. `chore:`, `ci:`, `test:` don't release.
 #
-# Needs an npm automation token stored as the NPM_TOKEN repository secret
-# (npmjs.com → Access Tokens → Generate New Token → Automation).
+# Authentication:
+#   - npm: trusted publishing (OIDC) first — npmjs.com trusts this repo +
+#     workflow file (package Settings → Trusted Publisher). npm requires 2FA for
+#     token-based publishes, which CI cannot do, so NPM_TOKEN is only a fallback.
+#     Trusted publishing needs `id-token: write` and npm >= 11.5.1.
+#   - GITHUB_TOKEN: provided by Actions; pushes the release tag and creates the
+#     GitHub Release.
+#
+# `main` is protected (changes only through pull requests), so the release does
+# NOT commit back: `version` in package.json on main stays stale. The git tag is
+# the source of truth for the version; release notes live on GitHub Releases.
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main, next, beta]
+  workflow_dispatch:
+    inputs:
+      republish:
+        description: >-
+          Recovery mode — skip semantic-release and publish the version of the
+          latest git tag to npm, then create its GitHub Release if missing (use
+          when a tag exists but npm publish failed).
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write # trusted publishing + npm provenance
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write # npm provenance
+  release:
+    name: semantic-release
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # semantic-release needs the full history and tags.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-          registry-url: https://registry.npmjs.org
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run build
-      - run: node ./bin/run.js --help
-      - run: npm publish --access public --provenance
+
+      - name: Use npm 11 (trusted publishing needs >= 11.5.1)
+        # Node 22 bundles npm 10, which cannot publish via OIDC.
+        run: |
+          npm install -g npm@^11.6.2
+          npm --version
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Smoke test
+        run: node ./bin/run.js --help
+
+      - name: npm audit (production deps only)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Release
+        if: github.event_name != 'workflow_dispatch' || inputs.republish != true
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: npx semantic-release
+
+      - name: Republish to npm (recovery)
+        if: github.event_name == 'workflow_dispatch' && inputs.republish == true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: |
+          NAME=$(node -pe "require('./package.json').name")
+          TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*')
+          VERSION="${TAG#v}"
+          echo "Recovery publish: ${NAME}@${VERSION} (from tag ${TAG})"
+          if npm view "${NAME}@${VERSION}" version 2>/dev/null; then
+            echo "Already published on npm — nothing to do."
+          else
+            git checkout --detach "${TAG}"
+            npm ci --no-audit --no-fund
+            npm version "${VERSION}" --no-git-tag-version --allow-same-version
+            # Trusted publishing (OIDC) when configured; NPM_TOKEN as a fallback.
+            if [ -n "$NPM_TOKEN" ]; then
+              npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+            fi
+            npm publish --access public
+          fi
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release create "${TAG}" --verify-tag --title "${TAG}" --generate-notes
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Release · ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
+          if [ -n "$TAG" ]; then
+            echo "Latest tag: \`${TAG}\` — notes: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${TAG}" >> $GITHUB_STEP_SUMMARY
+          fi
