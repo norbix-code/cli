@@ -65,7 +65,7 @@ with auto-update support — worth testing since we already use oclif.
 ## 5. Ideas / next steps
 
 1. ~~`norbix files upload/download`~~ — done (signed-URL upload flow: request URL → PUT bytes → commit).
-2. **Device-code or browser login** — `norbix login` opens hub.norbix.dev,
+2. **Device-code or browser login** — `norbix login` opens hub.norbix.ai,
    user confirms, CLI receives token. No password in the terminal.
 3. **`norbix api <method> <path> --body '{...}'`** — raw escape hatch for any
    endpoint the CLI doesn't wrap yet (like `gh api`).
