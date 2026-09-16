@@ -1,0 +1,47 @@
+# Dependabot — keeps npm + GitHub Actions versions current.
+# Security-patch PRs arrive out-of-band the moment a CVE is published.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Vilnius
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # conventional-changelog-conventionalcommits 10 needs
+      # conventional-changelog-writer@9; @semantic-release/release-notes-generator
+      # 14.x ships writer 8, so v10 breaks release notes ("Missing helper").
+      - dependency-name: 'conventional-changelog-conventionalcommits'
+        versions: ['>= 10']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Vilnius
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: 'ci'
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch

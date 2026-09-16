@@ -19,17 +19,12 @@ Quality gates:
 4. **README polish**: add an install GIF or asciinema recording, a badges row
    (CI, npm version), and a short "why CLI vs portal" paragraph.
 
-Publish steps (first time, manual):
-
-```sh
-npm login                 # as the @norbix.ai org owner
-npm pack --dry-run        # check exactly which files go into the package
-npm publish --access public
-npx @norbix.ai/cli --help # verify from a clean machine
-```
-
-After that, releases are just: `npm version patch && git push --follow-tags`
-(the release workflow publishes with provenance).
+Releases (automated): `.github/workflows/release.yml` runs semantic-release on
+every push to `main`. Merge a PR whose squash title is a conventional commit —
+`feat:` → minor, `fix:` → patch, `feat!:` → major; `chore:` / `ci:` /
+`test:` don't release. It tags `vX.Y.Z`, publishes to npm with provenance and
+creates the GitHub Release. `package.json` `version` on `main` is not bumped
+(main is protected); the tag is the source of truth.
 
 ## Next — v0.2.x
 
@@ -80,7 +75,8 @@ Functionality:
 - [ ] Push code to github.com/norbix-code/cli (see README "Development")
 - [ ] Remove the stray `# cli` line if GitHub's starter README got merged
 - [ ] `git update-index --chmod=+x bin/run.js` so the exec bit survives git
-- [ ] Add NPM_TOKEN secret for the release workflow
+- [x] Add NPM_TOKEN secret for the release workflow (fallback; prefer npm trusted publishing)
+- [ ] Configure npm Trusted Publisher for `@norbix.ai/cli` (repo `norbix-code/cli`, workflow `release.yml`)
 - [ ] Branch protection on main (same ruleset as sdk-ts:
       MainBranchProtectionRuleSet.json in the sdks folder)
-- [ ] Enable Dependabot / npm audit in CI
+- [x] Enable Dependabot / npm audit in CI
