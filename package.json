@@ -4,7 +4,7 @@
   "description": "Norbix CLI — manage your Norbix projects from the terminal. Built on the official TypeScript SDK.",
   "author": "UAB Isidos",
   "license": "MIT",
-  "homepage": "https://norbix.dev",
+  "homepage": "https://norbix.ai",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/norbix-code/cli.git"
