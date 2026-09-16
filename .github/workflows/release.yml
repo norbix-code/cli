@@ -52,6 +52,18 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Sync branch tip
+        # A run checks out its triggering SHA. When several merges land close
+        # together that SHA is already behind origin, and semantic-release
+        # refuses to release ("local branch main is behind the remote one").
+        # Release from the remote tip instead so a quick follow-up merge never
+        # swallows a release.
+        if: github.event_name != 'workflow_dispatch' || inputs.republish != true
+        run: |
+          git fetch origin "${GITHUB_REF_NAME}"
+          git checkout "${GITHUB_REF_NAME}"
+          git reset --hard "origin/${GITHUB_REF_NAME}"
+
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
