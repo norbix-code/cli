@@ -4,7 +4,7 @@ Manage your Norbix projects from the terminal. Built on top of the official
 [`@norbix.ai/ts`](https://www.npmjs.com/package/@norbix.ai/ts) SDK, so every
 command talks to the same API the SDK does.
 
-Works on **macOS**, **Linux** and **Windows** (Node.js 18+).
+Works on **macOS**, **Linux** and **Windows** (Node.js 22+).
 
 ## Install
 
