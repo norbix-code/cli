@@ -40,6 +40,7 @@ norbix scheduler list
 | `norbix config list/get/set/unset` | Manage the local config file |
 | `norbix db find/get/count/insert/update/delete/aggregate` | Work with database collections |
 | `norbix files list/info/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
+| `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
 | `norbix env list/use/delete` | Manage project environments |
 | `norbix logs list/trail` | Read project logs, follow one correlation ID |
@@ -148,7 +149,7 @@ norbix files download invoices/2026/invoice.pdf
 
 Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 
-### The eight file commands
+### The file commands
 
 | Command | What it does |
 | --- | --- |
@@ -160,6 +161,7 @@ Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 | `norbix files delete <path> [--yes]` | Delete one file. Asks first unless you pass `--yes`. |
 | `norbix files publish <path> [--folder]` | Give the file — or the whole folder — a link anyone can open, and print it. |
 | `norbix files unpublish <path> [--folder]` | Take that link away again. |
+| `norbix files integrations test <id>` | Check that the storage behind an integration really works. See below. |
 
 Upload and download take more than one step, so the file bytes never pass
 through Norbix:
@@ -211,6 +213,27 @@ Four rules worth knowing:
   included.
 * Every dead link answers the same plain `404`: unknown, renamed, unpublished,
   deleted. A more precise answer would tell a stranger that the file is there.
+
+### Testing an integration
+
+`norbix files integrations test <id>` runs a live probe against the storage
+behind the integration: it uploads a small file, reads it, lists its folder and
+deletes it again. One line per step:
+
+```sh
+norbix files integrations test 55555555-5555-5555-5555-555555555555
+# UploadFile   OK
+# GetFile      FAILED
+#                - NoSuchKey: the object was not found
+# GetAllFiles  NOT_TESTED
+# DeleteFile   NOT_TESTED
+#  ›   Error: The files integration test failed: GetFile FAILED (2 later steps not tested).
+```
+
+`NOT_TESTED` means the step was skipped because an earlier one failed. The
+command exits `0` only when every step is `OK`, so it works in a script or a
+CI job. `--json` prints the steps as data and keeps the same exit code. The
+probe writes to the storage, so the key needs the `files:create` permission.
 
 ## Tests
 

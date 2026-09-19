@@ -2,7 +2,7 @@ import {runCommand} from '@oclif/test'
 import {mkdtempSync, readFileSync, writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 /**
  * The six `norbix files` commands.
@@ -364,5 +364,160 @@ describe('norbix files publish / unpublish', () => {
     ])
 
     expect(error?.message).toContain('public through the folder')
+  })
+})
+
+describe('norbix files integrations test', () => {
+  /** Answer every request with `payload` and the given status; record what was sent. */
+  function answer(payload: unknown, status = 200): Array<Record<string, string>> {
+    const seen: Array<Record<string, string>> = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      calls.push({method: init?.method ?? 'GET', url, body: init?.body})
+      seen.push(Object.fromEntries(new Headers(init?.headers ?? {}).entries()))
+      return new Response(JSON.stringify(payload), {
+        status,
+        headers: {'Content-Type': 'application/json'},
+      })
+    }) as typeof globalThis.fetch
+    return seen
+  }
+
+  const auth = ['--project', PROJECT, '--api-key', API_KEY, '--region', REGION]
+
+  /**
+   * What the command printed. oclif writes through `console.log`, which vitest
+   * takes over, so `runCommand`'s own `stdout` stays empty — read it here.
+   */
+  let printed: string[]
+  beforeEach(() => {
+    printed = []
+    vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      printed.push(args.map(String).join(' '))
+    })
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+  const stdoutOf = () => printed.join('\n')
+
+  const allOk = {
+    items: [
+      {operation: 'UploadFile', result: 'OK'},
+      {operation: 'GetFile', result: 'OK'},
+      {operation: 'GetAllFiles', result: 'OK'},
+      {operation: 'DeleteFile', result: 'OK'},
+    ],
+    responseStatus: {isSuccess: true, errors: []},
+  }
+
+  it('sends POST /v2/files/<id>/test on the API host, with the id in the path and the usual headers', async () => {
+    const seen = answer(allOk)
+
+    const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0].method).toBe('POST')
+    const url = new URL(calls[0].url)
+    expect(url.host).toBe(`${REGION}.api.norbix.ai`)
+    expect(url.pathname).toBe(`/v2/files/${INTEGRATION}/test`)
+    // The only field is the path token, so — like the SDK — no body is sent.
+    expect(calls[0].body).toBeUndefined()
+    expect(seen[0].authorization).toBe(`Bearer ${API_KEY}`)
+    expect(seen[0]['x-cm-projectid']).toBe(PROJECT)
+    expect(seen[0]['norbix-project-id']).toBe(PROJECT)
+    expect(seen[0]['nb-region']).toBe(REGION)
+  })
+
+  it('escapes the id like every other path token', async () => {
+    answer(allOk)
+
+    await runCommand(['files', 'integrations', 'test', 'a/b?c', ...auth])
+
+    expect(calls[0].url).toContain('/v2/files/a%2Fb%3Fc/test')
+  })
+
+  it('prints one line per step and succeeds when every step is OK', async () => {
+    answer(allOk)
+
+    const {error, result} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+
+    expect(error).toBeUndefined()
+    const stdout = stdoutOf()
+    expect(stdout).toMatch(/UploadFile\s+OK/)
+    expect(stdout).toMatch(/GetFile\s+OK/)
+    expect(stdout).toMatch(/GetAllFiles\s+OK/)
+    expect(stdout).toMatch(/DeleteFile\s+OK/)
+    expect(stdout).toContain('All 4 steps passed.')
+    expect(result).toMatchObject({filesIntegrationId: INTEGRATION, ok: true})
+  })
+
+  it('fails with a non-zero exit and shows the error of the failed step', async () => {
+    answer({
+      items: [
+        {operation: 'UploadFile', result: 'OK'},
+        {operation: 'GetFile', result: 'FAILED', errors: ['The bucket answered 403 AccessDenied']},
+        {operation: 'GetAllFiles', result: 'NOT_TESTED'},
+        {operation: 'DeleteFile', result: 'NOT_TESTED'},
+      ],
+      responseStatus: {isSuccess: true, errors: []},
+    })
+
+    const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+
+    expect(error?.message).toBe('The files integration test failed: GetFile FAILED (2 later steps not tested).')
+    expect(error?.oclif?.exit).toBe(2)
+    const stdout = stdoutOf()
+    expect(stdout).toMatch(/GetFile\s+FAILED/)
+    expect(stdout).toContain('- The bucket answered 403 AccessDenied')
+    expect(stdout).toMatch(/GetAllFiles\s+NOT_TESTED/)
+    expect(stdout).not.toContain('steps passed')
+  })
+
+  it('fails when the gateway answers 200 with isSuccess: false, and shows its errors', async () => {
+    answer({responseStatus: {isSuccess: false, errors: [{message: 'Files integration was not found.', errorCode: 'CM-ERRORS-FILES-004'}]}})
+
+    const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+
+    expect(error?.message).toContain('Files integration was not found.')
+    expect(error?.oclif?.exit).toBe(2)
+  })
+
+  it('turns a 403 into the usual error line with the HTTP status', async () => {
+    answer({responseStatus: {errorCode: 'Forbidden', message: 'Missing permission files:create'}}, 403)
+
+    const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+
+    expect(error?.message).toBe('Missing permission files:create (HTTP 403)')
+  })
+
+  it('--json returns every step and still exits non-zero when a step failed', async () => {
+    answer({
+      items: [
+        {operation: 'UploadFile', result: 'FAILED', errors: ['timeout']},
+        {operation: 'GetFile', result: 'NOT_TESTED'},
+      ],
+      responseStatus: {isSuccess: true},
+    })
+    const before = process.exitCode
+
+    try {
+      const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, '--json', ...auth])
+
+      expect(error).toBeUndefined()
+      expect(JSON.parse(stdoutOf())).toEqual({
+        filesIntegrationId: INTEGRATION,
+        ok: false,
+        steps: [
+          {operation: 'UploadFile', result: 'FAILED', errors: ['timeout']},
+          {operation: 'GetFile', result: 'NOT_TESTED', errors: []},
+        ],
+        errors: [],
+      })
+      expect(process.exitCode).toBe(2)
+    } finally {
+      process.exitCode = before
+    }
   })
 })
