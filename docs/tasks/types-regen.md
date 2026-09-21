@@ -178,7 +178,18 @@ export gets wrong for an SDK:
 
 ### Routine C — manifests and route drift
 
-`endpoints.hub.json` regenerated (485 endpoints). Route drift measured against
+Both endpoint manifests regenerated from the running gateway —
+`endpoints.api.json` (62) and `endpoints.hub.json` (485) — and
+`build_matrix.py` rebuilt on top of them: 547 endpoints across 18 modules. The
+Files module moved from 31/34 to 32/34 for .NET, Go, JS/TS and React-Redux,
+because `TestFilesIntegrationApi`
+(`POST /{version}/files/{filesIntegrationId}/test`) is now in the manifest and
+those four SDKs already call it. The line that used to read "not found in any
+core SDK — verify whether it should be exposed" is gone. Those numbers come
+from the **main checkouts**, not from this slice's worktrees, so they describe
+the merged state as it stands today.
+
+Route drift measured against
 the gateway source with the regenerated worktrees in place:
 
 | SDK | drifted routes |
@@ -210,6 +221,15 @@ knowing:
   breaking change, so it is under *Needs you* rather than done here.
 * The remaining 50 are Go, Python and Kotlin, which cannot be regenerated at
   all (see below) — the drift there is a symptom, not a cause.
+
+### Worktrees
+
+Five worktrees were created and then removed again without a single commit,
+because there was nothing in those repos to regenerate: `norbix-go`,
+`norbix-python`, `norbix-kotlin`, `norbix-dart`, `norbix-react-redux`. Their
+`chore/types-regen` branches were deleted too. Four remain for the merge —
+`norbix-js`, `norbix-net`, `norbix-swift`, `typegen` — plus `cli`, which holds
+nothing but this report.
 
 ## Rejected / moved out
 
