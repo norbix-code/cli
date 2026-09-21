@@ -21,9 +21,9 @@ its own task, `sdk-type-generation.md`).
 |---|---|---|
 | 1 | Run the gateway locally (Community.Hub :5001, Community.Api :5002) from `refactoringV2` | done |
 | 2 | Create one worktree per repo on branch `chore/types-regen` | done |
-| 3 | Find each repo's real regeneration entry point; record the ones that have none | doing |
-| 4 | norbix-js — delete marked blocks, `npm run sync-types`, build, test | todo |
-| 5 | norbix-net — delete hand-written endpoint files, regenerate `Generated/*.dtos.cs`, build, test | todo |
+| 3 | Find each repo's real regeneration entry point; record the ones that have none | done |
+| 4 | norbix-js — regenerate, build, test | **done** — 739 tests green |
+| 5 | norbix-net — delete 5 hand-written files, regenerate, build, test | **done** — 144 tests green |
 | 6 | norbix-go — delete hand-written probe DTOs, regenerate, build, test | todo |
 | 7 | norbix-python — regenerate, build, test | todo |
 | 8 | norbix-swift — `make sync-types`, build, test | todo |
