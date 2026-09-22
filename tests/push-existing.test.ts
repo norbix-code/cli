@@ -79,15 +79,10 @@ describe('push campaigns', () => {
 
 describe('push stop', () => {
   it('stops a campaign, sending the id as the Id route token', async () => {
+    // The route is `/campaigns/{Id}/stop`. An earlier version sent `id` here
+    // and this test pinned it, so the command threw NORBIX_MISSING_PATH_PARAM
+    // on every run. tests/push-routes.test.ts now runs the real transport.
     const {calls} = await runCommand(PushStop, [ID, '--yes'])
-    expect(calls).toEqual([{method: 'stopPushCampaign', request: {id: ID}}])
-  })
-
-  it('explains itself when the installed SDK has no stopPushCampaign', async () => {
-    // The published @norbix.ai/ts does not ship this method yet, so the command
-    // guards for it. Without the guard the user would see "not a function".
-    await expect(
-      runCommand(PushStop, [ID, '--yes'], {notifications: {}}),
-    ).rejects.toThrow(/does not support stopping campaigns yet/)
+    expect(calls).toEqual([{method: 'stopPushCampaign', request: {Id: ID}}])
   })
 })

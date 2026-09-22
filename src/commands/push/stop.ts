@@ -25,17 +25,13 @@ export default class PushStop extends BaseCommand {
       if (!ok) return this.print('Cancelled.')
     }
 
-    const n = client.hub.notifications as unknown as {
-      stopPushCampaign?: (r: {id: string}) => Promise<unknown>
-    }
-    if (!n.stopPushCampaign) {
-      this.error(
-        'Your installed @norbix.ai/ts does not support stopping campaigns yet.\n' +
-          `Update the SDK, or run: norbix api "/{version}/notifications/push/campaigns/${args.id}/stop" --hub --method POST`,
-      )
-    }
+    // The route is `/campaigns/{Id}/stop` and the transport fills tokens by
+    // exact name, but the generated request type has no field at all — so the
+    // id goes in as `Id`. Sending `id` throws NORBIX_MISSING_PATH_PARAM.
+    const res = await client.hub.notifications.stopPushCampaign({Id: args.id} as unknown as Parameters<
+      typeof client.hub.notifications.stopPushCampaign
+    >[0])
 
-    const res = await n.stopPushCampaign({id: args.id})
     this.print(`Campaign ${args.id} stopped.`)
     return res
   }
