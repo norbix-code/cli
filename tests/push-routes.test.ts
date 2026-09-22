@@ -77,6 +77,9 @@ const routes: Array<[string[], string, string]> = [
 
   // Devices
   [['device', 'register', '--user', 'usr_1', '--token', 'dGVzdA==', '--os', 'iOS'], 'POST', `${P}/devices`],
+  [['devices'], 'GET', `${P}/devices`],
+  [['devices', '--platform', 'ios', '--user', 'usr_1', '--token', 'dGVzdA=='], 'GET', `${P}/devices`],
+  [['device', ID], 'GET', `${P}/devices/${ID}`],
 
   // Templates
   [['templates'], 'GET', `${P}/templates`],
@@ -119,11 +122,12 @@ describe('every push command reaches its route', () => {
 })
 
 
-it('covers all 37 push routes', () => {
-  // One row per route the SDK exposes (lane D counted 37). The campaign
-  // `--stats` row and the batch row share a command with another row, so
-  // count distinct verb + path pairs.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(37)
+it('covers all 39 push routes', () => {
+  // One row per route the SDK exposes (lane D counted 37; the devices read
+  // side added the list and the get). The campaign `--stats` row, the batch
+  // row and the second `devices` row share a route with another row, so count
+  // distinct verb + path pairs.
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(39)
 })
 
 /** Run a command and return the one request body it sent. */
