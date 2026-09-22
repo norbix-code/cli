@@ -57,14 +57,29 @@ one or pass `--account`.
 | command | what it does | endpoint |
 |---|---|---|
 | `norbix push device register --user <id> --token <t> --os <os>` | register a device for a user | `POST /devices` |
+| `norbix push devices` | list the registered devices | `GET /devices` |
+| `norbix push device <id>` | show one device and its owner | `GET /devices/{id}` |
 
-A device always belongs to a user, so `--user` is required. `--os` is the
-operating system the token came from; the backend uses it to pick a provider.
-Push has no endpoint to list or read devices.
+A device always belongs to a user, so `--user` is required on register. `--os`
+is the operating system the token came from; the backend uses it to pick a
+provider.
 
 ```bash
 norbix push device register --user usr_123 --token dGVzdA== --os iOS --model "iPhone 15"
 ```
+
+`push devices` narrows with `--user`, `--token` (the provider token) and
+`--platform` (`ios`, `android`, `chrome`, `safari`, `expo`); a word outside
+that list is refused rather than answered with an empty list.
+
+```bash
+norbix push devices --platform ios
+norbix push device pnd_123
+```
+
+Devices are stored inside their user, so a page is a page of **users** and
+carries every matching device those users hold. Follow `hasMore` rather than
+stopping at the first short page.
 
 ## Templates
 
