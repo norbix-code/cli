@@ -125,6 +125,29 @@ pipe into `jq`:
 norbix db find orders --json | jq '.list.items[] | ._id'
 ```
 
+## Errors
+
+A failed call prints one line: the error code, the message, and the HTTP
+status.
+
+```sh
+$ norbix files info nbin_1 a/b.txt
+ ›   Error: CM-ERRORS-FILES-016: File not found: "a/b.txt" does not exist in
+ ›   Local (nbin_1). (HTTP 404)
+```
+
+The code and the message are the gateway's own — they come out of
+`responseStatus.errors[]`, where the gateway puts them. Before this, every
+failure read "Request failed with status 404" with no code.
+
+Exit codes do not change: `1` for a failed call, `2` for a check that ran and
+came back negative (`norbix files integrations test`).
+
+**A refusal the gateway answers with HTTP 200** and
+`responseStatus.isSuccess = false` now exits non-zero as well, wherever it did
+not before — `norbix files publish` / `unpublish` were the two commands that
+used to treat it as a success.
+
 ## Development
 
 ```sh

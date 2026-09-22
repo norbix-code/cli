@@ -228,13 +228,25 @@ export abstract class BaseCommand extends Command {
     }
   }
 
+  /**
+   * One line for a failed call: `<errorCode>: <message> (HTTP <status>)`.
+   *
+   * The code comes first because it is the part a reader can search for and a
+   * script can match on. It is the gateway's own code — the SDK reads it out
+   * of `responseStatus.errors[]`, where the gateway puts it (10b-files slice
+   * ERRORS, issue #66). The exit codes do not change.
+   */
   protected async catch(error: Error & {exitCode?: number}): Promise<unknown> {
     if (error instanceof NorbixError) {
-      const status = (error as {status?: number}).status
-      const suffix = status ? ` (HTTP ${status})` : ''
+      const {code, status} = error as {code?: string; status?: number}
+      const prefix = code ? `${code}: ` : ''
+      // The SDK's last-resort message already ends in "(HTTP <status>)" —
+      // do not say it twice.
+      const suffix =
+        status && !error.message.includes(`(HTTP ${status})`) ? ` (HTTP ${status})` : ''
       const hint =
         status === 401 ? '\nYour session may have expired. Run `norbix login` again.' : ''
-      return this.error(`${error.message}${suffix}${hint}`)
+      return this.error(`${prefix}${error.message}${suffix}${hint}`)
     }
 
     return super.catch(error)

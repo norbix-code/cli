@@ -1,6 +1,6 @@
-import {NorbixAuthError, NorbixError, NorbixValidationError} from '@norbix.ai/ts'
-
 import type {ResolvedContext} from '../base.js'
+
+import {gatewayError} from './gatewayError.js'
 
 /**
  * `POST /{version}/files/{filesIntegrationId}/test` — the API-surface probe of
@@ -86,23 +86,9 @@ export async function callTestFilesIntegration(
     }
   }
 
-  if (!response.ok) throw errorFrom(response.status, raw, url)
+  if (!response.ok) throw gatewayError(response.status, raw, url)
 
   return (raw && typeof raw === 'object' ? raw : {}) as TestFilesIntegrationResult
-}
-
-/** Same mapping as the SDK transport: 401/403 → auth, 400 → validation, else NorbixError. */
-function errorFrom(status: number, raw: unknown, url: string): NorbixError {
-  const body = raw && typeof raw === 'object' ? (raw as TestFilesIntegrationResult & ResponseStatusError) : undefined
-  const payload = body?.responseStatus ?? body
-  const message =
-    payload?.message ??
-    body?.responseStatus?.errors?.find((e) => e.message)?.message ??
-    `Request failed with status ${status}`
-  const opts = {code: payload?.errorCode, message, raw, status, url}
-  if (status === 401 || status === 403) return new NorbixAuthError(opts)
-  if (status === 400) return new NorbixValidationError(opts)
-  return new NorbixError(opts)
 }
 
 /** `Failed` / `NotTested` / `NOT_TESTED` → `FAILED` / `NOT_TESTED`. */
