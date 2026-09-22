@@ -484,12 +484,48 @@ describe('norbix files integrations test', () => {
     expect(error?.oclif?.exit).toBe(2)
   })
 
-  it('turns a 403 into the usual error line with the HTTP status', async () => {
+  it('turns a 403 into the usual error line: code, message, HTTP status', async () => {
     answer({responseStatus: {errorCode: 'Forbidden', message: 'Missing permission files:create'}}, 403)
 
     const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
 
-    expect(error?.message).toBe('Missing permission files:create (HTTP 403)')
+    expect(error?.message).toBe('Forbidden: Missing permission files:create (HTTP 403)')
+  })
+
+  /**
+   * The gateway's real message and code live inside `responseStatus.errors[]`.
+   * Reading the top of the block printed "Request failed with status 404" and
+   * no code (10b-files slice ERRORS, issue #66).
+   */
+  it('takes the message and the code of a 404 from responseStatus.errors', async () => {
+    answer(
+      {
+        responseStatus: {
+          isSuccess: false,
+          errors: [
+            {message: 'Files integration was not found.', errorCode: 'CM-ERRORS-FILES-004'},
+            {message: 'and a second one', errorCode: 'CM-ERRORS-FILES-016'},
+          ],
+        },
+      },
+      404,
+    )
+
+    const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+
+    expect(error?.message).toBe('CM-ERRORS-FILES-004: Files integration was not found. (HTTP 404)')
+  })
+
+  it('falls back to a plain line when a 500 body is not JSON', async () => {
+    globalThis.fetch = (async () =>
+      new Response('<html>Bad Gateway</html>', {
+        status: 500,
+        headers: {'Content-Type': 'text/html'},
+      })) as typeof globalThis.fetch
+
+    const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+
+    expect(error?.message).toBe('Request failed (HTTP 500)')
   })
 
   it('--json returns every step and still exits non-zero when a step failed', async () => {
