@@ -291,10 +291,13 @@ describe('push campaign create — the five audiences', () => {
 })
 
 describe('push campaign reads', () => {
-  it('message sends the batch and the message id the server binds', async () => {
+  it('message sends the batch, and the message id fills the route token', async () => {
+    // The gateway names the token `{notificationId}`, so the transport takes
+    // that field for the path — it is no longer left in the query as well.
     await bodyOf(['campaign', 'message', ID, MESSAGE, '--batch', BATCH])
+    expect(calls[0]?.path).toBe(`${P}/campaigns/${ID}/messages/${MESSAGE}`)
     expect(calls[0]?.query.get('campaignBatchId')).toBe(BATCH)
-    expect(calls[0]?.query.get('notificationId')).toBe(MESSAGE)
+    expect(calls[0]?.query.get('notificationId')).toBeNull()
   })
 
   it('batches pass paging', async () => {

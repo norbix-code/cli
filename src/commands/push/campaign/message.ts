@@ -20,15 +20,15 @@ export default class PushCampaignMessage extends BaseCommand {
     const {args, flags} = await this.parse(PushCampaignMessage)
     const client = this.client(flags)
 
-    // The route is `/campaigns/{campaignId}/messages/{id}`, but the request
-    // type has no `id` field — the server reads `notificationId`. Send both:
-    // `id` fills the path token, `notificationId` is what the server binds.
+    // The gateway route now names its token `{notificationId}`, and the
+    // regenerated request type has the matching field — so the workaround
+    // this command used to carry (an extra `id` plus a cast, because the
+    // token and the field had different names) is gone.
     const res = await client.hub.notifications.getPushCampaignMessage({
       campaignId: args.id,
-      id: args.messageId,
       notificationId: args.messageId,
       campaignBatchId: flags.batch,
-    } as unknown as Parameters<typeof client.hub.notifications.getPushCampaignMessage>[0])
+    })
 
     this.print(res)
     return res
