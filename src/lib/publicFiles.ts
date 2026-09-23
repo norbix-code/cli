@@ -1,6 +1,6 @@
-import {NorbixError} from '@norbix.ai/ts'
-
 import type {ResolvedContext} from '../base.js'
+
+import {gatewayError, saysItFailed} from './gatewayError.js'
 
 /**
  * The four "make it public / make it private" Hub endpoints (gateway slice
@@ -63,24 +63,23 @@ export async function callPublicFiles(
 
   const response = await fetch(url, {body: JSON.stringify(body), headers, method: 'POST'})
   const text = await response.text()
-  let payload: PublicFilesResult & {message?: string} = {}
+  let raw: unknown
   if (text) {
     try {
-      payload = JSON.parse(text) as typeof payload
+      raw = JSON.parse(text)
     } catch {
-      payload = {}
+      raw = text
     }
   }
 
-  if (!response.ok) {
-    throw new NorbixError({
-      code: payload.status,
-      message: payload.message ?? text ?? 'Request failed',
-      status: response.status,
-    })
-  }
+  if (!response.ok) throw gatewayError(response.status, raw, url)
 
-  return payload
+  // A 2xx does not mean the call worked: the gateway answers a business
+  // refusal with HTTP 200 and responseStatus.isSuccess = false, and the
+  // command must exit non-zero for it (10b-files, issue #67).
+  if (saysItFailed(raw)) throw gatewayError(response.status, raw, url)
+
+  return (raw && typeof raw === 'object' ? raw : {}) as PublicFilesResult
 }
 
 /**
