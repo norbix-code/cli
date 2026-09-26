@@ -154,13 +154,17 @@ cannot build it yourself, so copy it out of the link.
 
 ## Known backend gaps
 
-These commands send the right request, but the backend cannot serve it yet
-(tracked in the push campaign's `issues.md`):
+These are still true on the backend (tracked in the push campaign's
+`issues.md`); the CLI cannot work around them:
 
-- `push campaign delete` — **P2h**: the server's request type has no bindable
-  `Id`, so no campaign can be deleted.
-- `push device register` — **P2g**: the Hub does not register the device
-  command, so no device can be registered.
-- `push campaign message` — the route has an `{id}` token but the server's
-  request type has no `Id` field; it reads `notificationId`, so the command
-  sends the message ID as both.
+- **No "respect the recipient's time zone" option** for `push campaign
+  create`: the gateway's push campaign request has no field for it and the
+  Hub always stores `null` (**P2i**). A scheduled push goes out at the same
+  moment for everyone.
+- **No command to check whether the managed Norbix app integration is
+  available, and none to send a test from it**: both gateway endpoints have
+  their `[Route]` commented out, so no client can call them (**N4**).
+
+Fixed since the first version of this page, and now working from the CLI:
+`push campaign delete` (P2h), `push device register` (P2g) and
+`push campaign message` (N3).
