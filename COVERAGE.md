@@ -28,7 +28,7 @@ out of reach.
 | membership/users | 6/35 | list, get, invite, block, unblock, delete. Missing: contacts, create-user variants, preferences |
 | membership/roles + policies | 2/10 | read-only lists |
 | notifications/email | 12/47 | templates (list/get/clone/archive/unarchive/delete), campaigns (list/get/stats/stop), module toggle, integrations list |
-| notifications/push | 12/37 | same set as email |
+| notifications/push | 37/37 | every endpoint — see `docs/push.md`; each command is run through the real transport in `tests/push-routes.test.ts` |
 | notifications/sms | 12/35 | same set as email |
 | scheduler | 7/8 | all except save-task (complex DTO) |
 | webhooks | 6/9 | show, secret, rotate, enable/disable/remove destination |
@@ -48,21 +48,22 @@ Cross-cutting commands: `norbix integrations <module>` lists integrations for
   — signup/onboarding flows that happen in the portal or email links.
 - **webhooks/module receive-webhook** — inbound endpoint called by external
   services, not by a person.
-- **push register-device / register-codemash-app** — called by mobile apps.
 - **save/config of integrations** (database, email, files, logging, payments,
   code, membership, AI) — large nested JSON configs; the portal validates
   them much better. Readable via `norbix integrations <module>`; writable via
   `norbix api` if ever needed.
 - **code/marketplace (17)** — new surface; candidate for a future `norbix fx`
   topic (list/invoke marketplace function bindings could be very useful).
-- **notifications create/update template + create campaign** — bodies are big
+- **email/sms create/update template + create campaign** — bodies are big
   design objects (MJML, layouts); better done in the portal today. `norbix api`
-  works for scripted cases.
+  works for scripted cases. (Push has these commands: its template is title +
+  body per language, which fits flags.)
 
 ## Version note
 
-`email|push|sms stop` need SDK methods newer than `@norbix.ai/ts@1.2.0`. The
+`email|sms stop` need SDK methods newer than `@norbix.ai/ts@1.2.0`. The
 commands detect an older SDK and print the exact `norbix api` fallback line.
+`push stop` calls the SDK directly (the CLI requires `@norbix.ai/ts` ^1.3.0).
 
 ## How this was measured
 
