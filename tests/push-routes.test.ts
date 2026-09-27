@@ -1,4 +1,6 @@
+import {Config} from '@oclif/core'
 import {runCommand} from '@oclif/test'
+import {fileURLToPath} from 'node:url'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 /**
@@ -69,11 +71,6 @@ const routes: Array<[string[], string, string]> = [
   [['integration', 'test', '--integration', ID, '--token', 'dGVzdA==', '--family', 'Ios'], 'POST', `${P}/integrations/test`],
   [['integration', 'save', '--provider', 'Fake'], 'POST', `${P}/integrations`],
   [['integration', 'confirm-delivery', ID], 'POST', `${P}/integrations/confirm-human-delivery`],
-  [
-    ['integration', 'app-request', '--user', 'usr_1', '--request-id', 'req_1', '--pin', '123456', '--valid-till', '2026-09-20T12:00:00Z', '--public-key', 'pk', '--account', 'acc_1'],
-    'POST',
-    `${P}/integrations/app/request`,
-  ],
 
   // Devices
   [['device', 'register', '--user', 'usr_1', '--token', 'dGVzdA==', '--os', 'iOS'], 'POST', `${P}/devices`],
@@ -122,12 +119,13 @@ describe('every push command reaches its route', () => {
 })
 
 
-it('covers all 39 push routes', () => {
+it('covers all 38 push routes', () => {
   // One row per route the SDK exposes (lane D counted 37; the devices read
-  // side added the list and the get). The campaign `--stats` row, the batch
+  // side added the list and the get; the managed-app app-request route was
+  // removed with its gateway stub). The campaign `--stats` row, the batch
   // row and the second `devices` row share a route with another row, so count
   // distinct verb + path pairs.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(39)
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(38)
 })
 
 /** Run a command and return the one request body it sent. */
@@ -169,30 +167,16 @@ describe('push integration save', () => {
   })
 })
 
-describe('push integration confirm-delivery / app-request', () => {
+describe('push integration confirm-delivery', () => {
   it('sends the integration id in the body', async () => {
     expect(await bodyOf(['integration', 'confirm-delivery', ID])).toEqual({integrationId: ID})
   })
-
-  it('sends the pairing fields', async () => {
-    const body = await bodyOf([
-      'integration', 'app-request', '--user', 'usr_1', '--request-id', 'req_1', '--pin', '123456',
-      '--valid-till', '2026-09-20T12:00:00Z', '--public-key', 'pk', '--account', 'acc_1',
-    ])
-    expect(body).toMatchObject({
-      accountId: 'acc_1', userId: 'usr_1', requestId: 'req_1', pin: 123456,
-      validTill: '2026-09-20T12:00:00Z', publicKey: 'pk',
-    })
-  })
 })
 
-it('push integration app-request fails before sending when no account is set', async () => {
-  const {error} = await runCommand([
-    'push', 'integration', 'app-request', '--user', 'usr_1', '--request-id', 'req_1', '--pin', '1',
-    '--valid-till', '2026-09-20T12:00:00Z', '--public-key', 'pk', ...globalArgs,
-  ])
-  expect(error?.message).toMatch(/account-scoped/)
-  expect(calls).toHaveLength(0)
+it('push integration app-request is gone: the gateway never served the managed-app pairing route', async () => {
+  const config = await Config.load(fileURLToPath(new URL('..', import.meta.url)))
+  expect(config.findCommand('push:integration:app-request')).toBeUndefined()
+  expect(config.findCommand('push:integration:confirm-delivery')).toBeDefined()
 })
 
 describe('push template create / update', () => {

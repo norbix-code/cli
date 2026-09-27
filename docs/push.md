@@ -32,7 +32,6 @@ All paths below are under `/{version}/notifications/push`.
 | `norbix push integration delete <id> [--yes]` | delete it | `DELETE /integrations/{Id}` |
 | `norbix push integration test --integration <id> [--token <t>] [--family <f>]` | send a test push | `POST /integrations/test` |
 | `norbix push integration confirm-delivery <id>` | confirm the test push reached a person | `POST /integrations/confirm-human-delivery` |
-| `norbix push integration app-request --user <id> --request-id <id> --pin <n> --valid-till <date> --public-key <key>` | register a Norbix app pairing request (account-scoped) | `POST /integrations/app/request` |
 
 `--provider` is one of `Fake`, `AppleApns`, `AndroidFirebase`, `SafariPush`,
 `ChromeWeb`, `FirefoxWeb`, `EdgeWeb`, `ChromePush`. **Fake** needs nothing else:
@@ -47,10 +46,6 @@ norbix push integration save --provider AndroidFirebase --name Android --config 
 norbix push integration test --integration int_123 --token dGVzdA== --family Ios
 norbix push integration confirm-delivery int_123
 ```
-
-`app-request` is part of the managed-app pairing flow (the Norbix mobile app
-shows the request ID, PIN and public key). It needs an account ID — configure
-one or pass `--account`.
 
 ## Devices
 
@@ -161,10 +156,9 @@ These are still true on the backend (tracked in the push campaign's
   create`: the gateway's push campaign request has no field for it and the
   Hub always stores `null` (**P2i**). A scheduled push goes out at the same
   moment for everyone.
-- **No command to check whether the managed Norbix app integration is
-  available, and none to send a test from it**: both gateway endpoints have
-  their `[Route]` commented out, so no client can call them (**N4**).
 
 Fixed since the first version of this page, and now working from the CLI:
 `push campaign delete` (P2h), `push device register` (P2g) and
-`push campaign message` (N3).
+`push campaign message` (N3). The managed Norbix app pairing command
+(`push integration app-request`) was removed with its gateway route, which
+never worked (N4); pairing will come back as its own feature.
