@@ -3,7 +3,8 @@ name: Release
 # Publishes `@norbix.ai/cli` to npm via semantic-release on every push to `main`
 # (and prerelease branches `next` / `beta`). The next version comes from
 # conventional commits since the last `v*` tag: `feat:` → minor, `fix:` → patch,
-# `feat!:` / `BREAKING CHANGE:` → major. `chore:`, `ci:`, `test:` don't release.
+# breaking → minor too until the public launch (major frozen; see README
+# "Versioning"). `chore:`, `ci:`, `test:` don't release.
 #
 # Authentication:
 #   - npm: trusted publishing (OIDC) first — npmjs.com trusts this repo +

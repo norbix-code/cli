@@ -21,7 +21,7 @@ Quality gates:
 
 Releases (automated): `.github/workflows/release.yml` runs semantic-release on
 every push to `main`. Merge a PR whose squash title is a conventional commit —
-`feat:` → minor, `fix:` → patch, `feat!:` → major; `chore:` / `ci:` /
+`feat:` → minor, `fix:` → patch, breaking → minor until launch; `chore:` / `ci:` /
 `test:` don't release. It tags `vX.Y.Z`, publishes to npm with provenance and
 creates the GitHub Release. `package.json` `version` on `main` is not bumped
 (main is protected); the tag is the source of truth.
