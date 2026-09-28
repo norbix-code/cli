@@ -1,4 +1,5 @@
-import {describe, expect, it} from 'vitest'
+import {runCommand as runOclif} from '@oclif/test'
+import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 import PushDeviceRegister from '../src/commands/push/device/register.js'
 import PushIntegration from '../src/commands/push/integration.js'
@@ -30,6 +31,90 @@ describe('push preview', () => {
   it('sends the preview hash', async () => {
     const {calls} = await runCommand(PushPreview, ['8f2a91c4'])
     expect(calls).toEqual([{method: 'previewPushNotification', request: {hash: '8f2a91c4'}}])
+  })
+
+  it('takes the hash from --hash too', async () => {
+    const {calls} = await runCommand(PushPreview, ['--hash', 'abc.def'])
+    expect(calls).toEqual([{method: 'previewPushNotification', request: {hash: 'abc.def'}}])
+  })
+
+  it('refuses to run with no hash at all', async () => {
+    await expect(runCommand(PushPreview, [])).rejects.toThrow(/preview hash/)
+  })
+})
+
+/**
+ * The signed preview link opens without sign-in: the hash is the key. These run
+ * the real command through oclif and the real `@norbix.ai/ts` transport, with
+ * `fetch` replaced — nothing leaves the process. The test HOME is empty (see
+ * test/setup.ts), so there is no login session and no profile.
+ */
+describe('push preview — signed link, no login, no project', () => {
+  interface Sent {
+    url: URL
+    headers: Headers
+  }
+
+  let sent: Sent[]
+  let realFetch: typeof globalThis.fetch
+
+  beforeEach(() => {
+    sent = []
+    realFetch = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      sent.push({url: new URL(href), headers: new Headers(init?.headers)})
+      return new Response(JSON.stringify({title: 'Hi', body: 'There'}), {
+        status: 200,
+        headers: {'Content-Type': 'application/json'},
+      })
+    }) as typeof globalThis.fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = realFetch
+  })
+
+  it('does not ask for a project, and sends no project header', async () => {
+    const {error} = await runOclif([
+      'push', 'preview', '--hash', 'abc.def', '--api-key', 'k-1', '--region', 'nb-eu-germany',
+    ])
+
+    expect(error).toBeUndefined()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.url.pathname).toBe('/v2/notifications/push/preview')
+    expect(sent[0]!.url.searchParams.get('hash')).toBe('abc.def')
+    expect(sent[0]!.headers.get('norbix-project-id')).toBeNull()
+    expect(sent[0]!.headers.get('X-CM-ProjectId')).toBeNull()
+  })
+
+  it('still uses a login when there is one', async () => {
+    const {error} = await runOclif([
+      'push', 'preview', 'abc.def', '--api-key', 'k-1', '--project', 'p-1', '--region', 'nb-eu-germany',
+    ])
+
+    expect(error).toBeUndefined()
+    expect(sent[0]!.headers.get('Authorization')).toBe('Bearer k-1')
+    expect(sent[0]!.headers.get('norbix-project-id')).toBe('p-1')
+  })
+
+  it("does not stop with the CLI's own 'Not authenticated' / 'No project ID' errors", async () => {
+    const {error} = await runOclif(['push', 'preview', '--hash', 'abc.def', '--region', 'nb-eu-germany'])
+
+    expect(error?.message ?? '').not.toMatch(/Not authenticated\.|No project ID configured/)
+  })
+
+  /**
+   * Pins today's behaviour with @norbix.ai/ts 2.1.0: its preview method is
+   * still scoped 'project', so the SDK itself refuses before sending. Once a
+   * release with the 'optional' scope is installed, this request goes out with
+   * no Authorization header — flip this test to expect exactly that.
+   */
+  it('today the installed SDK still refuses a call with no token', async () => {
+    const {error} = await runOclif(['push', 'preview', '--hash', 'abc.def', '--region', 'nb-eu-germany'])
+
+    expect(error?.message).toMatch(/NORBIX_NOT_AUTHENTICATED/)
+    expect(sent).toHaveLength(0)
   })
 })
 

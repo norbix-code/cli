@@ -11,6 +11,21 @@ import {
 } from './lib/profiles.js'
 import {readStore, type StoredConfig} from './lib/store.js'
 
+/** Stands in for a projectId the SDK constructor insists on; never sent. */
+const NO_PROJECT_PLACEHOLDER = 'no-project'
+
+/** Removes the project headers the SDK adds for the placeholder projectId. */
+export const dropProjectHeaders = async (ctx: {
+  init: RequestInit
+  next: () => Promise<Response>
+}): Promise<Response> => {
+  const headers = new Headers(ctx.init.headers)
+  headers.delete('norbix-project-id')
+  headers.delete('X-CM-ProjectId')
+  ctx.init.headers = headers
+  return ctx.next()
+}
+
 export interface GlobalFlags {
   project?: string
   env?: string
@@ -188,11 +203,23 @@ export abstract class BaseCommand extends Command {
     }
   }
 
-  /** Build an SDK client from the resolved context. Errors politely when auth is missing. */
-  protected client(flags: GlobalFlags, opts: {requireAuth?: boolean} = {}): Norbix {
+  /**
+   * Build an SDK client from the resolved context. Errors politely when auth is missing.
+   *
+   * `requireAuth: false` — the call may go out without a login (a signed link is the key);
+   * a login, when there is one, is still used.
+   * `requireProject: false` — the call does not need a project (a signed link carries it).
+   * The SDK constructor still demands a projectId, so a placeholder is passed and the
+   * project headers are taken off the wire again: the gateway never sees a fake project.
+   */
+  protected client(
+    flags: GlobalFlags,
+    opts: {requireAuth?: boolean; requireProject?: boolean} = {},
+  ): Norbix {
     const ctx = this.resolveContext(flags)
     this.assertEndpoints(ctx)
-    if (!ctx.projectId) {
+    const noProject = !ctx.projectId && opts.requireProject === false
+    if (!ctx.projectId && !noProject) {
       this.error(
         'No project ID configured.\nRun `norbix configure` (or `norbix login`), or pass --project.',
       )
@@ -206,7 +233,8 @@ export abstract class BaseCommand extends Command {
 
     return new Norbix(
       {
-        projectId: ctx.projectId,
+        projectId: noProject ? NO_PROJECT_PLACEHOLDER : ctx.projectId,
+        middleware: noProject ? [dropProjectHeaders] : [],
         accountId: ctx.accountId,
         apiKey: ctx.apiKey,
         bearerToken: ctx.bearerToken,

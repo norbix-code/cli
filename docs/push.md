@@ -125,7 +125,7 @@ norbix push template render --code "Hi @Model.Name" --token Name=Ada
 | `norbix push campaign batch <id> <batchId> <notificationId>` | show one notification in a batch | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
 | `norbix push campaign messages <id> [--batch <batchId>]` | list the messages it sent | `GET /campaigns/{campaignId}/messages` |
 | `norbix push campaign message <id> <messageId> --batch <batchId>` | show one message | `GET /campaigns/{campaignId}/messages/{id}` |
-| `norbix push preview <hash>` | render the title, body and subtitle behind a preview link | `GET /preview` |
+| `norbix push preview <hash>` (or `--hash <hash>`) | render the title, body and subtitle behind a preview link | `GET /preview` |
 
 `--audience` decides who receives the campaign:
 
@@ -151,6 +151,18 @@ norbix push campaign batches cmp_123
 
 `push preview` takes the opaque hash the backend puts in a preview link — you
 cannot build it yourself, so copy it out of the link.
+
+The signed link is the key: `push preview` needs **no login and no project**
+(the default endpoints still need `--region`). When you are logged in, your
+session is still sent. A `401` means the link is invalid or expired.
+
+```sh
+norbix push preview --hash 8f2a91c4... --region nb-eu-germany
+```
+
+> Calling it with no login at all needs a `@norbix.ai/ts` release that has the
+> `'optional'` auth scope on the preview methods. With `@norbix.ai/ts` 2.1.0 the
+> SDK still answers `NORBIX_NOT_AUTHENTICATED` when there is no login.
 
 ## Known backend gaps
 
