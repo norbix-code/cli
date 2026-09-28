@@ -149,6 +149,15 @@ came back negative (`norbix files integrations test`).
 not before — `norbix files publish` / `unpublish` were the two commands that
 used to treat it as a success.
 
+## Versioning
+
+The major version is frozen at **v1** until the public launch.
+
+- A breaking change is released as a **minor** (for example v1.2.0 → v1.3.0), never as a new major.
+- Write it as `feat(<scope>): <what>` and add a line `Breaking: <what changed and what callers must do>` in plain words, in the pull-request body and in the commit message.
+- Never mark it the conventional-commits way: no `!` in the title (`feat!:`), no BREAKING CHANGE footer. The `PR title` check fails a pull request that does.
+- As a safety net, the release config (`.releaserc.json` → `releaseRules`) maps breaking commits to a minor, so one that slips through still does not bump the major.
+
 ## Development
 
 ```sh
