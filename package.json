@@ -115,7 +115,7 @@
         "description": "Manage scheduler tasks"
       },
       "sms": {
-        "description": "SMS templates and campaigns"
+        "description": "SMS module, integrations, templates and campaigns"
       },
       "users": {
         "description": "Manage project users (membership)"

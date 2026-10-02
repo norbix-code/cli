@@ -49,7 +49,7 @@ norbix scheduler list
 | `norbix webhooks show/secret/enable/disable/remove` | Inspect the webhook integration |
 | `norbix email templates/template/clone/archive/unarchive/delete/campaigns/campaign/stop` | Email templates and campaigns |
 | `norbix push ...` | Push module, integrations, devices, templates, campaigns — every push endpoint, see [docs/push.md](docs/push.md) |
-| `norbix sms ...` | SMS — same commands as email |
+| `norbix sms ...` | SMS module, integrations, templates, campaigns — every SMS endpoint, see [docs/sms.md](docs/sms.md) |
 | `norbix account profile/status/usage/projects/team/regions/billing-portal` | Account-level info |
 | `norbix payments integrations/triggers/trigger/enable/disable` | Payment integrations and triggers |
 | `norbix integrations <module>` | List integrations of any module |
