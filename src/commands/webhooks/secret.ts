@@ -1,4 +1,3 @@
-import {confirm} from '@inquirer/prompts'
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
@@ -13,7 +12,7 @@ export default class WebhooksSecret extends BaseCommand {
 
   static flags = {
     rotate: Flags.boolean({description: 'Rotate the secret (old secret stops working)', default: false}),
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
@@ -21,13 +20,7 @@ export default class WebhooksSecret extends BaseCommand {
     const client = this.client(flags)
 
     if (flags.rotate) {
-      if (!flags.yes && process.stdout.isTTY) {
-        const ok = await confirm({
-          message: 'Rotate the webhook secret? Consumers still verifying with the old secret will fail.',
-          default: false,
-        })
-        if (!ok) return this.print('Cancelled.')
-      }
+      await this.confirmOrFail('Rotate the webhook secret? Consumers still verifying with the old secret will fail.', flags)
 
       const res = await client.hub.webhooks.rotateWebhookIntegrationSecret()
       this.print(res)

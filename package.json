@@ -123,6 +123,10 @@
       "webhooks": {
         "description": "Inspect the webhook integration and its destinations"
       }
+    },
+    "hooks": {
+      "init": "./dist/hooks/init.js",
+      "command_not_found": "./dist/hooks/command-not-found.js"
     }
   },
   "publishConfig": {

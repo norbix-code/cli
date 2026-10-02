@@ -1,5 +1,4 @@
-import {confirm} from '@inquirer/prompts'
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 
@@ -13,20 +12,14 @@ export default class EnvDelete extends BaseCommand {
   }
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(EnvDelete)
     const client = this.client(flags)
 
-    if (!flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({
-        message: `Delete environment "${args.name}" and everything inside it?`,
-        default: false,
-      })
-      if (!ok) return this.print('Cancelled.')
-    }
+    await this.confirmOrFail(`Delete environment "${args.name}" and everything inside it?`, flags)
 
     const res = await client.hub.environments.delete({environmentName: args.name})
     this.print(`Environment ${args.name} deleted.`)

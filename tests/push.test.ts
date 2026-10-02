@@ -113,7 +113,7 @@ describe('push preview — signed link, no login, no project', () => {
   it('today the installed SDK still refuses a call with no token', async () => {
     const {error} = await runOclif(['push', 'preview', '--hash', 'abc.def', '--region', 'nb-eu-germany'])
 
-    expect(error?.message).toMatch(/NORBIX_NOT_AUTHENTICATED/)
+    expect((error as {code?: string} | undefined)?.code).toBe('NORBIX_NOT_AUTHENTICATED')
     expect(sent).toHaveLength(0)
   })
 })
@@ -142,7 +142,7 @@ describe('push integration state changes', () => {
   // throws NORBIX_MISSING_PATH_PARAM at runtime, which is why it is pinned.
   const cases = [
     {command: PushIntegrationEnable, method: 'enablePushIntegration', argv: [ID]},
-    {command: PushIntegrationDisable, method: 'disablePushIntegration', argv: [ID]},
+    {command: PushIntegrationDisable, method: 'disablePushIntegration', argv: [ID, '--yes']},
     {command: PushIntegrationDefault, method: 'setPushIntegrationAsDefault', argv: [ID]},
     {command: PushIntegrationDelete, method: 'deletePushIntegration', argv: [ID, '--yes']},
   ]

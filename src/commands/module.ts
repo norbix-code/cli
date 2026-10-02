@@ -1,6 +1,5 @@
-import {confirm} from '@inquirer/prompts'
 import {Norbix} from '@norbix.ai/ts'
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../base.js'
 
@@ -35,19 +34,15 @@ export default class Module extends BaseCommand {
   }
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt (disable only)', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(Module)
     const client = this.client(flags)
 
-    if (args.action === 'disable' && !flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({
-        message: `Disable the "${args.name}" module for this project?`,
-        default: false,
-      })
-      if (!ok) return this.print('Cancelled.')
+    if (args.action === 'disable') {
+      await this.confirmOrFail(`Disable the "${args.name}" module for this project?`, flags)
     }
 
     const res = await MODULES[args.name][args.action as 'enable' | 'disable'](client)

@@ -8,7 +8,8 @@ export default class DbUpdate extends BaseCommand {
 
   static examples = [
     `<%= config.bin %> db update orders --id 66b2f0a1... --update '{"$set":{"status":"shipped"}}'`,
-    `<%= config.bin %> db update orders --filter '{"status":"new"}' --update '{"$set":{"status":"queued"}}' --many`,
+    `<%= config.bin %> db update orders --filter '{"status":"new"}' --update '{"$set":{"status":"queued"}}' --many --dry-run`,
+    `<%= config.bin %> db update orders --filter '{"status":"new"}' --update '{"$set":{"status":"queued"}}' --many --yes`,
   ]
 
   static args = {
@@ -20,6 +21,7 @@ export default class DbUpdate extends BaseCommand {
     filter: Flags.string({char: 'f', description: 'JSON filter (with --many)', dependsOn: ['many']}),
     update: Flags.string({char: 'u', required: true, description: 'JSON update (e.g. {"$set":{...}}) or `-` for stdin'}),
     many: Flags.boolean({description: 'Update every record matching --filter', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
@@ -29,9 +31,11 @@ export default class DbUpdate extends BaseCommand {
 
     if (flags.many) {
       if (!flags.filter) this.error('--many requires --filter.')
+      const filter = await readJsonInput(flags.filter, 'filter')
+      await this.confirmOrFail(`Update ALL records in "${args.collection}" matching ${filter}?`, flags)
       const res = await client.api.database.updateMany({
         collectionName: args.collection,
-        filter: await readJsonInput(flags.filter, 'filter'),
+        filter,
         update,
       })
       this.print(res)

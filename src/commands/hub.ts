@@ -1,3 +1,4 @@
+import {BaseCommand} from '../base.js'
 import {NamespaceCommand} from '../lib/namespace-command.js'
 
 export default class Hub extends NamespaceCommand {
@@ -11,6 +12,10 @@ positional id) means one item. Destructive verbs ask for confirmation
 (skip with --yes). Add --dry-run to see what would be called.`
 
   static strict = false
+
+  static flags = {
+    ...BaseCommand.mutatingFlags,
+  }
 
   static examples = [
     '<%= config.bin %> hub                              # list modules',

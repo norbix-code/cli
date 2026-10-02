@@ -1,7 +1,7 @@
-import {input, password as passwordPrompt} from '@inquirer/prompts'
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../base.js'
+import {usageError} from '../lib/cli-error.js'
 import {
   DEFAULT_API_URL,
   DEFAULT_HUB_URL,
@@ -34,6 +34,17 @@ environment. Use --profile to create or edit a named profile; without it the
     const {flags} = await this.parse(Configure)
     const name = flags.profile ?? 'default'
     const existing = readProfiles()[name] ?? {}
+
+    if (!this.isInteractive()) {
+      throw usageError(
+        'configure is interactive and this shell is not.',
+        `Write the profile without prompts: norbix login --api-key <key> --project <id> --region <code> --profile ${name}; ` +
+          'or set NORBIX_API_KEY / NORBIX_PROJECT_ID / NORBIX_REGION in the environment.',
+        'norbix login --help',
+      )
+    }
+
+    const {input, password: passwordPrompt} = await import('@inquirer/prompts')
 
     this.log(`Configuring profile [${name}] in ${PROFILES_PATH}`)
 

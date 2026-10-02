@@ -1,3 +1,4 @@
+import {BaseCommand} from '../base.js'
 import {NamespaceCommand} from '../lib/namespace-command.js'
 
 export default class ApiNs extends NamespaceCommand {
@@ -10,6 +11,10 @@ Same engine as \`norbix hub\` — see \`norbix hub --help\`. For raw HTTP paths
 use \`norbix raw\`.`
 
   static strict = false
+
+  static flags = {
+    ...BaseCommand.mutatingFlags,
+  }
 
   static examples = [
     '<%= config.bin %> api                          # list modules',

@@ -1,5 +1,4 @@
-import {confirm} from '@inquirer/prompts'
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 import {integrationFlag, resolveIntegration} from '../../lib/files.js'
@@ -15,7 +14,7 @@ export default class FilesDelete extends BaseCommand {
 
   static flags = {
     integration: integrationFlag,
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
@@ -26,10 +25,7 @@ export default class FilesDelete extends BaseCommand {
       this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
     }
 
-    if (!flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({message: `Delete file "${args.remote}"?`, default: false})
-      if (!ok) return this.print('Cancelled.')
-    }
+    await this.confirmOrFail(`Delete file "${args.remote}"?`, flags)
 
     const res = await client.api.files.deleteFileApi({
       filesIntegrationId: integration,
