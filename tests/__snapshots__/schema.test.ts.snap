@@ -56,6 +56,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "target:option",
+      "force:boolean",
+      "dir:string",
+    ],
+    "id": "ai init",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
     "destructive": true,
     "flags": [
       "yes:boolean",
