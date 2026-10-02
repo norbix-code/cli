@@ -5,7 +5,7 @@ import {BaseCommand} from '../../base.js'
 export default class DbGet extends BaseCommand {
   static description = 'Get one record by ID'
 
-  static examples = ['<%= config.bin %> db get orders 66b2f0a1...']
+  static examples = ['<%= config.bin %> db get orders 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static args = {
     collection: Args.string({required: true, description: 'Collection name'}),

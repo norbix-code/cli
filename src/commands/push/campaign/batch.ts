@@ -8,8 +8,8 @@ export default class PushCampaignBatch extends BaseCommand {
 Give a notification ID as the third argument to see just that notification.`
 
   static examples = [
-    '<%= config.bin %> push campaign batch 66b2f0a1... b7c3...',
-    '<%= config.bin %> push campaign batch 66b2f0a1... b7c3... n9d4...',
+    '<%= config.bin %> push campaign batch 66b2f0a1c3d4e5f6a7b8c9d0 b7c3d4e5f6a7b8c9d0e1f2a3',
+    '<%= config.bin %> push campaign batch 66b2f0a1c3d4e5f6a7b8c9d0 b7c3d4e5f6a7b8c9d0e1f2a3 n9d4e5f6a7b8c9d0e1f2a3b4',
   ]
 
   static args = {

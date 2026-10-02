@@ -5,7 +5,7 @@ import {BaseCommand} from '../../base.js'
 export default class PushCampaign extends BaseCommand {
   static description = 'Show one push campaign (or its statistics with --stats)'
 
-  static examples = ['<%= config.bin %> push campaign 66b2f0a1... --stats']
+  static examples = ['<%= config.bin %> push campaign 66b2f0a1c3d4e5f6a7b8c9d0 --stats']
 
   static args = {
     id: Args.string({required: true, description: 'Campaign ID'}),

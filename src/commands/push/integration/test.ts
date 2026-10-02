@@ -9,10 +9,12 @@ Point this at the Fake integration while you are developing — it accepts the
 send and contacts no push service, so nothing reaches a real device.`
 
   static examples = [
-    '<%= config.bin %> push integration test --integration 66b2f0a1... --token dGVzdA== --family Ios',
+    '<%= config.bin %> push integration test --integration 66b2f0a1c3d4e5f6a7b8c9d0 --token dGVzdA== --family Ios',
+    '<%= config.bin %> push integration test --integration 66b2f0a1c3d4e5f6a7b8c9d0 --token dGVzdA== --family Ios --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     integration: Flags.string({required: true, description: 'Integration ID to send through'}),
     token: Flags.string({description: 'Device token to send the test to'}),
     family: Flags.string({

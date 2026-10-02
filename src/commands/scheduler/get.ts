@@ -5,7 +5,7 @@ import {BaseCommand} from '../../base.js'
 export default class SchedulerGet extends BaseCommand {
   static description = 'Show one scheduler task'
 
-  static examples = ['<%= config.bin %> scheduler get 66b2f0a1...']
+  static examples = ['<%= config.bin %> scheduler get 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static args = {
     id: Args.string({required: true, description: 'Task ID'}),

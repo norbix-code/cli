@@ -6,13 +6,17 @@ import {readJsonInput} from '../../lib/json.js'
 export default class DbReplace extends BaseCommand {
   static description = 'Replace one record fully (unlike update, the whole document is swapped)'
 
-  static examples = [`<%= config.bin %> db replace orders --id 66b2f0a1... --doc '{"status":"new"}'`]
+  static examples = [
+    `<%= config.bin %> db replace orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --doc '{"status":"new"}'`,
+    `<%= config.bin %> db replace orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --doc '{"status":"new"}' --dry-run`,
+  ]
 
   static args = {
     collection: Args.string({required: true, description: 'Collection name'}),
   }
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     id: Flags.string({required: true, description: 'Record ID'}),
     doc: Flags.string({char: 'd', required: true, description: 'JSON replacement document (or `-` for stdin)'}),
   }

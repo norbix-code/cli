@@ -5,7 +5,7 @@ import {BaseCommand} from '../../base.js'
 export default class LogsTrail extends BaseCommand {
   static description = 'Show the full request trail for one correlation ID'
 
-  static examples = ['<%= config.bin %> logs trail 8f2c1b...']
+  static examples = ['<%= config.bin %> logs trail 8f2c1b4d-9e3a-4f7b-a1c2-d3e4f5a6b7c8']
 
   static args = {
     correlationId: Args.string({required: true, description: 'Correlation ID'}),

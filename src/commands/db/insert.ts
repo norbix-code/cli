@@ -9,6 +9,7 @@ export default class DbInsert extends BaseCommand {
   static examples = [
     `<%= config.bin %> db insert orders --doc '{"status":"new","total":9.99}'`,
     'cat order.json | <%= config.bin %> db insert orders --doc -',
+    `<%= config.bin %> db insert orders --doc '{"status":"new","total":9.99}' --dry-run`,
   ]
 
   static args = {
@@ -16,6 +17,7 @@ export default class DbInsert extends BaseCommand {
   }
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     doc: Flags.string({char: 'd', required: true, description: 'JSON document (or `-` for stdin)'}),
   }
 

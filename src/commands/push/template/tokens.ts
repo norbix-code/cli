@@ -5,7 +5,7 @@ import {BaseCommand} from '../../../base.js'
 export default class PushTemplateTokens extends BaseCommand {
   static description = 'List the tokens a push template uses — the values a campaign must fill'
 
-  static examples = ['<%= config.bin %> push template tokens 66b2f0a1...']
+  static examples = ['<%= config.bin %> push template tokens 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static args = {
     id: Args.string({required: true, description: 'Template ID'}),

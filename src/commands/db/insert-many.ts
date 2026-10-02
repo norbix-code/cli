@@ -9,6 +9,7 @@ export default class DbInsertMany extends BaseCommand {
   static examples = [
     `<%= config.bin %> db insert-many orders --docs '[{"a":1},{"a":2}]'`,
     'cat orders.json | <%= config.bin %> db insert-many orders --docs -',
+    `<%= config.bin %> db insert-many orders --docs '[{"a":1},{"a":2}]' --dry-run`,
   ]
 
   static args = {
@@ -16,6 +17,7 @@ export default class DbInsertMany extends BaseCommand {
   }
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     docs: Flags.string({char: 'd', required: true, description: 'JSON array of documents (or `-` for stdin)'}),
   }
 

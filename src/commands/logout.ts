@@ -1,6 +1,6 @@
 import {BaseCommand} from '../base.js'
-import {clearSession} from '../lib/profiles.js'
-import {writeStore} from '../lib/store.js'
+import {SESSION_PATH, clearSession} from '../lib/profiles.js'
+import {configFilePath, writeStore} from '../lib/store.js'
 
 export default class Logout extends BaseCommand {
   static description = `Remove the login session from this machine.
@@ -8,10 +8,20 @@ export default class Logout extends BaseCommand {
 Profiles in ~/.norbix/config (API keys) are NOT touched — manage those with
 \`norbix configure\` or by editing the file.`
 
-  static examples = ['<%= config.bin %> logout']
+  static examples = ['<%= config.bin %> logout', '<%= config.bin %> logout --dry-run']
+
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+  }
 
   async run(): Promise<unknown> {
-    await this.parse(Logout)
+    const {flags} = await this.parse(Logout)
+    if (flags['dry-run']) {
+      return this.dryRun({
+        method: 'logout',
+        request: {removes: SESSION_PATH, clearsTokensIn: configFilePath(this.config.configDir)},
+      })
+    }
 
     clearSession()
 
