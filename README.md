@@ -75,9 +75,17 @@ norbix hub email templates get                 # email/sms/push route into notif
 ```
 
 The first positional value becomes `id`; `--field value` flags become request
-fields. Destructive verbs (delete, remove, rotate, ...) ask for confirmation
-unless `--yes`. Add `--dry-run` to preview the exact SDK call.
-| `norbix autocomplete` | Set up shell tab-completion (bash/zsh) |
+fields, typed from the SDK's request type (`norbix hub <module> --help` lists
+every method with its fields; `--json` returns them as data). Force a type
+with `--field:str`, `--field:num`, `--field:bool` or `--field:json`, or pass
+the whole request with `--body '<json>'`. Destructive verbs (delete, remove,
+stop, disable, block, regenerate, rotate) ask for confirmation unless
+`--yes` — and exit 3 without a terminal. Add `--dry-run` to preview the exact
+HTTP request.
+
+`norbix schema --json` describes every command (args, flags, examples,
+destructive, dry-run) for scripts and coding agents; `norbix autocomplete`
+sets up shell tab-completion (bash/zsh).
 
 Run `norbix <topic> --help` for flags and examples.
 

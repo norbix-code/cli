@@ -367,7 +367,7 @@ code (parallel work), colour, new runtime dependencies.
    `login`/`configure` guarded, "Cancelled" → exit 9, tests — **done**
 2. PR 2 — discovery: `norbix schema`, `--dry-run` on every mutating command,
    realistic `--help` examples, hub/api parser fixes (`--body`, typed
-   fields, boolean traps) — todo
+   fields, boolean traps) — **done**
 3. PR 3 — startup (`oclif manifest` in build, lazy prompts), docs
    (`agent-contract.md`, `AGENTS.md`), `norbix ai init`, README section — todo
 
@@ -389,6 +389,14 @@ code (parallel work), colour, new runtime dependencies.
 | `package.json` | `oclif.hooks` | 1 |
 | `tests/_cli.ts`, `tests/agent-mode.test.ts`, `tests/cli-error.test.ts` | new: child-process tests against a fake gateway; envelope unit tests | 1 |
 | `README.md` | "Errors and exit codes" section | 1 |
+| `scripts/gen-request-fields.mjs`, `src/generated/request-fields.json` | new: request-field map generated from the installed SDK (578 methods: route, DTO, fields with kind/required); `npm run gen:fields`; copied into `dist/` by the build | 2 |
+| `src/lib/request-fields.ts` | new: lazy loader + helpers for the map (no oclif import) | 2 |
+| `src/lib/dispatch.ts` | two-step typing (`parseArgv` → `typeFields` with the method's kinds), `--field:str/:num/:bool/:json`, boolean flags give the next token back, disable/block destructive | 2 |
+| `src/lib/namespace-command.ts`, `hub.ts`, `api.ts` | `--body` (rejects mixing with `--field`), fields in scope help and in `--json` listings, value rules text | 2 |
+| `src/lib/schema.ts`, `src/commands/schema.ts` | new: `norbix schema [command] --json` (lib has no oclif import) | 2 |
+| 35 mutating command files | `...BaseCommand.dryRunFlags`; explicit dry runs in `config set/unset`, `env use`, `logout`, `raw`, `files publish/unpublish` (`publicFilesRequest`) | 2 |
+| every command file | realistic example values; a `--dry-run` example on every mutating command, `--yes` on every destructive one | 2 |
+| `tests/schema.test.ts`, `tests/dispatch.test.ts`, `tests/agent-mode.test.ts` | schema snapshot + completeness, parser unit tests, dry-run on non-destructive / local / raw-fetch commands, `--body` | 2 |
 
 ### Findings
 
@@ -415,9 +423,20 @@ code (parallel work), colour, new runtime dependencies.
   (heavy load); the before/after numbers in the report use the best of
   several runs.
 
+- The SDK's `hub2.dtos.d.ts` names some request DTOs without the `Request`
+  suffix (`DeleteSchedulerTask`) — the generator keys on the JSDoc
+  "Request DTO:" line in `dist/index.js`, so it does not matter.
+- `files upload` runs three calls (signed URL, PUT, commit); `--dry-run`
+  stops at the first SDK call and shows that one.
+- `looksLikeId`: "v2", "PROD", "SMS" are still values, not words. Documented
+  in the scope help ("words are lowercase letters") instead of changed —
+  every current method is reachable with lowercase words.
+
 ### Rejected / moved out
 
-- (none yet)
+- Parser: changing `looksLikeId` (uppercase = value) was part of the ask
+  (§2.5); kept and documented, because an uppercase token is almost always
+  an environment name or an id, and lowercase words reach every method.
 
 ### Needs you
 
