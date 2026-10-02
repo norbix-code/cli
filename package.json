@@ -36,14 +36,15 @@
   ],
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && node -e \"require('node:fs').cpSync('src/generated','dist/generated',{recursive:true})\"",
     "typecheck": "tsc --noEmit",
     "dev": "npm run build && node ./bin/run.js",
     "prepack": "npm run build && oclif manifest",
     "postpack": "node -e \"require('node:fs').rmSync('oclif.manifest.json',{force:true})\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "pretest": "npm run build"
+    "pretest": "npm run build",
+    "gen:fields": "node scripts/gen-request-fields.mjs"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.2",
