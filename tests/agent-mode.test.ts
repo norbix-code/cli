@@ -269,3 +269,54 @@ describe('plain output', () => {
     expect(r.stdout.trim()).toBe('User abc123 deleted.')
   })
 })
+
+describe('--dry-run on non-destructive mutating commands', () => {
+  it('users invite: prints the call and sends nothing', async () => {
+    const r = await cli(home, ['users', 'invite', 'alice@example.com', '--profile', 'x', '--dry-run', '--json'])
+    expect(r.code).toBe(0)
+    const doc = parseSingleJson(r.stdout) as {method: string; request: unknown; http: {method: string}}
+    expect(doc.method).toBe('api.membership.inviteUser')
+    expect(doc.request).toEqual({email: 'alice@example.com'})
+    expect(doc.http.method).toBe('POST')
+    expect(gateway.hits).toEqual([])
+  })
+
+  it('files publish: shows the raw hub request it would send', async () => {
+    const r = await cli(home, ['files', 'publish', 'invoices/2026/invoice.pdf', '--integration', 'fi_1', '--profile', 'x', '--dry-run', '--json'])
+    expect(r.code).toBe(0)
+    const doc = parseSingleJson(r.stdout) as {method: string; http: {method: string; url: string; headers: Record<string, string>; body: unknown}}
+    expect(doc.method).toBe('hub.files.makeFilePublic')
+    expect(doc.http.method).toBe('POST')
+    expect(doc.http.url).toMatch(/\/v2\/files\/item\/public$/)
+    expect(doc.http.headers.Authorization).toBe('Bearer ***')
+    expect(doc.http.body).toEqual({filesIntegrationId: 'fi_1', path: 'invoices/2026/invoice.pdf'})
+    expect(gateway.hits).toEqual([])
+  })
+
+  it('config set: shows the file it would write and writes nothing', async () => {
+    const r = await cli(home, ['config', 'set', 'region', 'nb-eu-germany', '--dry-run', '--json'])
+    expect(r.code).toBe(0)
+    const doc = parseSingleJson(r.stdout) as {dryRun: boolean; method: string; request: {key: string; value: string; file: string}}
+    expect(doc).toMatchObject({dryRun: true, method: 'config.set', request: {key: 'region', value: 'nb-eu-germany'}})
+    const after = await cli(home, ['config', 'get', 'region', '--json'])
+    expect(parseSingleJson(after.stdout)).toEqual({key: 'region'})
+  })
+
+  it('hub: a boolean field never swallows the id, a string field keeps its zeros', async () => {
+    const r = await cli(home, ['hub', 'email', 'templates', 'get', '--showArchived', 'tpl_1', '--templateId:str', '0042', '--profile', 'x', '--dry-run', '--json'])
+    expect(r.code).toBe(0)
+    const doc = parseSingleJson(r.stdout) as {request: unknown}
+    expect(doc.request).toEqual({showArchived: true, templateId: '0042', id: 'tpl_1'})
+  })
+
+  it('hub --body: the whole request as JSON, no mixing with --field', async () => {
+    const ok = await cli(home, ['hub', 'scheduler', 'task', 'delete', '--body', '{"id":"abc123"}', '--profile', 'x', '--dry-run', '--json'])
+    expect(ok.code).toBe(0)
+    expect((parseSingleJson(ok.stdout) as {request: unknown}).request).toEqual({id: 'abc123'})
+
+    const mixed = await cli(home, ['hub', 'scheduler', 'task', 'delete', '--body', '{"id":"abc123"}', '--name', 'x', '--profile', 'x', '--json'])
+    expect(mixed.code).toBe(2)
+    expect((parseSingleJson(mixed.stdout) as {error: {message: string}}).error.message).toMatch(/--body carries the whole request/)
+    expect(gateway.hits).toEqual([])
+  })
+})

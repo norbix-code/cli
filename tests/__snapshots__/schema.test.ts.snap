@@ -1,0 +1,1420 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
+[
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "type:string",
+      "return-url:string",
+    ],
+    "id": "account billing-portal",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "account profile",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "account projects",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "account regions",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "account status",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "account team",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "account usage",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "body:string",
+    ],
+    "id": "api",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "apikeys list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "apikeys regenerate",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "key",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "config get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "config list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "key",
+      "value",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "config set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "key",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "config unset",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "api-url:string",
+      "hub-url:string",
+    ],
+    "id": "configure",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": false,
+    "flags": [
+      "pipeline:string",
+      "id:string",
+      "tokens:string",
+    ],
+    "id": "db aggregate",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "schema:string",
+    ],
+    "id": "db aggregates",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": false,
+    "flags": [
+      "filter:string",
+    ],
+    "id": "db count",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": true,
+    "flags": [
+      "id:string",
+      "filter:string",
+      "many:boolean",
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "db delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "collection",
+      "field",
+    ],
+    "destructive": false,
+    "flags": [
+      "filter:string",
+    ],
+    "id": "db distinct",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": false,
+    "flags": [
+      "filter:string",
+      "page-size:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "db find",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "collection",
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "doc:string",
+    ],
+    "id": "db insert",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "docs:string",
+    ],
+    "id": "db insert-many",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "id:string",
+      "doc:string",
+    ],
+    "id": "db replace",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db schema",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "db schemas",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "db taxonomies",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db taxonomy",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": true,
+    "flags": [
+      "id:string",
+      "filter:string",
+      "update:string",
+      "many:boolean",
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "db update",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email archive",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "stats:boolean",
+    ],
+    "id": "email campaign",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "email campaigns",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email clone",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email stop",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "email template",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "archived:boolean",
+    ],
+    "id": "email templates",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email unarchive",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "name",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "env delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "env list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "name",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "env use",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "remote",
+    ],
+    "destructive": true,
+    "flags": [
+      "integration:string",
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "files delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "remote",
+      "[file]",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+    ],
+    "id": "files download",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "remote",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+    ],
+    "id": "files info",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "files integrations test",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[path]",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+    ],
+    "id": "files list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "remote",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "folder:boolean",
+      "integration:string",
+    ],
+    "id": "files publish",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "remote",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "expires:string",
+    ],
+    "id": "files sign",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "remote",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "folder:boolean",
+      "integration:string",
+    ],
+    "id": "files unpublish",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "file",
+      "[remote]",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+      "content-type:string",
+    ],
+    "id": "files upload",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "body:string",
+    ],
+    "id": "hub",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "module",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "integrations",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "user:string",
+      "password:string",
+    ],
+    "id": "login",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "logout",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "level:string",
+      "module:string",
+      "search:string",
+      "event-code:string",
+      "correlation:string",
+      "from:string",
+      "to:string",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "logs list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "logs settings",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "correlationId",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "logs trail",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "action",
+      "name",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "module",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "payments disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "payments enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "payments integrations",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "payments trigger",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "payments triggers",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "profiles",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "push archive",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "stats:boolean",
+    ],
+    "id": "push campaign",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+      "batchId",
+      "[notificationId]",
+    ],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "push campaign batch",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "push campaign batches",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "template:string",
+      "audience:option",
+      "user:string",
+      "role:string",
+      "tag:string",
+      "schema:string",
+      "field:string",
+      "field-type:option",
+      "device:string",
+      "integration:string",
+      "language:string",
+      "notes:string",
+      "at:string",
+      "token:string",
+      "database-integration:string",
+      "config:string",
+    ],
+    "id": "push campaign create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "push campaign delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+      "messageId",
+    ],
+    "destructive": false,
+    "flags": [
+      "batch:string",
+    ],
+    "id": "push campaign message",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "batch:string",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "push campaign messages",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "push campaigns",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "push clone",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "push delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "push device",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "user:string",
+      "token:string",
+      "os:string",
+      "device-id:string",
+      "model:string",
+      "name:string",
+    ],
+    "id": "push device register",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "user:string",
+      "token:string",
+      "platform:option",
+    ],
+    "id": "push devices",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "push disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "push disable-dependencies",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "push enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "push integration",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "push integration confirm-delivery",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "push integration default",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "push integration delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "push integration disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "push integration enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "provider:option",
+      "name:string",
+      "id:string",
+      "disabled:boolean",
+      "config:string",
+    ],
+    "id": "push integration save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+      "token:string",
+      "family:option",
+    ],
+    "id": "push integration test",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "push integrations",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[hash]",
+    ],
+    "destructive": false,
+    "flags": [
+      "hash:string",
+    ],
+    "id": "push preview",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "id:string",
+    ],
+    "id": "push settings",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "push stop",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "push template",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "description:string",
+      "channel:option",
+      "tag:string",
+      "language:string",
+      "title:string",
+      "body:string",
+      "translations:string",
+    ],
+    "id": "push template create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "code:string",
+      "token:string",
+      "preview:boolean",
+    ],
+    "id": "push template render",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "push template tokens",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "description:string",
+      "channel:option",
+      "tag:string",
+      "language:string",
+      "title:string",
+      "body:string",
+      "translations:string",
+    ],
+    "id": "push template update",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "archived:boolean",
+    ],
+    "id": "push templates",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "push unarchive",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "path",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "api:boolean",
+      "method:option",
+      "body:string",
+      "query:string",
+    ],
+    "id": "raw",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "scheduler delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "scheduler disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "scheduler enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "scheduler get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "scheduler list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[command]",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "schema",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "sms archive",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "stats:boolean",
+    ],
+    "id": "sms campaign",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "sms campaigns",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "sms clone",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "sms delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "sms stop",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "sms template",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "archived:boolean",
+    ],
+    "id": "sms templates",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "sms unarchive",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "users block",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "users delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "users get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "email",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "users invite",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "role:string",
+      "permissions:boolean",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "users list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "users policies",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "users roles",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "users unblock",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "destinationId",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "webhooks disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "destinationId",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "webhooks enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "destinationId",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "webhooks remove",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "rotate:boolean",
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "webhooks secret",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "webhooks show",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "whoami",
+    "supportsDryRun": false,
+  },
+]
+`;
