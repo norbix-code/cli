@@ -28,7 +28,9 @@ commands (own campaign); embedding integrations; AI chat / tools endpoints.
 5. docs(project): `docs/project.md`, `docs/ai.md`, README rows, COVERAGE rows
    — done
 6. chore: build, typecheck, test green; `norbix --help` shows the topics; push;
-   pull request — todo
+   pull request — done. `npm run build` ok, `npm run typecheck` ok, `npm test`
+   12 files / 455 tests passed (85 new), `oclif manifest` ok, `norbix --help`
+   lists the `ai` and `project` topics. The repo has no lint script.
 
 ### Final command list (names aligned with the repo's convention)
 
