@@ -102,7 +102,9 @@ const routes: Array<[string[], string, string]> = [
   [['campaign', 'batch', ID, BATCH], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}`],
   [['campaign', 'batch', ID, BATCH, MESSAGE], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}/${MESSAGE}`],
   [['campaign', 'messages', ID, '--batch', BATCH], 'GET', `${P}/campaigns/${ID}/messages`],
-  [['campaign', 'message', ID, MESSAGE, '--batch', BATCH], 'GET', `${P}/campaigns/${ID}/messages/${MESSAGE}`],
+  // `campaign message` reads the same batch route (the messages/{notificationId}
+  // route was removed from the gateway and from @norbix.ai/ts 4.4.0).
+  [['campaign', 'message', ID, MESSAGE, '--batch', BATCH], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}/${MESSAGE}`],
 ]
 
 describe('every push command reaches its route', () => {
@@ -119,13 +121,15 @@ describe('every push command reaches its route', () => {
 })
 
 
-it('covers all 38 push routes', () => {
+it('covers all 37 push routes', () => {
   // One row per route the SDK exposes (lane D counted 37; the devices read
   // side added the list and the get; the managed-app app-request route was
-  // removed with its gateway stub). The campaign `--stats` row, the batch
-  // row and the second `devices` row share a route with another row, so count
+  // removed with its gateway stub; the campaign message route was removed in
+  // the Emails campaign — `campaign message` now reads the batch route). The
+  // campaign `--stats` row, the batch rows, `campaign message` and the second
+  // `devices` row share a route with another row, so count
   // distinct verb + path pairs.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(38)
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(37)
 })
 
 /** Run a command and return the one request body it sent. */
@@ -275,12 +279,12 @@ describe('push campaign create — the five audiences', () => {
 })
 
 describe('push campaign reads', () => {
-  it('message sends the batch, and the message id fills the route token', async () => {
-    // The gateway names the token `{notificationId}`, so the transport takes
-    // that field for the path — it is no longer left in the query as well.
+  it('message puts campaign, batch and message id into the batch route', async () => {
+    // GET /campaigns/{campaignId}/messages/{notificationId} is gone from the
+    // gateway; the batch route returns the same notification.
     await bodyOf(['campaign', 'message', ID, MESSAGE, '--batch', BATCH])
-    expect(calls[0]?.path).toBe(`${P}/campaigns/${ID}/messages/${MESSAGE}`)
-    expect(calls[0]?.query.get('campaignBatchId')).toBe(BATCH)
+    expect(calls[0]?.path).toBe(`${P}/campaigns/${ID}/batches/${BATCH}/${MESSAGE}`)
+    expect(calls[0]?.query.get('campaignBatchId')).toBeNull()
     expect(calls[0]?.query.get('notificationId')).toBeNull()
   })
 

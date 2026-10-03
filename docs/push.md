@@ -119,7 +119,7 @@ norbix push template render --code "Hi @Model.Name" --token Name=Ada
 | `norbix push campaign batch <id> <batchId>` | list the notifications in a batch | `GET /campaigns/{id}/batches/{batchId}` |
 | `norbix push campaign batch <id> <batchId> <notificationId>` | show one notification in a batch | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
 | `norbix push campaign messages <id> [--batch <batchId>]` | list the messages it sent | `GET /campaigns/{campaignId}/messages` |
-| `norbix push campaign message <id> <messageId> --batch <batchId>` | show one message | `GET /campaigns/{campaignId}/messages/{id}` |
+| `norbix push campaign message <id> <messageId> --batch <batchId>` | show one message (same as `campaign batch <id> <batchId> <messageId>`) | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
 | `norbix push preview <hash>` (or `--hash <hash>`) | render the title, body and subtitle behind a preview link | `GET /preview` |
 
 `--audience` decides who receives the campaign:

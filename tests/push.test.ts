@@ -105,16 +105,18 @@ describe('push preview — signed link, no login, no project', () => {
   })
 
   /**
-   * Pins today's behaviour with @norbix.ai/ts 2.1.0: its preview method is
-   * still scoped 'project', so the SDK itself refuses before sending. Once a
-   * release with the 'optional' scope is installed, this request goes out with
-   * no Authorization header — flip this test to expect exactly that.
+   * With @norbix.ai/ts 4.2.0 the preview method is scoped 'optional', so a call
+   * with no login goes out with no Authorization header — the signed link is
+   * the key. (2.1.0 refused it with NORBIX_NOT_AUTHENTICATED; this test pinned
+   * that until the SDK was bumped.)
    */
-  it('today the installed SDK still refuses a call with no token', async () => {
+  it('sends the request with no Authorization header when there is no login', async () => {
     const {error} = await runOclif(['push', 'preview', '--hash', 'abc.def', '--region', 'nb-eu-germany'])
 
-    expect((error as {code?: string} | undefined)?.code).toBe('NORBIX_NOT_AUTHENTICATED')
-    expect(sent).toHaveLength(0)
+    expect(error).toBeUndefined()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.url.pathname).toBe('/v2/notifications/push/preview')
+    expect(sent[0]!.headers.get('Authorization')).toBeNull()
   })
 })
 

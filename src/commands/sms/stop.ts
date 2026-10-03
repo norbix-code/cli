@@ -21,17 +21,9 @@ export default class SmsStop extends BaseCommand {
 
     await this.confirmOrFail(`Stop SMS campaign ${args.id}?`, flags)
 
-    const n = client.hub.notifications as unknown as {
-      stopSmsCampaign?: (r: {id: string}) => Promise<unknown>
-    }
-    if (!n.stopSmsCampaign) {
-      this.error(
-        'Your installed @norbix.ai/ts does not support stopping campaigns yet.\n' +
-          `Update the SDK, or run: norbix api "/{version}/notifications/sms/campaigns/${args.id}/stop" --hub --method POST`,
-      )
-    }
-
-    const res = await n.stopSmsCampaign({id: args.id})
+    // The route is `/campaigns/{Id}/stop`; the SDK (4.2.0) fills the token from
+    // `id` — the lookup is case-insensitive — so the generated field is enough.
+    const res = await client.hub.notifications.stopSmsCampaign({id: args.id})
     this.print(`Campaign ${args.id} stopped.`)
     return res
   }

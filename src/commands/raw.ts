@@ -17,9 +17,9 @@ plus project/account/env/region headers automatically. Use {version} in the
 path and it becomes v2.`
 
   static examples = [
-    '<%= config.bin %> api /v2/logs/settings --hub',
-    `<%= config.bin %> api '/{version}/database/collections/orders/count' --query filter='{"status":"paid"}'`,
-    `<%= config.bin %> api /v2/scheduler/tasks --hub --method POST --body '{"name":"nightly",...}'`,
+    '<%= config.bin %> raw /v2/logs/settings',
+    `<%= config.bin %> raw '/{version}/database/collections/orders/count' --api --query filter='{"status":"paid"}'`,
+    `<%= config.bin %> raw /v2/scheduler/tasks --method POST --body '{"name":"nightly",...}'`,
   ]
 
   static args = {
