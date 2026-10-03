@@ -135,8 +135,8 @@ it('covers 48 of the 51 Email routes', () => {
   // on purpose — see "No command on purpose" in docs/email.md:
   // GET /{version}/email/preferences, POST /{version}/email/one-click-unsubscribe,
   // POST /{version}/email/webhooks/mailgun/{projectId}/{integrationId}.
-  // The `--stats`, second `batch` and second `preview` rows share a command
-  // with another row, so count distinct verb + path pairs.
+  // The two `preview` rows (hash and --notification) share one route, so count
+  // distinct verb + path pairs: 49 rows, 48 routes.
   expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(48)
 })
 
