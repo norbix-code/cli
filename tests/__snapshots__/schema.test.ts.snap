@@ -55,6 +55,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "target:option",
+      "force:boolean",
+      "dir:string",
+    ],
+    "id": "ai init",
+    "supportsDryRun": true,
+  },
+  {
     "args": [
       "id",
     ],
@@ -286,18 +298,6 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [],
     "id": "ai service-users",
     "supportsDryRun": false,
-  },
-  {
-    "args": [],
-    "destructive": false,
-    "flags": [
-      "dry-run:boolean",
-      "target:option",
-      "force:boolean",
-      "dir:string",
-    ],
-    "id": "ai init",
-    "supportsDryRun": true,
   },
   {
     "args": [],
