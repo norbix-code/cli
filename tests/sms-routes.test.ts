@@ -94,7 +94,9 @@ const routes: Array<[string[], string, string]> = [
   [['campaign', 'batch', ID, BATCH], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}`],
   [['campaign', 'batch', ID, BATCH, MESSAGE], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}/${MESSAGE}`],
   [['campaign', 'messages', ID, '--batch', BATCH], 'GET', `${P}/campaigns/${ID}/messages`],
-  [['campaign', 'message', ID, MESSAGE, '--batch', BATCH], 'GET', `${P}/campaigns/${ID}/messages/${MESSAGE}`],
+  // `campaign message` reads the same batch route (the messages/{notificationId}
+  // route was removed from the gateway and from @norbix.ai/ts 4.4.0).
+  [['campaign', 'message', ID, MESSAGE, '--batch', BATCH], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}/${MESSAGE}`],
 ]
 
 describe('every sms command reaches its route', () => {
@@ -110,12 +112,13 @@ describe('every sms command reaches its route', () => {
   }
 })
 
-it('covers all 35 sms routes', () => {
-  // The gateway's Hub.Sms project has 35 [Route] attributes and the manifest
-  // (sdks/typegen/coverage/endpoints.hub.json) lists 35 Sms entries. The
-  // campaign `--stats` row and the batch row with a notification id share a
-  // command with another row, so count distinct verb + path pairs.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(35)
+it('covers all 34 sms routes', () => {
+  // The gateway's Hub.Sms project has 34 [Route] attributes and the manifest
+  // (sdks/typegen/coverage/endpoints.hub.json) lists 34 Sms entries (the
+  // campaign message route was removed; `campaign message` reads the batch
+  // route). The campaign `--stats` row and `campaign message` share a route
+  // with another row, so count distinct verb + path pairs.
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(34)
 })
 
 /** Run a command and return the one request body it sent. */
@@ -292,10 +295,12 @@ describe('sms campaign create — the four audiences', () => {
 })
 
 describe('sms campaign reads', () => {
-  it('message sends the batch as a query field, and the message id fills the route token', async () => {
+  it('message puts campaign, batch and message id into the batch route', async () => {
+    // GET /campaigns/{campaignId}/messages/{notificationId} is gone from the
+    // gateway; the batch route returns the same notification.
     await bodyOf(['campaign', 'message', ID, MESSAGE, '--batch', BATCH])
-    expect(calls[0]?.path).toBe(`${P}/campaigns/${ID}/messages/${MESSAGE}`)
-    expect(calls[0]?.query.get('campaignBatchId')).toBe(BATCH)
+    expect(calls[0]?.path).toBe(`${P}/campaigns/${ID}/batches/${BATCH}/${MESSAGE}`)
+    expect(calls[0]?.query.get('campaignBatchId')).toBeNull()
     expect(calls[0]?.query.get('notificationId')).toBeNull()
   })
 

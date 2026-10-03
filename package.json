@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.2",
-    "@norbix.ai/ts": "^4.2.0",
+    "@norbix.ai/ts": "^4.4.0",
     "@oclif/core": "^5.0.0",
     "@oclif/plugin-autocomplete": "^4.0.0",
     "@oclif/plugin-help": "^7.0.0"
@@ -83,7 +83,12 @@
         "description": "Show or regenerate project API keys"
       },
       "email": {
-        "description": "Email templates and campaigns"
+        "description": "Email module, integrations, footers, signatures, templates and campaigns",
+        "subtopics": {
+          "validation": {
+            "description": "Email-validation integrations (check addresses before a campaign sends)"
+          }
+        }
       },
       "config": {
         "description": "Read and write the local CLI configuration"

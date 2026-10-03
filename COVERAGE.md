@@ -27,9 +27,9 @@ out of reach.
 | logs/* | 6/14 | list, trail, settings, module toggle. Missing: clean, integration config |
 | membership/users | 6/35 | list, get, invite, block, unblock, delete. Missing: contacts, create-user variants, preferences |
 | membership/roles + policies | 2/10 | read-only lists |
-| notifications/email | 12/47 | templates (list/get/clone/archive/unarchive/delete), campaigns (list/get/stats/stop), module toggle, integrations list |
+| notifications/email | 48/51 | every endpoint except the three recipient / provider callbacks — see `docs/email.md`; each command is run through the real transport in `tests/email-routes.test.ts` |
 | notifications/push | 37/37 | every endpoint — see `docs/push.md`; each command is run through the real transport in `tests/push-routes.test.ts` |
-| notifications/sms | 35/35 | every endpoint — see `docs/sms.md`; each command is run through the real transport in `tests/sms-routes.test.ts` |
+| notifications/sms | 34/34 | every endpoint — see `docs/sms.md`; each command is run through the real transport in `tests/sms-routes.test.ts` |
 | scheduler | 7/8 | all except save-task (complex DTO) |
 | webhooks | 6/9 | show, secret, rotate, enable/disable/remove destination |
 | payments | 7/16 | integrations list, triggers list/get/enable/disable, module toggle |
@@ -54,16 +54,17 @@ Cross-cutting commands: `norbix integrations <module>` lists integrations for
   `norbix api` if ever needed.
 - **code/marketplace (17)** — new surface; candidate for a future `norbix fx`
   topic (list/invoke marketplace function bindings could be very useful).
-- **email create/update template + create campaign** — bodies are big
-  design objects (MJML, layouts); better done in the portal today. `norbix api`
-  works for scripted cases. (Push and SMS have these commands: their template
-  is a short text per language, which fits flags.)
+- **email preferences page, one-click unsubscribe, Mailgun webhook** — called
+  by a recipient's browser, a recipient's mail client and Mailgun, never by a
+  developer (`docs/email.md`, "No command on purpose").
 
 ## Version note
 
-The CLI requires `@norbix.ai/ts` ^4.2.0, which has every push and SMS method;
-`push stop` and `sms stop` call the SDK directly. `email stop` still carries
-the older-SDK guard that prints a `norbix api` fallback line.
+The CLI requires `@norbix.ai/ts` ^4.4.0, which has every push, SMS and Email
+method; `push stop`, `sms stop` and `email stop` call the SDK directly. 4.4.0
+dropped the campaign-message methods (the gateway removed
+`GET /campaigns/{campaignId}/messages/{notificationId}`); `push campaign message`
+and `sms campaign message` now read the same notification from the batch route.
 
 ## How this was measured
 
