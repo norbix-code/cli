@@ -53,15 +53,40 @@ const DESTRUCTIVE: string[][] = [
   ['db', 'update', 'orders', '--many', '--filter', '{}', '--update', '{"$set":{"a":1}}'],
   ['api', 'membership', 'user', 'delete', 'abc123'],
   ['hub', 'scheduler', 'task', 'delete', 'abc123'],
+  ['ai', 'llm', 'delete', 'abc123'],
+  ['ai', 'llm', 'disable', 'abc123'],
+  ['ai', 'mcp', 'delete', 'abc123'],
+  ['ai', 'mcp', 'disable', 'abc123'],
+  ['ai', 'service-user', 'delete', 'abc123'],
+  ['ai', 'service-user', 'revoke-key', 'abc123', 'key_1'],
+  ['email', 'disable'],
+  ['email', 'campaign', 'delete', 'abc123'],
+  ['email', 'footer', 'delete', 'abc123'],
+  ['email', 'signature', 'delete', 'abc123'],
+  ['email', 'integration', 'delete', 'abc123'],
+  ['email', 'integration', 'disable', 'abc123'],
+  ['sms', 'disable'],
+  ['sms', 'campaign', 'delete', 'abc123'],
+  ['sms', 'integration', 'delete', 'abc123'],
+  ['sms', 'integration', 'disable', 'abc123'],
+  ['project', 'delete'],
+  ['project', 'disable'],
+  ['project', 'admin-portal', 'disable'],
+  ['project', 'ai', 'assistant', 'delete', 'abc123'],
 ]
 
 describe('destructive commands in a non-interactive shell', () => {
+  // Each test spawns the CLI once per command (DESTRUCTIVE.length processes,
+  // 4 at a time). Windows runners need ~3 s per spawn, so the default 20 s
+  // runs out — and a timed-out pool keeps sending into the next test.
+  const SPAWN_ALL_TIMEOUT = 120_000
+
   it('every one exits 3 without --yes and sends nothing', async () => {
     const results = await pool(DESTRUCTIVE, 4, async (argv) => ({argv, ...(await cli(home, [...argv, '--profile', 'x']))}))
     const wrong = results.filter((r) => r.code !== 3 || !/--yes/.test(r.stderr) || r.stdout !== '')
     expect(wrong.map((r) => `${r.argv.join(' ')} → exit ${r.code}: ${r.stderr.slice(0, 120)}`)).toEqual([])
     expect(gateway.hits).toEqual([])
-  })
+  }, SPAWN_ALL_TIMEOUT)
 
   it('every one exits 3 with --json too, with the envelope on stdout', async () => {
     const results = await pool(DESTRUCTIVE, 4, async (argv) => ({argv, ...(await cli(home, [...argv, '--profile', 'x', '--json']))}))
@@ -75,14 +100,14 @@ describe('destructive commands in a non-interactive shell', () => {
     }
 
     expect(gateway.hits).toEqual([])
-  })
+  }, SPAWN_ALL_TIMEOUT)
 
   it('every one runs with --yes and reaches the gateway', async () => {
     const results = await pool(DESTRUCTIVE, 4, async (argv) => ({argv, ...(await cli(home, [...argv, '--profile', 'x', '--yes']))}))
     const wrong = results.filter((r) => r.code !== 0)
     expect(wrong.map((r) => `${r.argv.join(' ')} → exit ${r.code}: ${r.stderr.slice(0, 160)}`)).toEqual([])
     expect(gateway.hits.length).toBe(DESTRUCTIVE.length)
-  })
+  }, SPAWN_ALL_TIMEOUT)
 })
 
 describe('--dry-run', () => {

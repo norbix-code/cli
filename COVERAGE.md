@@ -3,7 +3,9 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**117 endpoints have a dedicated CLI command. Every SDK method (~180 hub +
+**242 endpoints have a dedicated CLI command (the sum of the table below;
+the line said 117 until the Project campaign, 2026-10-03, and had not kept
+up with the push / SMS / Email rows). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
 
 ```sh
@@ -27,13 +29,16 @@ out of reach.
 | logs/* | 6/14 | list, trail, settings, module toggle. Missing: clean, integration config |
 | membership/users | 6/35 | list, get, invite, block, unblock, delete. Missing: contacts, create-user variants, preferences |
 | membership/roles + policies | 2/10 | read-only lists |
-| notifications/email | 12/47 | templates (list/get/clone/archive/unarchive/delete), campaigns (list/get/stats/stop), module toggle, integrations list |
+| notifications/email | 48/51 | every endpoint except the three recipient / provider callbacks — see `docs/email.md`; each command is run through the real transport in `tests/email-routes.test.ts` |
 | notifications/push | 37/37 | every endpoint — see `docs/push.md`; each command is run through the real transport in `tests/push-routes.test.ts` |
-| notifications/sms | 12/35 | same set as email |
+| notifications/sms | 34/34 | every endpoint — see `docs/sms.md`; each command is run through the real transport in `tests/sms-routes.test.ts` |
 | scheduler | 7/8 | all except save-task (complex DTO) |
 | webhooks | 6/9 | show, secret, rotate, enable/disable/remove destination |
 | payments | 7/16 | integrations list, triggers list/get/enable/disable, module toggle |
-| account/* | 10/62 | profile, status, usage, projects, team, regions, billing-portal, api keys. Missing: project settings updates, team roles/policies management |
+| account/* | 10/62 | profile, status, usage, projects, team, regions, billing-portal, api keys. Missing: team roles/policies management |
+| account/projects (settings, CORS, admin portal, legal, AI chat) | 30/30 | every project route in `@norbix.ai/ts` 4.4.0 a developer calls (28 hub + the 2 public API-host reads) — see `docs/project.md`; each command is run through the real transport in `tests/project-routes.test.ts`. Not counted: create project, environments, notification groups/tags, AI plans/knowledge/credits (internal), expose brand/auth (next wave) |
+| ai/integrations (LLM, MCP) | 15/20 | every LLM and MCP route — see `docs/ai.md`, same route test. Missing: the 5 embedding-integration routes (not asked for; `norbix hub ai …` reaches them) |
+| account/ai/service-users | 5/5 | list, create, delete, rotate-key, revoke-key — see `docs/ai.md`, same route test |
 | apikeys | 2/2 | list + regenerate |
 
 Cross-cutting commands: `norbix integrations <module>` lists integrations for
@@ -41,7 +46,8 @@ Cross-cutting commands: `norbix integrations <module>` lists integrations for
 
 ## Deliberately skipped (and why)
 
-- **ai/integrations (14)** — skipped on request.
+- **ai/integrations: embeddings (5)** — not asked for; the LLM and MCP
+  integrations have commands since the Project campaign (`docs/ai.md`).
 - **membership/passkeys-recovery (18)** — passkeys, magic links, password
   reset: end-user browser flows, not admin CLI actions.
 - **account/verify, account/module create-account, team-member-from-invitation**
@@ -54,16 +60,17 @@ Cross-cutting commands: `norbix integrations <module>` lists integrations for
   `norbix api` if ever needed.
 - **code/marketplace (17)** — new surface; candidate for a future `norbix fx`
   topic (list/invoke marketplace function bindings could be very useful).
-- **email/sms create/update template + create campaign** — bodies are big
-  design objects (MJML, layouts); better done in the portal today. `norbix api`
-  works for scripted cases. (Push has these commands: its template is title +
-  body per language, which fits flags.)
+- **email preferences page, one-click unsubscribe, Mailgun webhook** — called
+  by a recipient's browser, a recipient's mail client and Mailgun, never by a
+  developer (`docs/email.md`, "No command on purpose").
 
 ## Version note
 
-`email|sms stop` need SDK methods newer than `@norbix.ai/ts@1.2.0`. The
-commands detect an older SDK and print the exact `norbix api` fallback line.
-`push stop` calls the SDK directly (the CLI requires `@norbix.ai/ts` ^1.3.0).
+The CLI requires `@norbix.ai/ts` ^4.4.0, which has every push, SMS and Email
+method; `push stop`, `sms stop` and `email stop` call the SDK directly. 4.4.0
+dropped the campaign-message methods (the gateway removed
+`GET /campaigns/{campaignId}/messages/{notificationId}`); `push campaign message`
+and `sms campaign message` now read the same notification from the batch route.
 
 ## How this was measured
 
