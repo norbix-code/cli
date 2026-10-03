@@ -23,7 +23,7 @@ commands (own campaign); embedding integrations; AI chat / tools endpoints.
 3. feat(ai): `ai` topic — `ai llms` / `ai llm …`, `ai mcps` / `ai mcp …`,
    `ai service-users` / `ai service-user …` — done, `src/commands/ai/**`
 4. test(project): real-transport route test for every new command plus the
-   request bodies and the read-then-write commands — todo,
+   request bodies and the read-then-write commands — done,
    `tests/project-routes.test.ts`
 5. docs(project): `docs/project.md`, `docs/ai.md`, README rows, COVERAGE rows
    — todo
