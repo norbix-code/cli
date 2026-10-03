@@ -83,7 +83,7 @@
         "description": "Show or regenerate project API keys"
       },
       "email": {
-        "description": "Email templates and campaigns"
+        "description": "Email module, integrations, footers, signatures, templates and campaigns"
       },
       "config": {
         "description": "Read and write the local CLI configuration"
