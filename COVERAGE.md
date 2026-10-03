@@ -3,7 +3,9 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**117 endpoints have a dedicated CLI command. Every SDK method (~180 hub +
+**242 endpoints have a dedicated CLI command (the sum of the table below;
+the line said 117 until the Project campaign, 2026-10-03, and had not kept
+up with the push / SMS / Email rows). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
 
 ```sh
@@ -33,7 +35,10 @@ out of reach.
 | scheduler | 7/8 | all except save-task (complex DTO) |
 | webhooks | 6/9 | show, secret, rotate, enable/disable/remove destination |
 | payments | 7/16 | integrations list, triggers list/get/enable/disable, module toggle |
-| account/* | 10/62 | profile, status, usage, projects, team, regions, billing-portal, api keys. Missing: project settings updates, team roles/policies management |
+| account/* | 10/62 | profile, status, usage, projects, team, regions, billing-portal, api keys. Missing: team roles/policies management |
+| account/projects (settings, CORS, admin portal, legal, AI chat) | 30/30 | every project route in `@norbix.ai/ts` 4.4.0 a developer calls (28 hub + the 2 public API-host reads) — see `docs/project.md`; each command is run through the real transport in `tests/project-routes.test.ts`. Not counted: create project, environments, notification groups/tags, AI plans/knowledge/credits (internal), expose brand/auth (next wave) |
+| ai/integrations (LLM, MCP) | 15/20 | every LLM and MCP route — see `docs/ai.md`, same route test. Missing: the 5 embedding-integration routes (not asked for; `norbix hub ai …` reaches them) |
+| account/ai/service-users | 5/5 | list, create, delete, rotate-key, revoke-key — see `docs/ai.md`, same route test |
 | apikeys | 2/2 | list + regenerate |
 
 Cross-cutting commands: `norbix integrations <module>` lists integrations for
@@ -41,7 +46,8 @@ Cross-cutting commands: `norbix integrations <module>` lists integrations for
 
 ## Deliberately skipped (and why)
 
-- **ai/integrations (14)** — skipped on request.
+- **ai/integrations: embeddings (5)** — not asked for; the LLM and MCP
+  integrations have commands since the Project campaign (`docs/ai.md`).
 - **membership/passkeys-recovery (18)** — passkeys, magic links, password
   reset: end-user browser flows, not admin CLI actions.
 - **account/verify, account/module create-account, team-member-from-invitation**
