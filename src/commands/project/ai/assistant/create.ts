@@ -9,9 +9,13 @@ the LLM and model it runs on. List them with \`project ai settings\`.`
 
   static examples = [
     '<%= config.bin %> project ai assistant create --name Support --system-prompt-file support.md --toolset ai:database-read',
+    '<%= config.bin %> project ai assistant create --name Support --system-prompt-file support.md --toolset ai:database-read --dry-run',
   ]
 
-  static flags = assistantFlags
+  static flags = {
+    ...ProjectCommand.dryRunFlags,
+    ...assistantFlags,
+  }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(ProjectAiAssistantCreate)

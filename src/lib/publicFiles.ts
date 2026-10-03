@@ -42,6 +42,22 @@ export interface PublicFilesResult {
 /** The Hub version the SDK talks by default. Kept in one place. */
 const HUB_VERSION = 'v2'
 
+/** The exact request `callPublicFiles` sends — for `--dry-run`. */
+export function publicFilesRequest(
+  ctx: ResolvedContext,
+  operation: PublicFilesOperation,
+  body: {filesIntegrationId: string; path: string},
+): {method: string; url: string; headers: Record<string, string>; body: unknown} {
+  const base = ctx.hubUrl.endsWith('/') ? ctx.hubUrl.slice(0, -1) : ctx.hubUrl
+  const headers: Record<string, string> = {Accept: 'application/json', 'Content-Type': 'application/json'}
+  if (ctx.bearerToken ?? ctx.apiKey) headers.Authorization = 'Bearer ***'
+  if (ctx.projectId) headers['X-CM-ProjectId'] = ctx.projectId
+  if (ctx.accountId) headers['X-CM-AccountId'] = ctx.accountId
+  if (ctx.env && ctx.env !== 'PROD') headers['norbix-env'] = ctx.env
+  if (ctx.region) headers['nb-region'] = ctx.region
+  return {method: 'POST', url: `${base}/${HUB_VERSION}/${ROUTES[operation]}`, headers, body}
+}
+
 export async function callPublicFiles(
   ctx: ResolvedContext,
   operation: PublicFilesOperation,

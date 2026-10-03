@@ -9,14 +9,18 @@ export default class EmailTemplateUpdate extends BaseCommand {
 The whole template is sent, so pass every language you want to keep.`
 
   static examples = [
-    '<%= config.bin %> email template update 66b2f0a1... --name Welcome --subject "Hi @Model.Name" --body-file welcome.mjml',
+    '<%= config.bin %> email template update 66b2f0a1c3d4e5f6a7b8c9d0 --name Welcome --subject "Hi @Model.Name" --body-file welcome.mjml',
+    '<%= config.bin %> email template update 66b2f0a1c3d4e5f6a7b8c9d0 --name Welcome --subject "Hi @Model.Name" --body-file welcome.mjml --dry-run',
   ]
 
   static args = {
     id: Args.string({required: true, description: 'Template ID'}),
   }
 
-  static flags = emailTemplateFlags
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+    ...emailTemplateFlags,
+  }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(EmailTemplateUpdate)

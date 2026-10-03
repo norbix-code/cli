@@ -5,7 +5,10 @@ import {BaseCommand} from '../../base.js'
 export default class EnvDelete extends BaseCommand {
   static description = 'Delete a non-PROD environment (cascades its integrations)'
 
-  static examples = ['<%= config.bin %> env delete STAGING --yes']
+  static examples = [
+    '<%= config.bin %> env delete STAGING --yes',
+    '<%= config.bin %> env delete STAGING --dry-run',
+  ]
 
   static args = {
     name: Args.string({required: true, description: 'Environment name (PROD cannot be deleted)'}),

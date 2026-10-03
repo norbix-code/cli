@@ -14,9 +14,11 @@ the public with \`project legal expose\`.`
     '<%= config.bin %> project legal set --terms-file terms.md --privacy-file privacy.md',
     '<%= config.bin %> project legal set --terms-file terms.md',
     '<%= config.bin %> project legal set --clear-privacy',
+    '<%= config.bin %> project legal set --terms-file terms.md --privacy-file privacy.md --dry-run',
   ]
 
   static flags = {
+    ...ProjectCommand.dryRunFlags,
     'terms-file': Flags.string({description: 'Terms & Conditions, a Markdown file', exclusive: ['clear-terms']}),
     'privacy-file': Flags.string({description: 'Privacy Policy, a Markdown file', exclusive: ['clear-privacy']}),
     'clear-terms': Flags.boolean({description: 'Remove the Terms & Conditions', default: false}),
@@ -31,12 +33,12 @@ the public with \`project legal expose\`.`
       this.error('Pass --terms-file, --privacy-file, --clear-terms or --clear-privacy.')
     }
 
-    const {client, projectId} = this.projectClient(flags)
+    const {client, reader, projectId} = this.projectClient(flags)
 
     let termsMarkdown = terms
     let privacyMarkdown = privacy
     if (termsMarkdown === undefined || privacyMarkdown === undefined) {
-      const current = projectOf(await client.hub.account.getProject({projectId}))
+      const current = projectOf(await reader.hub.account.getProject({projectId}))
       termsMarkdown ??= current.legalTermsMarkdown as string | undefined
       privacyMarkdown ??= current.legalPrivacyMarkdown as string | undefined
     }

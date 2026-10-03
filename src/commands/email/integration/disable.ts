@@ -5,15 +5,23 @@ import {BaseCommand} from '../../../base.js'
 export default class EmailIntegrationDisable extends BaseCommand {
   static description = 'Turn an email integration off'
 
-  static examples = ['<%= config.bin %> email integration disable 66b2f0a1...']
+  static examples = [
+    '<%= config.bin %> email integration disable 66b2f0a1c3d4e5f6a7b8c9d0 --yes',
+    '<%= config.bin %> email integration disable 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Integration ID'}),
   }
 
+  static flags = {
+    ...BaseCommand.mutatingFlags,
+  }
+
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(EmailIntegrationDisable)
     const client = this.client(flags)
+    await this.confirmOrFail(`Turn off email integration ${args.id}?`, flags)
 
     const res = await client.hub.notifications.disableEmailIntegration({id: args.id})
 

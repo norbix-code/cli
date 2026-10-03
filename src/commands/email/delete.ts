@@ -5,7 +5,10 @@ import {BaseCommand} from '../../base.js'
 export default class EmailDelete extends BaseCommand {
   static description = 'Delete an email template'
 
-  static examples = ['<%= config.bin %> email delete 66b2f0a1... --yes']
+  static examples = [
+    '<%= config.bin %> email delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes',
+    '<%= config.bin %> email delete 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Template ID'}),

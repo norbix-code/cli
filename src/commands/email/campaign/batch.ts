@@ -9,8 +9,8 @@ Give a notification ID as the third argument to see just that e-mail. To see
 how it looked, run \`email preview --notification <notificationId>\`.`
 
   static examples = [
-    '<%= config.bin %> email campaign batch 66b2f0a1... b7c3...',
-    '<%= config.bin %> email campaign batch 66b2f0a1... b7c3... n9d4...',
+    '<%= config.bin %> email campaign batch 66b2f0a1c3d4e5f6a7b8c9d0 b7c3d2e1f0a9b8c7d6e5f4a3',
+    '<%= config.bin %> email campaign batch 66b2f0a1c3d4e5f6a7b8c9d0 b7c3d2e1f0a9b8c7d6e5f4a3 9d4e5f6a7b8c9d0e1f2a3b4c',
   ]
 
   static args = {

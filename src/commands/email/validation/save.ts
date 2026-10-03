@@ -15,9 +15,13 @@ credentials (for example {"apiKey": "..."}) in --config — inline JSON,
 @file.json, or - for stdin — so the key does not land in your shell history.
 Pass --id to update an existing integration.`
 
-  static examples = ['<%= config.bin %> email validation save --provider ZeroBounce --name ZeroBounce --config @zerobounce.json']
+  static examples = [
+    '<%= config.bin %> email validation save --provider ZeroBounce --name ZeroBounce --config @zerobounce.json',
+    '<%= config.bin %> email validation save --provider ZeroBounce --name ZeroBounce --config @zerobounce.json --dry-run',
+  ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     provider: Flags.string({required: true, description: 'Validation provider', options: PROVIDERS}),
     name: Flags.string({required: true, description: 'Integration name'}),
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),

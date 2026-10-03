@@ -1,3 +1,5 @@
+import {Flags} from '@oclif/core'
+
 import {BaseCommand} from '../base.js'
 import {NamespaceCommand} from '../lib/namespace-command.js'
 
@@ -6,7 +8,7 @@ export default class ApiNs extends NamespaceCommand {
 
   static description = `Call any data-plane API endpoint with plain words.
 
-Grammar: norbix api <module> <words...> [id] [--field value]
+Grammar: norbix api <module> <words...> [id] [--field value | --body '<json>']
 Same engine as \`norbix hub\` — see \`norbix hub --help\`. For raw HTTP paths
 use \`norbix raw\`.`
 
@@ -14,6 +16,9 @@ use \`norbix raw\`.`
 
   static flags = {
     ...BaseCommand.mutatingFlags,
+    body: Flags.string({
+      description: 'The whole request as a JSON object (or `-` for stdin); cannot be mixed with --field flags',
+    }),
   }
 
   static examples = [
@@ -21,6 +26,9 @@ use \`norbix raw\`.`
     '<%= config.bin %> api database                 # list database methods',
     '<%= config.bin %> api database find --collectionName orders --pageSize 20',
     '<%= config.bin %> api membership users get',
+    '<%= config.bin %> api membership user delete 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+    '<%= config.bin %> api membership user delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes --json',
+    `<%= config.bin %> api database insert --body '{"collectionName":"orders","document":"{\\"status\\":\\"new\\"}"}'`,
   ]
 
   async run(): Promise<unknown> {

@@ -5,10 +5,17 @@ import {BaseCommand} from '../../../base.js'
 export default class SmsIntegrationEnable extends BaseCommand {
   static description = 'Turn an SMS integration on'
 
-  static examples = ['<%= config.bin %> sms integration enable 66b2f0a1...']
+  static examples = [
+    '<%= config.bin %> sms integration enable 66b2f0a1c3d4e5f6a7b8c9d0',
+    '<%= config.bin %> sms integration enable 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Integration ID'}),
+  }
+
+  static flags = {
+    ...BaseCommand.dryRunFlags,
   }
 
   async run(): Promise<unknown> {

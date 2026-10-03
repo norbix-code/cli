@@ -11,9 +11,11 @@ Colours are hex values such as #1F6FEB.`
   static examples = [
     '<%= config.bin %> project set-colors --main "#1F6FEB" --accent "#F78166"',
     '<%= config.bin %> project set-colors --accent "#F78166"',
+    '<%= config.bin %> project set-colors --main "#1F6FEB" --accent "#F78166" --dry-run',
   ]
 
   static flags = {
+    ...ProjectCommand.dryRunFlags,
     main: Flags.string({description: 'Main brand colour (hex)'}),
     accent: Flags.string({description: 'Accent colour (hex)'}),
   }

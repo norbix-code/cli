@@ -10,21 +10,48 @@
  * The SDK namespaces are auto-generated and uniform (every method takes one
  * request object), so the CLI can discover modules and methods at runtime —
  * every current AND future SDK method is callable without new command files.
+ *
+ * Values are typed in two steps: the raw tokens are collected first (the
+ * method is not known yet), then `typeFields` applies the request-field map
+ * of the matched method — a `string` field keeps "0042", a `boolean` flag
+ * does not swallow the word after it. An explicit type wins over both:
+ * `--field:str 0042`, `--field:num 7`, `--field:bool false`, `--field:json '{...}'`.
+ * `--body '<json>'` replaces the field flags with one object.
+ *
+ * No oclif import here on purpose.
  */
+
+import type {FieldKind} from './request-fields.js'
+
+export type ExplicitType = 'str' | 'num' | 'bool' | 'json'
+
+export interface RawField {
+  name: string
+  /** Undefined when the flag stood alone (`--archived`). */
+  value?: string
+  /** True when the value was the next argv token (not `--name=value`). */
+  fromNextToken: boolean
+  /** `--name:str value` — explicit type, wins over the field map. */
+  explicit?: ExplicitType
+}
 
 export interface ParsedInvocation {
   words: string[]
   positionals: string[]
+  rawFields: RawField[]
+  /** Fields typed by the heuristic only — call `typeFields` once the method is known. */
   fields: Record<string, unknown>
   yes: boolean
   dryRun: boolean
 }
 
+const EXPLICIT_TYPES = new Set<string>(['str', 'num', 'bool', 'json'])
+
 /** Split leftover argv into words, positional values and --field values. */
 export function parseArgv(argv: string[]): ParsedInvocation {
   const words: string[] = []
   const positionals: string[] = []
-  const fields: Record<string, unknown> = {}
+  const rawFields: RawField[] = []
   let yes = false
   let dryRun = false
 
@@ -37,16 +64,17 @@ export function parseArgv(argv: string[]): ParsedInvocation {
     } else if (token.startsWith('--')) {
       const body = token.slice(2)
       const eq = body.indexOf('=')
+      const head = eq > 0 ? body.slice(0, eq) : body
+      const {name, explicit} = splitType(head)
       if (eq > 0) {
-        // --field=value syntax
-        fields[body.slice(0, eq)] = coerce(body.slice(eq + 1))
+        rawFields.push({name, value: body.slice(eq + 1), fromNextToken: false, explicit})
       } else {
         const next = argv[i + 1]
         if (next !== undefined && !next.startsWith('--')) {
-          fields[body] = coerce(next)
+          rawFields.push({name, value: next, fromNextToken: true, explicit})
           i++
         } else {
-          fields[body] = true
+          rawFields.push({name, fromNextToken: false, explicit})
         }
       }
     } else if (/^[a-z][a-z-]*$/i.test(token) && !looksLikeId(token)) {
@@ -56,7 +84,111 @@ export function parseArgv(argv: string[]): ParsedInvocation {
     }
   }
 
-  return {words, positionals, fields, yes, dryRun}
+  return {words, positionals, rawFields, fields: typeFields(rawFields, {}).fields, yes, dryRun}
+}
+
+/** `name:str` → {name, explicit: 'str'}; a plain name passes through. */
+function splitType(head: string): {name: string; explicit?: ExplicitType} {
+  const colon = head.lastIndexOf(':')
+  if (colon > 0) {
+    const suffix = head.slice(colon + 1)
+    if (EXPLICIT_TYPES.has(suffix)) return {name: head.slice(0, colon), explicit: suffix as ExplicitType}
+  }
+
+  return {name: head}
+}
+
+/**
+ * Apply the request-field kinds of the matched method. A known boolean flag
+ * that took the next token gives it back as a positional. Unknown fields
+ * fall back to the old heuristic (true/false/integers are converted).
+ */
+export function typeFields(
+  rawFields: RawField[],
+  kinds: Record<string, FieldKind>,
+): {fields: Record<string, unknown>; returned: string[]; errors: string[]} {
+  const fields: Record<string, unknown> = {}
+  const returned: string[] = []
+  const errors: string[] = []
+
+  for (const raw of rawFields) {
+    const kind = kinds[raw.name]
+    if (raw.explicit) {
+      if (raw.value === undefined) {
+        if (raw.explicit === 'bool') fields[raw.name] = true
+        else errors.push(`--${raw.name}:${raw.explicit} needs a value`)
+        continue
+      }
+
+      const typed = convert(raw.value, raw.explicit, `--${raw.name}:${raw.explicit}`)
+      if (typed.error) errors.push(typed.error)
+      else fields[raw.name] = typed.value
+      continue
+    }
+
+    if (kind === 'boolean') {
+      if (raw.value === undefined || !raw.fromNextToken) {
+        fields[raw.name] = raw.value === undefined ? true : raw.value !== 'false'
+      } else if (raw.value === 'true' || raw.value === 'false') {
+        fields[raw.name] = raw.value === 'true'
+      } else {
+        // `--archived some_id`: the flag is boolean, the token was not for it.
+        fields[raw.name] = true
+        returned.push(raw.value)
+      }
+
+      continue
+    }
+
+    if (raw.value === undefined) {
+      fields[raw.name] = true
+      continue
+    }
+
+    if (kind === 'string') fields[raw.name] = raw.value
+    else if (kind === 'number') {
+      const n = Number(raw.value)
+      if (Number.isNaN(n)) errors.push(`--${raw.name} expects a number, got "${raw.value}"`)
+      else fields[raw.name] = n
+    } else if (kind === 'json' || kind === 'json[]' || kind === 'string[]' || kind === 'number[]' || kind === 'boolean[]') {
+      fields[raw.name] = looksLikeJson(raw.value) ? parseJsonOr(raw.value) : kind === 'string[]' ? raw.value.split(',') : coerce(raw.value)
+    } else fields[raw.name] = coerce(raw.value)
+  }
+
+  return {fields, returned, errors}
+}
+
+function convert(value: string, type: ExplicitType, label: string): {value?: unknown; error?: string} {
+  switch (type) {
+    case 'str':
+      return {value}
+    case 'num': {
+      const n = Number(value)
+      return Number.isNaN(n) ? {error: `${label} expects a number, got "${value}"`} : {value: n}
+    }
+
+    case 'bool':
+      if (value === 'true' || value === 'false') return {value: value === 'true'}
+      return {error: `${label} expects true or false, got "${value}"`}
+    default:
+      try {
+        return {value: JSON.parse(value)}
+      } catch {
+        return {error: `${label} is not valid JSON: ${value.slice(0, 80)}`}
+      }
+  }
+}
+
+function looksLikeJson(value: string): boolean {
+  return /^\s*[[{]/.test(value)
+}
+
+function parseJsonOr(value: string): unknown {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
 }
 
 /** IDs look like maggr_..., sch_..., 66b2f0a1..., UPPER env names, etc. */
@@ -64,6 +196,7 @@ function looksLikeId(token: string): boolean {
   return /[_0-9]/.test(token) || token === token.toUpperCase()
 }
 
+/** The old heuristic, for fields the map does not know. */
 function coerce(value: string): unknown {
   if (value === 'true') return true
   if (value === 'false') return false
@@ -151,10 +284,17 @@ export function matchMethods(
   return matches
 }
 
-const DESTRUCTIVE_VERBS = new Set(['delete', 'remove', 'clean', 'regenerate', 'rotate', 'stop'])
+const DESTRUCTIVE_VERBS = new Set(['delete', 'remove', 'clean', 'regenerate', 'rotate', 'stop', 'disable', 'block'])
 
 export function isDestructive(method: string): boolean {
   return DESTRUCTIVE_VERBS.has(camelSplit(method)[0])
+}
+
+/** Read-only verbs: no --dry-run needed, nothing changes. */
+const READ_VERBS = new Set(['get', 'list', 'find', 'count', 'search', 'preview', 'render', 'reveal', 'check', 'validate', 'export', 'download', 'ping', 'echo', 'test', 'verify'])
+
+export function isReadOnly(method: string): boolean {
+  return READ_VERBS.has(camelSplit(method)[0])
 }
 
 /**

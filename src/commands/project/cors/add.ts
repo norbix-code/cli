@@ -8,7 +8,10 @@ export default class ProjectCorsAdd extends ProjectCommand {
 The server stores the full list, so this reads the current origins first and
 writes them back with the new ones.`
 
-  static examples = ['<%= config.bin %> project cors add https://staging.example.com']
+  static examples = [
+    '<%= config.bin %> project cors add https://staging.example.com',
+    '<%= config.bin %> project cors add https://staging.example.com --dry-run',
+  ]
 
   static strict = false
 
@@ -16,12 +19,16 @@ writes them back with the new ones.`
     origin: Args.string({required: true, description: 'Origins to allow (one or more)'}),
   }
 
+  static flags = {
+    ...ProjectCommand.dryRunFlags,
+  }
+
   async run(): Promise<unknown> {
     const {argv, flags} = await this.parse(ProjectCorsAdd)
     const wanted = argv as string[]
-    const {client, projectId} = this.projectClient(flags)
+    const {client, reader, projectId} = this.projectClient(flags)
 
-    const current = originsOf(await client.hub.account.getProject({projectId}))
+    const current = originsOf(await reader.hub.account.getProject({projectId}))
     const added = wanted.filter((o) => !current.some((c) => sameOrigin(c, o)))
     if (added.length === 0) {
       this.print('Already allowed — nothing to change.')

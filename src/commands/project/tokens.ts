@@ -10,7 +10,7 @@ ids to see the tokens filled in for those users.`
 
   static examples = [
     '<%= config.bin %> project tokens',
-    '<%= config.bin %> project tokens --recipient 66b2f0a1...',
+    '<%= config.bin %> project tokens --recipient 66b2f0a1c3d4e5f6a7b8c9d0',
   ]
 
   static flags = {

@@ -1,29 +1,28 @@
-import {confirm} from '@inquirer/prompts'
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 
 export default class EmailFooterDelete extends BaseCommand {
   static description = 'Delete an email footer'
 
-  static examples = ['<%= config.bin %> email footer delete 66b2f0a1... --yes']
+  static examples = [
+    '<%= config.bin %> email footer delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes',
+    '<%= config.bin %> email footer delete 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Footer ID'}),
   }
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(EmailFooterDelete)
     const client = this.client(flags)
 
-    if (!flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({message: `Delete email footer ${args.id}?`, default: false})
-      if (!ok) return this.print('Cancelled.')
-    }
+    await this.confirmOrFail(`Delete email footer ${args.id}?`, flags)
 
     const res = await client.hub.notifications.deleteEmailFooter({id: args.id})
 

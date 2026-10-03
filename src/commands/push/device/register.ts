@@ -10,9 +10,11 @@ system the token came from; the backend uses it to pick a provider.`
 
   static examples = [
     '<%= config.bin %> push device register --user usr_123 --token dGVzdA== --os iOS',
+    '<%= config.bin %> push device register --user usr_123 --token dGVzdA== --os iOS --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     user: Flags.string({required: true, description: 'User ID the device belongs to'}),
     token: Flags.string({required: true, description: 'Device token from the platform'}),
     os: Flags.string({required: true, description: 'Operating system, e.g. iOS or Android'}),

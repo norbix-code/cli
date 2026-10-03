@@ -5,7 +5,7 @@ import {BaseCommand} from '../../base.js'
 export default class PushIntegration extends BaseCommand {
   static description = 'Show one push integration'
 
-  static examples = ['<%= config.bin %> push integration 66b2f0a1...']
+  static examples = ['<%= config.bin %> push integration 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static args = {
     id: Args.string({required: true, description: 'Integration ID'}),

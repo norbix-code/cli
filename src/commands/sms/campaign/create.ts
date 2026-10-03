@@ -16,12 +16,14 @@ Without --at the campaign is sent right away. Anything the flags do not cover
 goes in --config as a JSON object and is merged into the delivery settings.`
 
   static examples = [
-    '<%= config.bin %> sms campaign create --template 66b2f0a1... --audience all-users --tag beta',
-    '<%= config.bin %> sms campaign create --template 66b2f0a1... --audience users --user usr_1 --user usr_2',
-    '<%= config.bin %> sms campaign create --template 66b2f0a1... --audience phone-numbers --phone +37060000000 --at 2026-10-01T09:00:00Z',
+    '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience all-users --tag beta',
+    '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience users --user usr_1 --user usr_2',
+    '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience phone-numbers --phone +37060000000 --at 2026-10-01T09:00:00Z',
+    '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience all-users --tag beta --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     template: Flags.string({required: true, description: 'Template ID'}),
     audience: Flags.string({required: true, description: 'Who receives it', options: Object.keys(SMS_AUDIENCES)}),
     user: Flags.string({description: 'User ID (users; repeat for several)', multiple: true}),

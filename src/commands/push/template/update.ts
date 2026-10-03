@@ -9,14 +9,18 @@ export default class PushTemplateUpdate extends BaseCommand {
 The whole template is sent, so pass every language you want to keep.`
 
   static examples = [
-    '<%= config.bin %> push template update 66b2f0a1... --name Welcome --title "Hi" --body "Thanks for joining"',
+    '<%= config.bin %> push template update 66b2f0a1c3d4e5f6a7b8c9d0 --name Welcome --title "Hi" --body "Thanks for joining"',
+    '<%= config.bin %> push template update 66b2f0a1c3d4e5f6a7b8c9d0 --name Welcome --title "Hi" --body "Thanks for joining" --dry-run',
   ]
 
   static args = {
     id: Args.string({required: true, description: 'Template ID'}),
   }
 
-  static flags = templateFlags
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+    ...templateFlags,
+  }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(PushTemplateUpdate)

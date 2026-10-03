@@ -17,9 +17,11 @@ Pass --id to update an existing integration.`
 
   static examples = [
     '<%= config.bin %> ai mcp save --provider GitHub --name GitHub --server-name GitHub --category Code --description "Issues and pull requests" --icon github --config @github.json',
+    '<%= config.bin %> ai mcp save --provider GitHub --name GitHub --server-name GitHub --category Code --description "Issues and pull requests" --icon github --config @github.json --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     provider: Flags.string({required: true, description: 'MCP server provider', options: PROVIDERS}),
     name: Flags.string({required: true, description: 'Integration name'}),
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),

@@ -5,10 +5,17 @@ import {BaseCommand} from '../../../base.js'
 export default class PushIntegrationDefault extends BaseCommand {
   static description = 'Make a push integration the default one for this project'
 
-  static examples = ['<%= config.bin %> push integration default 66b2f0a1...']
+  static examples = [
+    '<%= config.bin %> push integration default 66b2f0a1c3d4e5f6a7b8c9d0',
+    '<%= config.bin %> push integration default 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Integration ID'}),
+  }
+
+  static flags = {
+    ...BaseCommand.dryRunFlags,
   }
 
   async run(): Promise<unknown> {

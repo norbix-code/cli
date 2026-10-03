@@ -5,7 +5,7 @@ import {BaseCommand} from '../../../base.js'
 export default class SmsCampaignBatches extends BaseCommand {
   static description = 'List the send batches of an SMS campaign'
 
-  static examples = ['<%= config.bin %> sms campaign batches 66b2f0a1...']
+  static examples = ['<%= config.bin %> sms campaign batches 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static args = {
     id: Args.string({required: true, description: 'Campaign ID'}),

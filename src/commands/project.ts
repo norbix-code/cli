@@ -8,7 +8,7 @@ export default class Project extends ProjectCommand {
 Shows the configured project unless you pass another project ID. List every
 project of the account with \`account projects\`.`
 
-  static examples = ['<%= config.bin %> project', '<%= config.bin %> project 66b2f0a1... --json']
+  static examples = ['<%= config.bin %> project', '<%= config.bin %> project 66b2f0a1c3d4e5f6a7b8c9d0 --json']
 
   static args = {
     id: Args.string({description: 'Project ID (defaults to the configured project)'}),

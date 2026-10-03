@@ -5,7 +5,10 @@ import {BaseCommand} from '../../base.js'
 export default class WebhooksRemove extends BaseCommand {
   static description = 'Remove a webhook destination'
 
-  static examples = ['<%= config.bin %> webhooks remove 66b2f0a1... --yes']
+  static examples = [
+    '<%= config.bin %> webhooks remove 66b2f0a1c3d4e5f6a7b8c9d0 --yes',
+    '<%= config.bin %> webhooks remove 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     destinationId: Args.string({required: true, description: 'Destination ID'}),

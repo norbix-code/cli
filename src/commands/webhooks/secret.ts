@@ -8,6 +8,7 @@ export default class WebhooksSecret extends BaseCommand {
   static examples = [
     '<%= config.bin %> webhooks secret',
     '<%= config.bin %> webhooks secret --rotate --yes',
+    '<%= config.bin %> webhooks secret --dry-run',
   ]
 
   static flags = {

@@ -6,7 +6,10 @@ import {integrationFlag, resolveIntegration} from '../../lib/files.js'
 export default class FilesDelete extends BaseCommand {
   static description = 'Delete one file'
 
-  static examples = ['<%= config.bin %> files delete invoices/2026/invoice.pdf --yes']
+  static examples = [
+    '<%= config.bin %> files delete invoices/2026/invoice.pdf --yes',
+    '<%= config.bin %> files delete invoices/2026/invoice.pdf --dry-run',
+  ]
 
   static args = {
     remote: Args.string({required: true, description: 'Remote file path'}),

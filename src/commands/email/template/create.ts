@@ -14,9 +14,13 @@ Check the code first with \`email template render\`.`
   static examples = [
     '<%= config.bin %> email template create --name Welcome --subject "Hi @Model.Name" --body-file welcome.mjml',
     '<%= config.bin %> email template create --name Welcome --translations @welcome.json',
+    '<%= config.bin %> email template create --name Welcome --subject "Hi @Model.Name" --body-file welcome.mjml --dry-run',
   ]
 
-  static flags = emailTemplateFlags
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+    ...emailTemplateFlags,
+  }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(EmailTemplateCreate)

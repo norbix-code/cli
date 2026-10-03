@@ -5,7 +5,7 @@ import {BaseCommand} from '../../base.js'
 export default class EmailFooter extends BaseCommand {
   static description = 'Show one email footer'
 
-  static examples = ['<%= config.bin %> email footer 66b2f0a1...']
+  static examples = ['<%= config.bin %> email footer 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static args = {
     id: Args.string({required: true, description: 'Footer ID'}),
