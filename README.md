@@ -59,6 +59,8 @@ norbix scheduler list
 | `norbix hub <module> <words...>` | Call ANY hub endpoint with plain words (see below) |
 | `norbix api <module> <words...>` | Same for the data-plane API |
 | `norbix raw <path>` | Low-level HTTP escape hatch (hub by default, `--api` for API) |
+| `norbix schema [command]` | Describe every command as data (`--json`) — for scripts and agents |
+| `norbix ai init` | Set up a project for Claude Code / Cursor / AGENTS.md agents |
 
 ### Plain-word access to every endpoint
 
@@ -177,6 +179,23 @@ under a coding agent there is nobody to ask, so they **exit 3 and send
 nothing** unless you pass `--yes`. Preview any of them with `--dry-run`:
 the request is built with your real auth, region and project, printed, and
 not sent.
+
+## Use with Claude Code / AI agents
+
+The CLI is built to be driven by a coding agent from the shell — no MCP
+server needed: one JSON document per call (`--json`), documented exit codes
+(0–9), nothing destructive without `--yes`, `--dry-run` on every change, and
+`norbix schema --json` to discover every command. Set a project up once:
+
+```sh
+norbix ai init                 # writes .claude/skills/norbix/SKILL.md + a CLAUDE.md block
+norbix ai init --target all    # also AGENTS.md (Codex, OpenCode) and a Cursor rule
+```
+
+Then give the agent credentials with a profile (`norbix login --api-key … --profile ci`)
+or `NORBIX_API_KEY` / `NORBIX_PROJECT_ID` / `NORBIX_REGION`. The recipe the
+agent follows is in [docs/AGENTS.md](docs/AGENTS.md); the guarantees it
+relies on are in [docs/agent-contract.md](docs/agent-contract.md).
 
 ## Versioning
 

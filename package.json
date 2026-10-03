@@ -36,10 +36,10 @@
   ],
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "npm run clean && tsc && node -e \"require('node:fs').cpSync('src/generated','dist/generated',{recursive:true})\"",
+    "build": "npm run clean && tsc && node -e \"require('node:fs').cpSync('src/generated','dist/generated',{recursive:true})\" && oclif manifest",
     "typecheck": "tsc --noEmit",
     "dev": "npm run build && node ./bin/run.js",
-    "prepack": "npm run build && oclif manifest",
+    "prepack": "npm run build",
     "postpack": "node -e \"require('node:fs').rmSync('oclif.manifest.json',{force:true})\"",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -81,7 +81,7 @@
         "description": "Account profile, projects, team, usage, billing"
       },
       "ai": {
-        "description": "LLM and MCP server integrations, AI service users",
+        "description": "LLM and MCP server integrations, AI service users, and coding-agent setup (ai init)",
         "subtopics": {
           "llm": {
             "description": "Create, test, turn on/off and delete an LLM integration"
@@ -111,6 +111,12 @@
       "db": {
         "description": "Work with database collections (find, insert, update, delete)"
       },
+      "email": {
+        "description": "Email templates and campaigns"
+      },
+      "env": {
+        "description": "Manage project environments (PROD, TEST, ...)"
+      },
       "files": {
         "description": "Upload, download and manage files",
         "subtopics": {
@@ -118,9 +124,6 @@
             "description": "Check the storage behind a files integration"
           }
         }
-      },
-      "env": {
-        "description": "Manage project environments (PROD, TEST, ...)"
       },
       "logs": {
         "description": "Read project logs"
