@@ -1,5 +1,4 @@
-import {confirm} from '@inquirer/prompts'
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 
@@ -13,17 +12,14 @@ export default class PushIntegrationDelete extends BaseCommand {
   }
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(PushIntegrationDelete)
     const client = this.client(flags)
 
-    if (!flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({message: `Delete push integration ${args.id}?`, default: false})
-      if (!ok) return this.print('Cancelled.')
-    }
+    await this.confirmOrFail(`Delete push integration ${args.id}?`, flags)
 
     // The generated request type calls this field `id`, but the route token is
     // `{Id}` and the transport fills tokens by exact name — passing `id`

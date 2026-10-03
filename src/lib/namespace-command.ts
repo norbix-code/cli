@@ -1,4 +1,3 @@
-import {confirm} from '@inquirer/prompts'
 import {Norbix} from '@norbix.ai/ts'
 
 import {BaseCommand, type GlobalFlags} from '../base.js'
@@ -20,7 +19,7 @@ export abstract class NamespaceCommand extends BaseCommand {
    */
   protected splitArgv(): {flagArgv: string[]; rest: string[]; help: boolean} {
     const VALUE_FLAGS = new Set(['--project', '--env', '--region', '--api-key', '--account', '--profile'])
-    const BOOL_FLAGS = new Set(['--json'])
+    const BOOL_FLAGS = new Set(['--json', '--yes', '-y', '--dry-run'])
     const flagArgv: string[] = []
     const rest: string[] = []
     let help = false
@@ -167,20 +166,13 @@ export abstract class NamespaceCommand extends BaseCommand {
       }
     }
 
-    if (parsed.dryRun) {
-      this.print({wouldCall: `${this.target}.${moduleName}.${method}`, request})
-      return {method: `${this.target}.${moduleName}.${method}`, request, dryRun: true}
-    }
-
-    if (isDestructive(method) && !parsed.yes && process.stdout.isTTY) {
-      const ok = await confirm({
-        message: `Run ${method}(${JSON.stringify(request)})?`,
-        default: false,
-      })
-      if (!ok) return this.print('Cancelled.')
-    }
-
+    // Context (auth, region, project) is resolved before any confirmation or
+    // dry run, so a dry run that would fail for real fails here too.
     const client = this.client(flags)
+    if (isDestructive(method)) {
+      await this.confirmOrFail(`Run ${method}(${JSON.stringify(request)})?`, flags)
+    }
+
     const liveModule = (client[this.target] as unknown as Record<string, SdkModule>)[moduleName]
     const res = await liveModule[method](request)
     this.print(res)

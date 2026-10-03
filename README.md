@@ -128,28 +128,47 @@ pipe into `jq`:
 norbix db find orders --json | jq '.list.items[] | ._id'
 ```
 
-## Errors
+## Errors and exit codes
 
-A failed call prints one line: the error code, the message, and the HTTP
-status.
+A failed call prints the message, the details the server gave (code, HTTP
+status, URL, trace id, field errors) and what to do next — on **stderr**, so
+stdout stays clean for data:
 
 ```sh
-$ norbix files info nbin_1 a/b.txt
- ›   Error: CM-ERRORS-FILES-016: File not found: "a/b.txt" does not exist in
- ›   Local (nbin_1). (HTTP 404)
+$ norbix files info a/b.txt
+Error: File not found: "a/b.txt" does not exist in Local (nbin_1).
+  code: CM-ERRORS-FILES-016
+  status: 404
+  url: https://nb-eu-germany.api.norbix.ai/v2/files/...
+Hint: Check the id, the --env and the --project. List items first (e.g. `norbix files list --json`).
+Docs: norbix files info --help
 ```
 
-The code and the message are the gateway's own — they come out of
-`responseStatus.errors[]`, where the gateway puts them. Before this, every
-failure read "Request failed with status 404" with no code.
+With `--json` the same information is one JSON document on stdout:
+`{"error": {"code", "message", "status", "exit", "fieldErrors", "url", "traceId", "hint", "docs"}}`.
 
-Exit codes do not change: `1` for a failed call, `2` for a check that ran and
-came back negative (`norbix files integrations test`).
+The exit code tells a script or an agent what went wrong, with or without
+`--json`:
 
-**A refusal the gateway answers with HTTP 200** and
-`responseStatus.isSuccess = false` now exits non-zero as well, wherever it did
-not before — `norbix files publish` / `unpublish` were the two commands that
-used to treat it as a success.
+| code | meaning |
+| --- | --- |
+| 0 | success |
+| 1 | unexpected / internal error |
+| 2 | usage: bad flags or arguments, invalid JSON input, unknown command, missing config |
+| 3 | confirmation required — a destructive command ran without a terminal and without `--yes` |
+| 4 | not authenticated / auth rejected (401, 403, no key) |
+| 5 | not found (404) |
+| 6 | validation rejected by the server (400 / 422) |
+| 7 | network, timeout, endpoint unreachable |
+| 8 | rate limited or server error (429, 5xx) |
+| 9 | cancelled by you at a prompt |
+
+Destructive commands (`delete`, `stop`, `regenerate`, `block`, `disable`,
+`--many` updates) ask for confirmation in a terminal. In a script, in CI or
+under a coding agent there is nobody to ask, so they **exit 3 and send
+nothing** unless you pass `--yes`. Preview any of them with `--dry-run`:
+the request is built with your real auth, region and project, printed, and
+not sent.
 
 ## Versioning
 
@@ -193,7 +212,7 @@ Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 | `norbix files sign <path> [--expires <seconds>]` | Get a temporary web address for the file that anyone with the link can open. |
 | `norbix files upload <local> [remote]` | Upload a file. Without `remote` it keeps its own name in the root folder. |
 | `norbix files download <remote> [local]` | Download a file. Without `local` it keeps its own name in the current folder. |
-| `norbix files delete <path> [--yes]` | Delete one file. Asks first unless you pass `--yes`. |
+| `norbix files delete <path> [--yes]` | Delete one file. Asks first unless you pass `--yes`; without a terminal it exits 3 unless `--yes`. |
 | `norbix files publish <path> [--folder]` | Give the file — or the whole folder — a link anyone can open, and print it. |
 | `norbix files unpublish <path> [--folder]` | Take that link away again. |
 | `norbix files integrations test <id>` | Check that the storage behind an integration really works. See below. |

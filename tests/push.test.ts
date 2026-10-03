@@ -144,7 +144,7 @@ describe('push integration state changes', () => {
   // throws NORBIX_MISSING_PATH_PARAM at runtime, which is why it is pinned.
   const cases = [
     {command: PushIntegrationEnable, method: 'enablePushIntegration', argv: [ID]},
-    {command: PushIntegrationDisable, method: 'disablePushIntegration', argv: [ID]},
+    {command: PushIntegrationDisable, method: 'disablePushIntegration', argv: [ID, '--yes']},
     {command: PushIntegrationDefault, method: 'setPushIntegrationAsDefault', argv: [ID]},
     {command: PushIntegrationDelete, method: 'deletePushIntegration', argv: [ID, '--yes']},
   ]

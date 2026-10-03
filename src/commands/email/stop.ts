@@ -1,5 +1,4 @@
-import {confirm} from '@inquirer/prompts'
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 
@@ -13,17 +12,14 @@ export default class EmailStop extends BaseCommand {
   }
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(EmailStop)
     const client = this.client(flags)
 
-    if (!flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({message: `Stop email campaign ${args.id}?`, default: false})
-      if (!ok) return this.print('Cancelled.')
-    }
+    await this.confirmOrFail(`Stop email campaign ${args.id}?`, flags)
 
     const res = await client.hub.notifications.stopEmailCampaign({id: args.id})
     this.print(`Campaign ${args.id} stopped.`)

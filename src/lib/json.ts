@@ -1,3 +1,5 @@
+import {usageError} from './cli-error.js'
+
 /** Helpers for JSON flags: accept inline JSON or `-` to read from stdin. */
 
 export async function readJsonInput(value: string, flagName: string): Promise<string> {
@@ -7,7 +9,10 @@ export async function readJsonInput(value: string, flagName: string): Promise<st
     // receives (all Norbix DTOs take filters/documents as JSON strings).
     return JSON.stringify(JSON.parse(raw))
   } catch {
-    throw new Error(`--${flagName} is not valid JSON: ${truncate(raw)}`)
+    throw usageError(
+      `--${flagName} is not valid JSON: ${truncate(raw)}`,
+      `Pass a JSON document in quotes, e.g. --${flagName} '{"status":"paid"}', or \`-\` to read it from stdin.`,
+    )
   }
 }
 

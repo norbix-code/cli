@@ -487,9 +487,12 @@ describe('norbix files integrations test', () => {
   it('turns a 403 into the usual error line: code, message, HTTP status', async () => {
     answer({responseStatus: {errorCode: 'Forbidden', message: 'Missing permission files:create'}}, 403)
 
-    const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+    const {error, stderr} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
 
-    expect(error?.message).toBe('Forbidden: Missing permission files:create (HTTP 403)')
+    expect(error).toMatchObject({message: 'Missing permission files:create', code: 'Forbidden', status: 403})
+    expect(stderr).toContain('Error: Missing permission files:create')
+    expect(stderr).toContain('code: Forbidden')
+    expect(stderr).toContain('status: 403')
   })
 
   /**
@@ -511,9 +514,12 @@ describe('norbix files integrations test', () => {
       404,
     )
 
-    const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
+    const {error, stderr} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
 
-    expect(error?.message).toBe('CM-ERRORS-FILES-004: Files integration was not found. (HTTP 404)')
+    expect(error).toMatchObject({message: 'Files integration was not found.', code: 'CM-ERRORS-FILES-004', status: 404})
+    expect(stderr).toContain('Error: Files integration was not found.')
+    expect(stderr).toContain('code: CM-ERRORS-FILES-004')
+    expect(stderr).toContain('status: 404')
   })
 
   it('falls back to a plain line when a 500 body is not JSON', async () => {

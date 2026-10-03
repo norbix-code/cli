@@ -1,6 +1,8 @@
-import {Norbix, NorbixError} from '@norbix.ai/ts'
-import {Command, Flags} from '@oclif/core'
+import {Norbix} from '@norbix.ai/ts'
+import {Command, Flags, ux} from '@oclif/core'
 
+import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
+import {EXIT} from './lib/exit-codes.js'
 import {
   DEFAULT_API_URL,
   DEFAULT_HUB_URL,
@@ -10,6 +12,14 @@ import {
   type Profile,
 } from './lib/profiles.js'
 import {readStore, type StoredConfig} from './lib/store.js'
+
+/** One link of the SDK's transport middleware chain. */
+type NorbixMiddleware = (ctx: {
+  url: string
+  init: RequestInit
+  attempt: number
+  next: () => Promise<Response>
+}) => Promise<Response>
 
 /** Stands in for a projectId the SDK constructor insists on; never sent. */
 const NO_PROJECT_PLACEHOLDER = 'no-project'
@@ -33,6 +43,8 @@ export interface GlobalFlags {
   'api-key'?: string
   account?: string
   profile?: string
+  'dry-run'?: boolean
+  yes?: boolean
 }
 
 export interface ResolvedContext {
@@ -54,6 +66,31 @@ export interface ResolvedContext {
   stored: StoredConfig
 }
 
+/** The HTTP request a dry run would have sent (Authorization redacted). */
+export interface DryRunRequest {
+  method: string
+  url: string
+  headers: Record<string, string>
+  body?: unknown
+}
+
+/** What `--dry-run` prints: the SDK call and the HTTP request behind it. */
+export interface DryRunReport {
+  dryRun: true
+  /** `api.membership.deleteUser` — or a local action like `config.set`. */
+  method: string
+  request: unknown
+  http?: DryRunRequest
+}
+
+/** Thrown by the dry-run middleware instead of sending; caught in `catch`. */
+class DryRunStop extends Error {
+  constructor(readonly http: DryRunRequest) {
+    super('dry run')
+    this.name = 'DryRunStop'
+  }
+}
+
 /**
  * Base class for every Norbix CLI command.
  *
@@ -69,6 +106,9 @@ export interface ResolvedContext {
  *
  * Default endpoints are https://api.norbix.ai and https://hub.norbix.ai;
  * a profile can override them (self-hosted, localhost, custom domain).
+ *
+ * Agent contract (docs/agent-contract.md): never hang, never act silently,
+ * one JSON document on stdout with --json, documented exit codes.
  */
 export abstract class BaseCommand extends Command {
   static enableJsonFlag = true
@@ -106,8 +146,89 @@ export abstract class BaseCommand extends Command {
     }),
   }
 
+  /** Flags of a command that changes something but needs no confirmation (create, update, archive). */
+  static dryRunFlags = {
+    'dry-run': Flags.boolean({
+      description: 'Resolve context and print the request that would be sent; send nothing',
+      default: false,
+    }),
+  }
+
+  /** Flags of a destructive command (delete, stop, regenerate, block, disable): confirmation + dry run. */
+  static mutatingFlags = {
+    yes: Flags.boolean({
+      char: 'y',
+      description: 'Skip the confirmation prompt (required in non-interactive shells)',
+      default: false,
+    }),
+    ...BaseCommand.dryRunFlags,
+  }
+
+  /** The SDK call captured by a dry run, filled by the client proxy. */
+  private dryRunCall?: {method: string; request: unknown}
+
   protected readStore(): StoredConfig {
     return readStore(this.config.configDir)
+  }
+
+  /** The id of this command as the user types it: `users delete`. */
+  protected get commandName(): string {
+    return (this.id ?? '').replaceAll(':', ' ')
+  }
+
+  /**
+   * True only when a human can answer a prompt: both stdout and stdin are a
+   * terminal, not CI, not --json. Anything else is an agent or a script.
+   */
+  protected isInteractive(): boolean {
+    return Boolean(process.stdout.isTTY && process.stdin.isTTY) && !process.env.CI && !this.jsonEnabled()
+  }
+
+  /**
+   * Ask before a destructive call. `--yes` skips it; a dry run needs none;
+   * a non-interactive shell without `--yes` fails with exit 3 and sends
+   * nothing; "no" at the prompt exits 9.
+   */
+  protected async confirmOrFail(message: string, flags: {yes?: boolean; 'dry-run'?: boolean}): Promise<void> {
+    if (flags.yes || flags['dry-run']) return
+    if (!this.isInteractive()) {
+      throw new CliError({
+        exit: EXIT.CONFIRMATION_REQUIRED,
+        code: 'CONFIRMATION_REQUIRED',
+        message: `Confirmation required: ${message}`,
+        hint: 'Re-run with --yes. Preview first with --dry-run.',
+        docs: `norbix ${this.commandName} --help`,
+      })
+    }
+
+    const {confirm} = await import('@inquirer/prompts')
+    if (!(await confirm({message, default: false}))) {
+      throw new CliError({exit: EXIT.CANCELLED, code: 'CANCELLED', message: 'Cancelled.'})
+    }
+  }
+
+  /**
+   * Report a dry run of a LOCAL action (config write, file write) — SDK calls
+   * are captured automatically by `client()`. Prints the report and returns
+   * it, so the command can `return this.dryRun(...)`.
+   */
+  protected dryRun(call: {method: string; request: unknown; http?: DryRunRequest}): DryRunReport {
+    const report: DryRunReport = {dryRun: true, method: call.method, request: call.request}
+    if (call.http) report.http = call.http
+    this.printDryRun(report)
+    return report
+  }
+
+  private printDryRun(report: DryRunReport): void {
+    if (this.jsonEnabled()) return // oclif prints the returned value
+    const lines = [`Dry run — nothing was sent.`, `Would call: ${report.method}`]
+    if (report.http) {
+      lines.push(`  ${report.http.method} ${report.http.url}`)
+      if (report.http.body !== undefined) lines.push(`  body: ${JSON.stringify(report.http.body)}`)
+    }
+
+    lines.push(`Request: ${JSON.stringify(report.request, null, 2)}`)
+    this.log(lines.join('\n'))
   }
 
   protected resolveContext(flags: GlobalFlags): ResolvedContext {
@@ -123,9 +244,10 @@ export abstract class BaseCommand extends Command {
       prof = profiles[explicitProfile] ?? {}
       profileName = explicitProfile
       if (!profiles[explicitProfile]) {
-        this.error(
-          `Profile "${explicitProfile}" not found in ~/.norbix/config.\n` +
-            `Run \`norbix configure --profile ${explicitProfile}\` to create it, or \`norbix profiles\` to list existing ones.`,
+        throw usageError(
+          `Profile "${explicitProfile}" not found in ~/.norbix/config.`,
+          `Run \`norbix configure --profile ${explicitProfile}\` to create it, or \`norbix profiles\` to list existing ones.`,
+          'norbix profiles --help',
         )
       }
     } else {
@@ -195,10 +317,11 @@ export abstract class BaseCommand extends Command {
    */
   protected assertEndpoints(ctx: ResolvedContext): void {
     if (ctx.usesDefaultEndpoints && !ctx.region) {
-      this.error(
-        'Region is required when using the default norbix.ai endpoints.\n' +
-          'Set it with `norbix configure` (region field), pass --region <code> (e.g. nb-eu-germany),\n' +
+      throw usageError(
+        'Region is required when using the default norbix.ai endpoints.',
+        'Set it with `norbix configure` (region field), pass --region <code> (e.g. nb-eu-germany), ' +
           'or set custom api_url / hub_url in the profile for self-hosted installations.',
+        'norbix configure --help',
       )
     }
   }
@@ -211,6 +334,11 @@ export abstract class BaseCommand extends Command {
    * `requireProject: false` — the call does not need a project (a signed link carries it).
    * The SDK constructor still demands a projectId, so a placeholder is passed and the
    * project headers are taken off the wire again: the gateway never sees a fake project.
+   *
+   * With `--dry-run` the client is real up to the socket: auth, region and
+   * project are resolved exactly as for a live call, the SDK builds the
+   * request, and a middleware stops it just before `fetch`. `catch` then
+   * prints the request and exits 0.
    */
   protected client(
     flags: GlobalFlags,
@@ -220,21 +348,30 @@ export abstract class BaseCommand extends Command {
     this.assertEndpoints(ctx)
     const noProject = !ctx.projectId && opts.requireProject === false
     if (!ctx.projectId && !noProject) {
-      this.error(
-        'No project ID configured.\nRun `norbix configure` (or `norbix login`), or pass --project.',
+      throw usageError(
+        'No project ID configured.',
+        'Run `norbix configure` (or `norbix login`), pass --project <id>, or set NORBIX_PROJECT_ID.',
+        'norbix configure --help',
       )
     }
 
     if (opts.requireAuth !== false && !ctx.apiKey && !ctx.bearerToken) {
-      this.error(
-        'Not authenticated.\nRun `norbix login` (browser/user session) or `norbix configure` (API key profile), or pass --api-key.',
-      )
+      throw new CliError({
+        exit: EXIT.AUTH,
+        code: 'UNAUTHENTICATED',
+        message: 'Not authenticated.',
+        hint: 'Run `norbix login` (browser/user session) or `norbix configure` (API key profile), pass --api-key, or set NORBIX_API_KEY.',
+        docs: 'norbix login --help',
+      })
     }
 
-    return new Norbix(
+    const middleware: NorbixMiddleware[] = noProject ? [dropProjectHeaders] : []
+    if (flags['dry-run']) middleware.push(dryRunMiddleware)
+
+    const client = new Norbix(
       {
         projectId: noProject ? NO_PROJECT_PLACEHOLDER : ctx.projectId,
-        middleware: noProject ? [dropProjectHeaders] : [],
+        middleware,
         accountId: ctx.accountId,
         apiKey: ctx.apiKey,
         bearerToken: ctx.bearerToken,
@@ -243,10 +380,42 @@ export abstract class BaseCommand extends Command {
         // Always explicit: CLI defaults are api/hub.norbix.ai (the SDK's own
         // defaults still point at .dev — tracked as an SDK bug).
         baseUrl: {api: ctx.apiUrl, hub: ctx.hubUrl},
+        // A dry run stops in the middleware; the SDK must not retry it.
+        ...(flags['dry-run'] ? {retry: {maxRetries: 0}} : {}),
       },
       // The CLI already resolved env vars itself — don't let the SDK re-read them.
       {envSource: {}},
     )
+
+    return flags['dry-run'] ? this.recordingClient(client) : client
+  }
+
+  /** Wrap `client.api.*` / `client.hub.*` so a dry run knows which SDK method was called. */
+  private recordingClient(client: Norbix): Norbix {
+    const record = (target: 'api' | 'hub') =>
+      new Proxy(client[target] as unknown as Record<string, unknown>, {
+        get: (namespace, moduleName: string) => {
+          const mod = namespace[moduleName]
+          if (typeof mod !== 'object' || mod === null) return mod
+          return new Proxy(mod as Record<string, unknown>, {
+            get: (m, methodName: string) => {
+              const fn = m[methodName]
+              if (typeof fn !== 'function') return fn
+              return (request: unknown = {}, ...rest: unknown[]) => {
+                this.dryRunCall = {method: `${target}.${moduleName}.${methodName}`, request}
+                return (fn as (...a: unknown[]) => unknown)(request, ...rest)
+              }
+            },
+          })
+        },
+      })
+
+    return new Proxy(client, {
+      get: (c, prop: string | symbol) => {
+        if (prop === 'api' || prop === 'hub') return record(prop)
+        return (c as unknown as Record<string | symbol, unknown>)[prop]
+      },
+    })
   }
 
   /** Pretty-print a result unless --json is active (oclif prints the return value then). */
@@ -256,27 +425,73 @@ export abstract class BaseCommand extends Command {
     }
   }
 
+  /** Plain JSON on stdout: no theme, no ANSI codes, one document. */
+  protected logJson(json: unknown): void {
+    ux.stdout(JSON.stringify(json, null, 2))
+  }
+
   /**
-   * One line for a failed call: `<errorCode>: <message> (HTTP <status>)`.
-   *
-   * The code comes first because it is the part a reader can search for and a
-   * script can match on. It is the gateway's own code — the SDK reads it out
-   * of `responseStatus.errors[]`, where the gateway puts it (10b-files slice
-   * ERRORS, issue #66). The exit codes do not change.
+   * Every failure ends here and becomes the one error envelope
+   * (docs/agent-contract.md): `{"error": {...}}` on stdout with --json,
+   * `Error: ... / Hint: ...` on stderr otherwise. The exit code is the same
+   * in both modes. A dry run is "caught" here too: it is the middleware
+   * stopping the request, and exits 0.
    */
   protected async catch(error: Error & {exitCode?: number}): Promise<unknown> {
-    if (error instanceof NorbixError) {
-      const {code, status} = error as {code?: string; status?: number}
-      const prefix = code ? `${code}: ` : ''
-      // The SDK's last-resort message already ends in "(HTTP <status>)" —
-      // do not say it twice.
-      const suffix =
-        status && !error.message.includes(`(HTTP ${status})`) ? ` (HTTP ${status})` : ''
-      const hint =
-        status === 401 ? '\nYour session may have expired. Run `norbix login` again.' : ''
-      return this.error(`${prefix}${error.message}${suffix}${hint}`)
+    // The SDK wraps whatever its middleware throws into a network error, so
+    // the dry-run stop arrives as `raw` of that wrapper.
+    const stop = error instanceof DryRunStop ? error : dryRunStopOf(error)
+    if (stop) {
+      const report: DryRunReport = {
+        dryRun: true,
+        method: this.dryRunCall?.method ?? 'unknown',
+        request: this.dryRunCall?.request ?? {},
+        http: stop.http,
+      }
+      if (this.jsonEnabled()) this.logJson(report)
+      else this.printDryRun(report)
+      return report
     }
 
-    return super.catch(error)
+    // `this.exit(n)` — already decided, nothing to print.
+    if ((error as {code?: string}).code === 'EEXIT') throw error
+
+    const envelope = toEnvelope(error, {command: this.commandName})
+    if (this.jsonEnabled()) {
+      this.logJson({error: envelope})
+    } else {
+      process.stderr.write(formatErrorText(envelope) + '\n')
+    }
+
+    // Rethrow the original error with the exit code attached: oclif's
+    // handler then exits with it and prints nothing more (the envelope was
+    // the output), and a test still sees the real error.
+    const marked = error as Error & {oclif?: {exit?: number}; skipOclifErrorHandling?: boolean}
+    marked.oclif = {...marked.oclif, exit: envelope.exit}
+    marked.skipOclifErrorHandling = true
+    throw marked
   }
+}
+
+function dryRunStopOf(error: unknown): DryRunStop | undefined {
+  const raw = (error as {raw?: unknown} | undefined)?.raw
+  return raw instanceof DryRunStop ? raw : undefined
+}
+
+/** Stops the SDK just before `fetch` and hands the request back to `catch`. */
+async function dryRunMiddleware(ctx: {url: string; init: RequestInit; next: () => Promise<Response>}): Promise<Response> {
+  const headers: Record<string, string> = {}
+  new Headers(ctx.init.headers).forEach((value, key) => {
+    headers[key] = key.toLowerCase() === 'authorization' ? 'Bearer ***' : value
+  })
+  let body: unknown
+  if (typeof ctx.init.body === 'string') {
+    try {
+      body = JSON.parse(ctx.init.body)
+    } catch {
+      body = ctx.init.body
+    }
+  }
+
+  throw new DryRunStop({method: ctx.init.method ?? 'GET', url: ctx.url, headers, body})
 }

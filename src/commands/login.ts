@@ -1,8 +1,8 @@
-import {input, password as passwordPrompt} from '@inquirer/prompts'
 import {Norbix} from '@norbix.ai/ts'
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../base.js'
+import {usageError} from '../lib/cli-error.js'
 import {
   DeviceFlowUnsupportedError,
   openBrowser,
@@ -24,12 +24,17 @@ support browser login yet, the CLI falls back to user + password.
                      (same as \`norbix configure\`).
 
 Commands run with --profile skip the session on purpose and use that
-profile's API key.`
+profile's API key.
+
+Non-interactive shells (scripts, CI, coding agents) cannot answer prompts:
+pass --api-key (with --project), or --user with --password, or set
+NORBIX_API_KEY in the environment. Without one of these the command exits 2.`
 
   static examples = [
     '<%= config.bin %> login',
     '<%= config.bin %> login --user alice@example.com',
-    '<%= config.bin %> login --api-key nbk_... --project 5f1a... --profile ci',
+    '<%= config.bin %> login --api-key nbk_live_7hK2abc --project 66b2f0a1c3d4e5f6a7b8c9d0 --region nb-eu-germany --profile ci',
+    '<%= config.bin %> login --user alice@example.com --password "$NORBIX_PASSWORD" --project 66b2f0a1c3d4e5f6a7b8c9d0',
   ]
 
   static flags = {
@@ -43,10 +48,19 @@ profile's API key.`
     const profName = flags.profile ?? 'default'
     const existing = profiles[profName] ?? {}
 
+    // No terminal to answer a prompt: only the flag-driven modes can work.
+    if (!this.isInteractive() && !flags['api-key'] && !flags.password) {
+      throw usageError(
+        'login needs a terminal to ask for credentials, and this shell is not interactive.',
+        'Non-interactive options: --api-key <key> --project <id> (saves a profile); ' +
+          '--user <email> --password <pw> (password login); or set NORBIX_API_KEY and NORBIX_PROJECT_ID in the environment and skip login.',
+        'norbix login --help',
+      )
+    }
+
     // Mode 1: API key → saved as a profile (long-lived identity).
     if (flags['api-key']) {
-      const projectId =
-        flags.project ?? existing.project_id ?? (await input({message: 'Project ID:', required: true}))
+      const projectId = flags.project ?? existing.project_id ?? (await this.ask('Project ID:'))
       writeProfile(profName, {
         ...existing,
         api_key: flags['api-key'],
@@ -76,6 +90,21 @@ profile's API key.`
     return this.passwordLogin(flags, existing)
   }
 
+  /** Prompt for a value — or, with no terminal, fail with the flag to pass instead. */
+  private async ask(message: string, secret = false): Promise<string> {
+    if (!this.isInteractive()) {
+      const flag = message.startsWith('Project') ? '--project' : message.startsWith('User') ? '--user' : '--password'
+      throw usageError(
+        `login needs "${message.replace(/:$/, '')}" and cannot prompt for it in a non-interactive shell.`,
+        `Pass ${flag} on the command line.`,
+        'norbix login --help',
+      )
+    }
+
+    const prompts = await import('@inquirer/prompts')
+    return secret ? prompts.password({message, mask: '*'}) : prompts.input({message, required: true})
+  }
+
   private async browserLogin(
     hubUrl: string,
     projectId: string | undefined,
@@ -84,7 +113,8 @@ profile's API key.`
     const start = await startDeviceFlow(hubUrl, projectId)
 
     this.log(`First, copy your one-time code: ${start.userCode}`)
-    if (process.stdout.isTTY) {
+    if (this.isInteractive()) {
+      const {input} = await import('@inquirer/prompts')
       await input({message: 'Press ENTER to open the browser...'})
       openBrowser(start.verificationUriComplete ?? start.verificationUri)
     }
@@ -124,11 +154,10 @@ profile's API key.`
     },
     existing: {project_id?: string; account_id?: string; env?: string; region?: string},
   ): Promise<unknown> {
-    const projectId =
-      flags.project ?? existing.project_id ?? (await input({message: 'Project ID:', required: true}))
+    const projectId = flags.project ?? existing.project_id ?? (await this.ask('Project ID:'))
     const region = flags.region ?? existing.region
-    const userName = flags.user ?? (await input({message: 'User name (email):', required: true}))
-    const pwd = flags.password ?? (await passwordPrompt({message: 'Password:', mask: '*'}))
+    const userName = flags.user ?? (await this.ask('User name (email):'))
+    const pwd = flags.password ?? (await this.ask('Password:', true))
 
     const ctx = this.resolveContext({...flags, project: projectId, region})
     const client = new Norbix(
