@@ -113,6 +113,31 @@
       "payments": {
         "description": "Payment integrations and triggers"
       },
+      "project": {
+        "description": "Project settings: name, languages, regions, CORS, admin portal, legal documents, AI chat",
+        "subtopics": {
+          "cors": {
+            "description": "Browser origins allowed to call the project's APIs"
+          },
+          "admin-portal": {
+            "description": "The end-user admin portal Norbix generates for the project"
+          },
+          "legal": {
+            "description": "Terms & Conditions and Privacy Policy (Markdown)"
+          },
+          "ai": {
+            "description": "AI chat settings, assistants and usage",
+            "subtopics": {
+              "assistant": {
+                "description": "Create, change and delete AI assistants"
+              },
+              "settings": {
+                "description": "AI chat on/off, default LLM and model"
+              }
+            }
+          }
+        }
+      },
       "push": {
         "description": "Push notification templates and campaigns"
       },

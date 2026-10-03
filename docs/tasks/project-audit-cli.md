@@ -19,7 +19,7 @@ commands (own campaign); embedding integrations; AI chat / tools endpoints.
 1. docs(project): this task file — done, `docs/tasks/project-audit-cli.md`
 2. feat(project): `project` topic — show, set-*, enable / disable / delete,
    tokens, cors, admin-portal, legal, public-config, project AI settings /
-   assistants / usage — todo, `src/commands/project/**`, `src/lib/project.ts`
+   assistants / usage — done, `src/commands/project/**`, `src/lib/project.ts`
 3. feat(ai): `ai` topic — `ai llms` / `ai llm …`, `ai mcps` / `ai mcp …`,
    `ai service-users` / `ai service-user …` — todo, `src/commands/ai/**`
 4. test(project): real-transport route test for every new command plus the
