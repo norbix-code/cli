@@ -83,7 +83,12 @@
         "description": "Show or regenerate project API keys"
       },
       "email": {
-        "description": "Email module, integrations, footers, signatures, templates and campaigns"
+        "description": "Email module, integrations, footers, signatures, templates and campaigns",
+        "subtopics": {
+          "validation": {
+            "description": "Email-validation integrations (check addresses before a campaign sends)"
+          }
+        }
       },
       "config": {
         "description": "Read and write the local CLI configuration"
