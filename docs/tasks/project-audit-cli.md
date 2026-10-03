@@ -21,7 +21,7 @@ commands (own campaign); embedding integrations; AI chat / tools endpoints.
    tokens, cors, admin-portal, legal, public-config, project AI settings /
    assistants / usage — done, `src/commands/project/**`, `src/lib/project.ts`
 3. feat(ai): `ai` topic — `ai llms` / `ai llm …`, `ai mcps` / `ai mcp …`,
-   `ai service-users` / `ai service-user …` — todo, `src/commands/ai/**`
+   `ai service-users` / `ai service-user …` — done, `src/commands/ai/**`
 4. test(project): real-transport route test for every new command plus the
    request bodies and the read-then-write commands — todo,
    `tests/project-routes.test.ts`

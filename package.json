@@ -79,6 +79,20 @@
       "account": {
         "description": "Account profile, projects, team, usage, billing"
       },
+      "ai": {
+        "description": "LLM and MCP server integrations, AI service users",
+        "subtopics": {
+          "llm": {
+            "description": "Create, test, turn on/off and delete an LLM integration"
+          },
+          "mcp": {
+            "description": "Create, test, turn on/off and delete an MCP server integration"
+          },
+          "service-user": {
+            "description": "Create and delete AI service users, rotate and revoke their keys"
+          }
+        }
+      },
       "apikeys": {
         "description": "Show or regenerate project API keys"
       },
