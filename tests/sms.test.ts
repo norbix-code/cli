@@ -245,9 +245,9 @@ describe('sms campaign reads and delete', () => {
     ])
   })
 
-  it('message names the fields the way the route does: campaignId + notificationId', async () => {
+  it('message reads the notification from the batch route (the messages/{id} route is gone)', async () => {
     const {calls} = await runCommand(SmsCampaignMessage, [ID, MESSAGE, '--batch', BATCH])
-    expect(calls).toEqual([{method: 'getSmsCampaignMessage', request: {campaignId: ID, notificationId: MESSAGE, campaignBatchId: BATCH}}])
+    expect(calls).toEqual([{method: 'getSmsCampaignBatchNotification', request: {id: ID, batchId: BATCH, notificationId: MESSAGE}}])
   })
 
   it('message requires the batch', async () => {

@@ -95,7 +95,7 @@ norbix sms template render --code "Hi @Model.Name" --token Name=Ada
 | `norbix sms campaign batch <id> <batchId>` | list the notifications in a batch | `GET /campaigns/{id}/batches/{batchId}` |
 | `norbix sms campaign batch <id> <batchId> <notificationId>` | show one notification in a batch | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
 | `norbix sms campaign messages <id> [--batch <batchId>]` | list the messages it sent | `GET /campaigns/{campaignId}/messages` |
-| `norbix sms campaign message <id> <messageId> --batch <batchId>` | show one message | `GET /campaigns/{campaignId}/messages/{notificationId}` |
+| `norbix sms campaign message <id> <messageId> --batch <batchId>` | show one message (same as `campaign batch <id> <batchId> <messageId>`) | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
 | `norbix sms preview <hash>` (or `--hash <hash>`) | render the text behind a preview link | `GET /preview` |
 
 `--audience` decides who receives the campaign:
