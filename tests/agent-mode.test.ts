@@ -56,12 +56,17 @@ const DESTRUCTIVE: string[][] = [
 ]
 
 describe('destructive commands in a non-interactive shell', () => {
+  // Each test spawns the CLI once per command (DESTRUCTIVE.length processes,
+  // 4 at a time). Windows runners need ~3 s per spawn, so the default 20 s
+  // runs out — and a timed-out pool keeps sending into the next test.
+  const SPAWN_ALL_TIMEOUT = 120_000
+
   it('every one exits 3 without --yes and sends nothing', async () => {
     const results = await pool(DESTRUCTIVE, 4, async (argv) => ({argv, ...(await cli(home, [...argv, '--profile', 'x']))}))
     const wrong = results.filter((r) => r.code !== 3 || !/--yes/.test(r.stderr) || r.stdout !== '')
     expect(wrong.map((r) => `${r.argv.join(' ')} → exit ${r.code}: ${r.stderr.slice(0, 120)}`)).toEqual([])
     expect(gateway.hits).toEqual([])
-  })
+  }, SPAWN_ALL_TIMEOUT)
 
   it('every one exits 3 with --json too, with the envelope on stdout', async () => {
     const results = await pool(DESTRUCTIVE, 4, async (argv) => ({argv, ...(await cli(home, [...argv, '--profile', 'x', '--json']))}))
@@ -75,14 +80,14 @@ describe('destructive commands in a non-interactive shell', () => {
     }
 
     expect(gateway.hits).toEqual([])
-  })
+  }, SPAWN_ALL_TIMEOUT)
 
   it('every one runs with --yes and reaches the gateway', async () => {
     const results = await pool(DESTRUCTIVE, 4, async (argv) => ({argv, ...(await cli(home, [...argv, '--profile', 'x', '--yes']))}))
     const wrong = results.filter((r) => r.code !== 0)
     expect(wrong.map((r) => `${r.argv.join(' ')} → exit ${r.code}: ${r.stderr.slice(0, 160)}`)).toEqual([])
     expect(gateway.hits.length).toBe(DESTRUCTIVE.length)
-  })
+  }, SPAWN_ALL_TIMEOUT)
 })
 
 describe('--dry-run', () => {

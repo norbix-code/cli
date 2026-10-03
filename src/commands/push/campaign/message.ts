@@ -3,7 +3,9 @@ import {Args, Flags} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class PushCampaignMessage extends BaseCommand {
-  static description = 'Show one push message a campaign sent'
+  static description = `Show one push message a campaign sent
+
+Same as \`push campaign batch <id> <batchId> <messageId>\`.`
 
   static examples = ['<%= config.bin %> push campaign message 66b2f0a1c3d4e5f6a7b8c9d0 n9d4e5f6a7b8c9d0e1f2a3b4 --batch b7c3d4e5f6a7b8c9d0e1f2a3']
 
@@ -20,14 +22,15 @@ export default class PushCampaignMessage extends BaseCommand {
     const {args, flags} = await this.parse(PushCampaignMessage)
     const client = this.client(flags)
 
-    // The gateway route now names its token `{notificationId}`, and the
-    // regenerated request type has the matching field — so the workaround
-    // this command used to carry (an extra `id` plus a cast, because the
-    // token and the field had different names) is gone.
-    const res = await client.hub.notifications.getPushCampaignMessage({
-      campaignId: args.id,
+    // The gateway removed `GET /campaigns/{campaignId}/messages/{notificationId}`
+    // and @norbix.ai/ts 4.4.0 dropped its method. The same message is read by
+    // campaign, batch and notification id from the batch route — exactly what
+    // `push campaign batch <id> <batchId> <notificationId>` calls. This
+    // command stays so scripts that use it keep working.
+    const res = await client.hub.notifications.getPushCampaignBatchNotification({
+      id: args.id,
+      batchId: flags.batch,
       notificationId: args.messageId,
-      campaignBatchId: flags.batch,
     })
 
     this.print(res)

@@ -112,19 +112,39 @@ export async function pollDeviceToken(
   throw new Error('The login code expired. Run `norbix login` again.')
 }
 
-/** Open a URL in the default browser — macOS, Linux, Windows. */
+/**
+ * Open a URL in the default browser — macOS, Linux, Windows.
+ *
+ * The URL comes from the hub's response, so it is untrusted: only http(s) is
+ * opened, and Windows uses rundll32 instead of `cmd /c start`, whose parser
+ * would run `&`, `|` and `^` in the URL as shell syntax.
+ */
 export function openBrowser(url: string): void {
-  const [cmd, args] =
-    process.platform === 'darwin'
-      ? ['open', [url]]
-      : process.platform === 'win32'
-        ? ['cmd', ['/c', 'start', '', url]]
-        : ['xdg-open', [url]]
+  const href = toHttpUrl(url)
+  if (!href) return
+  const [cmd, args] = browserCommand(href, process.platform)
   try {
     spawn(cmd, args, {detached: true, stdio: 'ignore'}).unref()
   } catch {
     // Browser could not be opened — the URL is printed anyway.
   }
+}
+
+/** The URL normalised, or undefined when it is not an http(s) URL. */
+export function toHttpUrl(url: string): string | undefined {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** The command that opens `href` in the default browser on `platform`. */
+export function browserCommand(href: string, platform: NodeJS.Platform): [string, string[]] {
+  if (platform === 'darwin') return ['open', [href]]
+  if (platform === 'win32') return ['rundll32', ['url.dll,FileProtocolHandler', href]]
+  return ['xdg-open', [href]]
 }
 
 function sleep(ms: number): Promise<void> {
