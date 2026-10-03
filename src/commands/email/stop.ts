@@ -25,18 +25,7 @@ export default class EmailStop extends BaseCommand {
       if (!ok) return this.print('Cancelled.')
     }
 
-    // stop* methods are newer than SDK 1.2.0 — guard so older SDKs fail nicely.
-    const n = client.hub.notifications as unknown as {
-      stopEmailCampaign?: (r: {id: string}) => Promise<unknown>
-    }
-    if (!n.stopEmailCampaign) {
-      this.error(
-        'Your installed @norbix.ai/ts does not support stopping campaigns yet.\n' +
-          `Update the SDK, or run: norbix api "/{version}/notifications/email/campaigns/${args.id}/stop" --hub --method POST`,
-      )
-    }
-
-    const res = await n.stopEmailCampaign({id: args.id})
+    const res = await client.hub.notifications.stopEmailCampaign({id: args.id})
     this.print(`Campaign ${args.id} stopped.`)
     return res
   }
