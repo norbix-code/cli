@@ -51,6 +51,8 @@ norbix scheduler list
 | `norbix push ...` | Push module, integrations, devices, templates, campaigns — every push endpoint, see [docs/push.md](docs/push.md) |
 | `norbix sms ...` | SMS module, integrations, templates, campaigns — every SMS endpoint, see [docs/sms.md](docs/sms.md) |
 | `norbix account profile/status/usage/projects/team/regions/billing-portal` | Account-level info |
+| `norbix project ...` | One project's settings — name, look, languages, regions, CORS origins, admin portal, legal documents, AI chat and assistants, see [docs/project.md](docs/project.md) |
+| `norbix ai ...` | LLM and MCP server integrations, AI service users and their keys, see [docs/ai.md](docs/ai.md) |
 | `norbix payments integrations/triggers/trigger/enable/disable` | Payment integrations and triggers |
 | `norbix integrations <module>` | List integrations of any module |
 | `norbix module enable/disable <name>` | Turn a whole project module on or off |

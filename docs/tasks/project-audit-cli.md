@@ -26,7 +26,7 @@ commands (own campaign); embedding integrations; AI chat / tools endpoints.
    request bodies and the read-then-write commands — done,
    `tests/project-routes.test.ts`
 5. docs(project): `docs/project.md`, `docs/ai.md`, README rows, COVERAGE rows
-   — todo
+   — done
 6. chore: build, typecheck, test green; `norbix --help` shows the topics; push;
    pull request — todo
 
@@ -126,6 +126,13 @@ help examples under another name, and `tests/examples.test.ts` rejects that).
 - docs(cli): COVERAGE.md counts are against the old CodeMash doc tree
   (452 endpoints, 2026-07-21); the project / ai rows are counted against the
   `@norbix.ai/ts` 4.4.0 routes instead. Left open.
+- docs(cli): COVERAGE.md headline said "117 endpoints have a dedicated CLI
+  command" while its own table summed to 192 (push / SMS / Email rows were
+  added without the headline). Fixed here: 242 = the table sum with the new
+  rows — `COVERAGE.md:6`.
+- docs(cli): `ai/integrations (14)` in "Deliberately skipped" was 20 routes in
+  `@norbix.ai/ts` 4.4.0 (8 LLM, 7 MCP, 5 embeddings). Fixed here: only the 5
+  embedding routes stay listed — `COVERAGE.md`.
 
 ## Rejected / moved out
 
