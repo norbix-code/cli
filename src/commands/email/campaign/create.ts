@@ -19,12 +19,14 @@ every address first. Anything the flags do not cover goes in --config as a JSON
 object and is merged into the campaign.`
 
   static examples = [
-    '<%= config.bin %> email campaign create --template 66b2f0a1... --audience all-users --tag beta',
-    '<%= config.bin %> email campaign create --template 66b2f0a1... --audience emails --email ada@example.com --at 2026-10-01T09:00:00Z',
-    '<%= config.bin %> email campaign create --template 66b2f0a1... --audience collection --schema subscribers --field email --field-type Email',
+    '<%= config.bin %> email campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience all-users --tag beta',
+    '<%= config.bin %> email campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience emails --email ada@example.com --at 2026-10-01T09:00:00Z',
+    '<%= config.bin %> email campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience collection --schema subscribers --field email --field-type Email',
+    '<%= config.bin %> email campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience all-users --tag beta --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     template: Flags.string({required: true, description: 'Template ID'}),
     audience: Flags.string({required: true, description: 'Who receives it', options: Object.keys(EMAIL_AUDIENCES)}),
     user: Flags.string({description: 'User ID (users / account-users; repeat for several)', multiple: true}),

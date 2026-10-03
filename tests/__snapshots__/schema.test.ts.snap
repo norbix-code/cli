@@ -55,6 +55,239 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "ai llm",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "ai llm default",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai llm delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai llm disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "ai llm enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "provider:option",
+      "name:string",
+      "id:string",
+      "endpoint:string",
+      "model:string",
+      "default:boolean",
+      "disabled:boolean",
+      "config:string",
+    ],
+    "id": "ai llm save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "ai llm test",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "ai llms",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "ai mcp",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai mcp delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai mcp disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "ai mcp enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "provider:option",
+      "name:string",
+      "id:string",
+      "server-name:string",
+      "category:string",
+      "description:string",
+      "icon:string",
+      "disabled:boolean",
+      "config:string",
+    ],
+    "id": "ai mcp save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "ai mcp test",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "ai mcps",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "env:string",
+      "dry-run:boolean",
+      "name:string",
+      "reach:option",
+      "rights:option",
+    ],
+    "id": "ai service-user create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai service-user delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+      "keyId",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai service-user revoke-key",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "revoke:string",
+    ],
+    "id": "ai service-user rotate-key",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "ai service-users",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": true,
     "flags": [
@@ -329,6 +562,91 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "id",
+      "batchId",
+      "[notificationId]",
+    ],
+    "destructive": false,
+    "flags": [
+      "database-integration:string",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "email campaign batch",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "batch:string",
+      "email:string",
+      "database-integration:string",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "email campaign batches",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "template:string",
+      "audience:option",
+      "user:string",
+      "email:string",
+      "cc:string",
+      "bcc:string",
+      "one-each:boolean",
+      "role:string",
+      "tag:string",
+      "schema:string",
+      "field:string",
+      "field-type:option",
+      "integration:string",
+      "validation-integration:string",
+      "language:string",
+      "notes:string",
+      "at:string",
+      "token:string",
+      "database-integration:string",
+      "config:string",
+    ],
+    "id": "email campaign create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email campaign delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "batch:string",
+      "database-integration:string",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "email campaign messages",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [
@@ -362,6 +680,257 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "email disable-dependencies",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "email footer",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email footer delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "id:string",
+      "language:string",
+      "content:string",
+      "content-file:string",
+      "translations:string",
+    ],
+    "id": "email footer save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "email footers",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "email integration",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email integration confirm-delivery",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email integration default",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email integration delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email integration disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "email integration domain-health",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email integration enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "provider:option",
+      "name:string",
+      "id:string",
+      "from:string",
+      "sender-name:string",
+      "disabled:boolean",
+      "config:string",
+    ],
+    "id": "email integration save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+      "to:string",
+    ],
+    "id": "email integration test",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "email integrations",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[hash]",
+    ],
+    "destructive": false,
+    "flags": [
+      "hash:string",
+      "notification:string",
+    ],
+    "id": "email preview",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "id:string",
+    ],
+    "id": "email settings",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "email signature",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email signature delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "id:string",
+      "language:string",
+      "content:string",
+      "content-file:string",
+      "translations:string",
+    ],
+    "id": "email signature save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "email signatures",
+    "supportsDryRun": false,
+  },
+  {
     "args": [
       "id",
     ],
@@ -379,8 +948,105 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "destructive": false,
     "flags": [],
+    "id": "email system-template",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "tag:string",
+      "theme:string",
+      "channel:option",
+      "trigger:option",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "email system-templates",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
     "id": "email template",
     "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file-ref:string",
+      "language:string",
+    ],
+    "id": "email template attach",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "description:string",
+      "channel:option",
+      "tag:string",
+      "language:string",
+      "subject:string",
+      "body:string",
+      "body-file:string",
+      "engine:option",
+      "translations:string",
+    ],
+    "id": "email template create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "code:string",
+      "file:string",
+      "token:string",
+      "preview:boolean",
+    ],
+    "id": "email template render",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "email template tokens",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "description:string",
+      "channel:option",
+      "tag:string",
+      "language:string",
+      "subject:string",
+      "body:string",
+      "body-file:string",
+      "engine:option",
+      "translations:string",
+    ],
+    "id": "email template update",
+    "supportsDryRun": true,
   },
   {
     "args": [],
@@ -400,6 +1066,31 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "dry-run:boolean",
     ],
     "id": "email unarchive",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "provider:option",
+      "name:string",
+      "id:string",
+      "disabled:boolean",
+      "config:string",
+    ],
+    "id": "email validation save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email validation test",
     "supportsDryRun": true,
   },
   {
@@ -676,6 +1367,379 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [],
     "id": "profiles",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[id]",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "project",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "project admin-portal disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project admin-portal enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project admin-portal set-service-user",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "[url]",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "clear:boolean",
+    ],
+    "id": "project admin-portal set-url",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "project admin-portal structure",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "welcome:string",
+      "system-prompt:string",
+      "system-prompt-file:string",
+      "toolset:string",
+      "llm:string",
+      "model:string",
+      "memory:boolean",
+      "rag-source:string",
+      "default:boolean",
+    ],
+    "id": "project ai assistant create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "project ai assistant delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "welcome:string",
+      "system-prompt:string",
+      "system-prompt-file:string",
+      "toolset:string",
+      "llm:string",
+      "model:string",
+      "memory:boolean",
+      "rag-source:string",
+      "default:boolean",
+    ],
+    "id": "project ai assistant update",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "project ai settings",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "enable:boolean",
+      "disable:boolean",
+      "llm:string",
+      "model:string",
+    ],
+    "id": "project ai settings set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "top:string",
+    ],
+    "id": "project ai usage",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "project cors",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "origin",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project cors add",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "origin",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "remove-admin-portal-origin:boolean",
+    ],
+    "id": "project cors remove",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "origin",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "remove-admin-portal-origin:boolean",
+    ],
+    "id": "project cors set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "project delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "project disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project legal expose",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project legal hide",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "terms-file:string",
+      "privacy-file:string",
+      "clear-terms:boolean",
+      "clear-privacy:boolean",
+    ],
+    "id": "project legal set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "kind",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "project legal show",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[id]",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "project public-config",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "main:string",
+      "accent:string",
+    ],
+    "id": "project set-colors",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "language",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project set-default-language",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "[description]",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "clear:boolean",
+    ],
+    "id": "project set-description",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file-resource:string",
+      "clear:boolean",
+    ],
+    "id": "project set-icon",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "language",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project set-languages",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file-resource:string",
+      "clear:boolean",
+    ],
+    "id": "project set-logo",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "name",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project set-name",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "primary:string",
+      "additional:string",
+      "clear-additional:boolean",
+    ],
+    "id": "project set-regions",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "[url]",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "clear:boolean",
+    ],
+    "id": "project set-url",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "initiator:string",
+      "recipient:string",
+      "target-user:string",
+    ],
+    "id": "project tokens",
     "supportsDryRun": false,
   },
   {
@@ -1202,6 +2266,93 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "id",
+      "batchId",
+      "[notificationId]",
+    ],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "sms campaign batch",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "sms campaign batches",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "template:string",
+      "audience:option",
+      "user:string",
+      "role:string",
+      "tag:string",
+      "schema:string",
+      "field:string",
+      "field-type:option",
+      "phone:string",
+      "language:string",
+      "at:string",
+      "respect-time-zone:option",
+      "token:string",
+      "database-integration:string",
+      "config:string",
+    ],
+    "id": "sms campaign create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "sms campaign delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+      "messageId",
+    ],
+    "destructive": false,
+    "flags": [
+      "batch:string",
+    ],
+    "id": "sms campaign message",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "batch:string",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "sms campaign messages",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [
@@ -1235,6 +2386,153 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "sms disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "sms disable-dependencies",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "sms enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "sms integration",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "sms integration confirm-delivery",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "sms integration default",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "sms integration delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "sms integration disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "sms integration enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "provider:option",
+      "name:string",
+      "id:string",
+      "disabled:boolean",
+      "config:string",
+    ],
+    "id": "sms integration save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+      "to:string",
+    ],
+    "id": "sms integration test",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "sms integrations",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[hash]",
+    ],
+    "destructive": false,
+    "flags": [
+      "hash:string",
+    ],
+    "id": "sms preview",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "id:string",
+    ],
+    "id": "sms settings",
+    "supportsDryRun": false,
+  },
+  {
     "args": [
       "id",
     ],
@@ -1254,6 +2552,62 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [],
     "id": "sms template",
     "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "description:string",
+      "channel:option",
+      "tag:string",
+      "language:string",
+      "subject:string",
+      "body:string",
+      "translations:string",
+    ],
+    "id": "sms template create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "code:string",
+      "token:string",
+      "preview:boolean",
+    ],
+    "id": "sms template render",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "sms template tokens",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "description:string",
+      "channel:option",
+      "tag:string",
+      "language:string",
+      "subject:string",
+      "body:string",
+      "translations:string",
+    ],
+    "id": "sms template update",
+    "supportsDryRun": true,
   },
   {
     "args": [],

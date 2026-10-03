@@ -13,8 +13,8 @@ The signed link is the key: no login and no project are needed. When you are
 logged in, your session is still sent.`
 
   static examples = [
-    '<%= config.bin %> sms preview 8f2a91c4...',
-    '<%= config.bin %> sms preview --hash 8f2a91c4... --region nb-eu-germany',
+    '<%= config.bin %> sms preview 8f2a91c4d7e6b5a4c3d2e1f0',
+    '<%= config.bin %> sms preview --hash 8f2a91c4d7e6b5a4c3d2e1f0 --region nb-eu-germany',
   ]
 
   static args = {

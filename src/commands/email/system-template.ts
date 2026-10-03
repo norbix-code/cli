@@ -5,7 +5,7 @@ import {BaseCommand} from '../../base.js'
 export default class EmailSystemTemplate extends BaseCommand {
   static description = 'Show one ready-made (system) email template'
 
-  static examples = ['<%= config.bin %> email system-template 66b2f0a1...']
+  static examples = ['<%= config.bin %> email system-template 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static args = {
     id: Args.string({required: true, description: 'System template ID'}),

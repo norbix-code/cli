@@ -6,7 +6,14 @@ export default class ProjectAdminPortalEnable extends ProjectCommand {
 The admin portal is the end-user site Norbix generates for the project. See its
 address with \`project\` (effectiveAdminUrl).`
 
-  static examples = ['<%= config.bin %> project admin-portal enable']
+  static examples = [
+    '<%= config.bin %> project admin-portal enable',
+    '<%= config.bin %> project admin-portal enable --dry-run',
+  ]
+
+  static flags = {
+    ...ProjectCommand.dryRunFlags,
+  }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(ProjectAdminPortalEnable)

@@ -5,10 +5,17 @@ import {ProjectCommand} from '../../lib/project.js'
 export default class ProjectSetDefaultLanguage extends ProjectCommand {
   static description = 'Set the project default language (one of its languages)'
 
-  static examples = ['<%= config.bin %> project set-default-language en']
+  static examples = [
+    '<%= config.bin %> project set-default-language en',
+    '<%= config.bin %> project set-default-language en --dry-run',
+  ]
 
   static args = {
     language: Args.string({required: true, description: 'Language code'}),
+  }
+
+  static flags = {
+    ...ProjectCommand.dryRunFlags,
   }
 
   async run(): Promise<unknown> {

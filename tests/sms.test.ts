@@ -161,7 +161,7 @@ describe('sms integrations', () => {
 describe('sms integration state changes', () => {
   const cases = [
     {command: SmsIntegrationEnable, method: 'enableSmsIntegration', argv: [ID], output: `Integration ${ID} enabled.`},
-    {command: SmsIntegrationDisable, method: 'disableSmsIntegration', argv: [ID], output: `Integration ${ID} disabled.`},
+    {command: SmsIntegrationDisable, method: 'disableSmsIntegration', argv: [ID, '--yes'], output: `Integration ${ID} disabled.`},
     {command: SmsIntegrationDefault, method: 'setSmsIntegrationAsDefault', argv: [ID], output: `Integration ${ID} is now the default.`},
     {command: SmsIntegrationDelete, method: 'deleteSmsIntegration', argv: [ID, '--yes'], output: `Integration ${ID} deleted.`},
   ]

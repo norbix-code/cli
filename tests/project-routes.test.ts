@@ -126,7 +126,7 @@ const routes: Array<[string[], Route[]]> = [
   [['project', 'cors'], [['GET', P]]],
   [['project', 'cors', 'set', 'https://a.example.com'], [['PATCH', `${S}/origins`]]],
   [['project', 'cors', 'add', 'https://b.example.com'], [['GET', P], ['PATCH', `${S}/origins`]]],
-  [['project', 'cors', 'remove', 'https://app.example.com'], [['GET', P], ['PATCH', `${S}/origins`]]],
+  [['project', 'cors', 'remove', 'https://app.example.com', '--yes'], [['GET', P], ['PATCH', `${S}/origins`]]],
 
   // Admin portal
   [['project', 'admin-portal', 'enable'], [['PUT', `${P}/admin-portal/enabled`]]],
@@ -156,7 +156,7 @@ const routes: Array<[string[], Route[]]> = [
   [['ai', 'llm', 'save', '--provider', 'OpenAI', '--name', 'OpenAI'], [['POST', `${LLM}/`]]],
   [['ai', 'llm', 'test', ID], [['POST', `${LLM}/test`]]],
   [['ai', 'llm', 'enable', ID], [['PUT', `${LLM}/${ID}/enable`]]],
-  [['ai', 'llm', 'disable', ID], [['PUT', `${LLM}/${ID}/disable`]]],
+  [['ai', 'llm', 'disable', ID, '--yes'], [['PUT', `${LLM}/${ID}/disable`]]],
   [['ai', 'llm', 'default', ID], [['PUT', `${LLM}/${ID}/default`]]],
   [['ai', 'llm', 'delete', ID, '--yes'], [['DELETE', `${LLM}/${ID}`]]],
 
@@ -166,7 +166,7 @@ const routes: Array<[string[], Route[]]> = [
   [['ai', 'mcp', 'save', '--provider', 'GitHub', '--name', 'GitHub'], [['POST', `${MCP}/`]]],
   [['ai', 'mcp', 'test', ID], [['POST', `${MCP}/test`]]],
   [['ai', 'mcp', 'enable', ID], [['PUT', `${MCP}/${ID}/enable`]]],
-  [['ai', 'mcp', 'disable', ID], [['PUT', `${MCP}/${ID}/disable`]]],
+  [['ai', 'mcp', 'disable', ID, '--yes'], [['PUT', `${MCP}/${ID}/disable`]]],
   [['ai', 'mcp', 'delete', ID, '--yes'], [['DELETE', `${MCP}/${ID}`]]],
 
   // AI service users (account-level)
@@ -250,7 +250,7 @@ describe('project settings bodies', () => {
 
   it('delete refuses without --yes when there is no terminal', async () => {
     const {error} = await runCommand(['project', 'delete', ...globalArgs])
-    expect(error?.message).toMatch(/pass --yes/)
+    expect((error as {code?: string} | undefined)?.code).toBe('CONFIRMATION_REQUIRED')
     expect(calls).toHaveLength(0)
   })
 })
@@ -279,7 +279,7 @@ describe('project cors bodies', () => {
   })
 
   it('remove keeps the rest', async () => {
-    expect(await bodyOf(['project', 'cors', 'remove', 'https://app.example.com'])).toEqual({
+    expect(await bodyOf(['project', 'cors', 'remove', 'https://app.example.com', '--yes'])).toEqual({
       origins: ['https://pr_test-project.admin.norbix.ai'],
     })
   })

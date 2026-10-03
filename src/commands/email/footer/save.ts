@@ -10,10 +10,14 @@ to update; the whole footer is sent, so include every language you want to keep.
 
   static examples = [
     '<%= config.bin %> email footer save --name Default --content-file footer.html',
-    '<%= config.bin %> email footer save --id 66b2f0a1... --name Default --translations @footer.json',
+    '<%= config.bin %> email footer save --id 66b2f0a1c3d4e5f6a7b8c9d0 --name Default --translations @footer.json',
+    '<%= config.bin %> email footer save --name Default --content-file footer.html --dry-run',
   ]
 
-  static flags = snippetFlags('Footer')
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+    ...snippetFlags('Footer'),
+  }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(EmailFooterSave)

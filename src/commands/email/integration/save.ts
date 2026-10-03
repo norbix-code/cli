@@ -19,9 +19,11 @@ Pass --id to update an existing integration.`
   static examples = [
     '<%= config.bin %> email integration save --provider Fake',
     '<%= config.bin %> email integration save --provider SendGrid --name SendGrid --from hello@example.com --config @sendgrid.json',
+    '<%= config.bin %> email integration save --provider Fake --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     provider: Flags.string({required: true, description: 'Email provider', options: PROVIDERS}),
     name: Flags.string({description: 'Integration name (Fake ignores it and uses its own)'}),
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),

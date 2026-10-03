@@ -17,9 +17,11 @@ update an existing integration.`
   static examples = [
     '<%= config.bin %> ai llm save --provider OpenAI --name OpenAI --model gpt-4o-mini --config @openai.json',
     '<%= config.bin %> ai llm save --provider Ollama --name Local --endpoint http://localhost:11434 --model llama3',
+    '<%= config.bin %> ai llm save --provider OpenAI --name OpenAI --model gpt-4o-mini --config @openai.json --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     provider: Flags.string({required: true, description: 'LLM provider', options: PROVIDERS}),
     name: Flags.string({required: true, description: 'Integration name'}),
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),

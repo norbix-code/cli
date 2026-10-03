@@ -10,10 +10,14 @@ to update; the whole signature is sent, so include every language you want to ke
 
   static examples = [
     '<%= config.bin %> email signature save --name Default --content-file signature.html',
-    '<%= config.bin %> email signature save --id 66b2f0a1... --name Default --translations @signature.json',
+    '<%= config.bin %> email signature save --id 66b2f0a1c3d4e5f6a7b8c9d0 --name Default --translations @signature.json',
+    '<%= config.bin %> email signature save --name Default --content-file signature.html --dry-run',
   ]
 
-  static flags = snippetFlags('Signature')
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+    ...snippetFlags('Signature'),
+  }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(EmailSignatureSave)

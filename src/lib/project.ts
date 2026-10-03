@@ -1,6 +1,5 @@
 import {readFileSync} from 'node:fs'
 
-import {confirm} from '@inquirer/prompts'
 import type {Norbix} from '@norbix.ai/ts'
 
 import {BaseCommand, type GlobalFlags} from '../base.js'
@@ -14,27 +13,20 @@ import {BaseCommand, type GlobalFlags} from '../base.js'
  * context (`--project`, NORBIX_PROJECT_ID, profile or login session).
  */
 export abstract class ProjectCommand extends BaseCommand {
-  protected projectClient(flags: GlobalFlags, projectId?: string): {client: Norbix; projectId: string} {
+  /**
+   * `reader` is for the read that comes before a write (current origins,
+   * current settings). A dry run stops every request, so the read goes out
+   * live — it changes nothing — and only the write is stopped and printed.
+   */
+  protected projectClient(
+    flags: GlobalFlags,
+    projectId?: string,
+  ): {client: Norbix; reader: Norbix; projectId: string} {
     const client = this.client(flags)
+    const reader = flags['dry-run'] ? this.client({...flags, 'dry-run': false}) : client
     const id = projectId ?? this.resolveContext(flags).projectId
     if (!id) this.error('No project ID configured.\nRun `norbix configure` (or `norbix login`), or pass --project.')
-    return {client, projectId: id}
-  }
-
-  /**
-   * Ask before a change that is hard to undo. `--yes` skips the question. With
-   * no terminal to ask in (a script, a pipe) the command refuses instead of
-   * going ahead — a script must say `--yes` on purpose.
-   */
-  protected async confirmOrStop(yes: boolean, message: string): Promise<boolean> {
-    if (yes) return true
-    if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      this.error(`${message}\nNo terminal to confirm in — pass --yes to go ahead.`)
-    }
-
-    const ok = await confirm({message, default: false})
-    if (!ok) this.print('Cancelled.')
-    return ok
+    return {client, reader, projectId: id}
   }
 }
 

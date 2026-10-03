@@ -7,7 +7,7 @@ export default class EmailIntegrationDomainHealth extends BaseCommand {
 
 Read only — nothing is sent.`
 
-  static examples = ['<%= config.bin %> email integration domain-health 66b2f0a1...']
+  static examples = ['<%= config.bin %> email integration domain-health 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static args = {
     id: Args.string({required: true, description: 'Integration ID'}),

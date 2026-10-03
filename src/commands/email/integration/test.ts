@@ -9,9 +9,13 @@ Point this at the Fake integration while you are developing — it accepts the
 send and contacts no mail service, so nothing reaches a real inbox. With a real
 provider, run \`email integration confirm-delivery\` once the e-mail arrived.`
 
-  static examples = ['<%= config.bin %> email integration test --integration 66b2f0a1... --to dev@example.com']
+  static examples = [
+    '<%= config.bin %> email integration test --integration 66b2f0a1c3d4e5f6a7b8c9d0 --to dev@example.com',
+    '<%= config.bin %> email integration test --integration 66b2f0a1c3d4e5f6a7b8c9d0 --to dev@example.com --dry-run',
+  ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     integration: Flags.string({required: true, description: 'Integration ID to send through'}),
     to: Flags.string({required: true, description: 'E-mail address to send the test to'}),
   }
