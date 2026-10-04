@@ -64,8 +64,11 @@ const MODULE_VERB = major > 4 || (major === 4 && minor >= 6) ? 'PUT' : 'GET'
 /** A cron as one argv item: @oclif/test's runCommand splits on spaces outside quotes. */
 const CRON = '"0 9 * * 1"'
 
+/** The email provider — every campaign names one; the server never falls back (CM-ERRORS-INTEGRATIONS-003). */
+const INTEGRATION = 'int_1'
+
 /** The flags every `scheduler save` needs. */
-const SAVE = ['--name', 'Weekly', '--cron', CRON, '--initiator', INITIATOR, '--template', TEMPLATE, '--audience', 'all-users', '--yes']
+const SAVE = ['--name', 'Weekly', '--cron', CRON, '--initiator', INITIATOR, '--template', TEMPLATE, '--integration', INTEGRATION, '--audience', 'all-users', '--yes']
 
 /** [argv, verb, path] — argv without the leading `norbix`. */
 const routes: Array<[string[], string, string]> = [
@@ -160,7 +163,7 @@ describe('scheduler save', () => {
       stopOnError: false,
       task: {
         type: 'EmailCampaign',
-        campaign: {source: 'AllUsers', templateId: TEMPLATE},
+        campaign: {source: 'AllUsers', templateId: TEMPLATE, integrationId: INTEGRATION},
       },
     })
   })
@@ -171,7 +174,7 @@ describe('scheduler save', () => {
       '--initiator', INITIATOR, '--no-enabled', '--stop-on-error', '--template', TEMPLATE,
       '--audience', 'emails', '--email', 'ada@example.com', '--email', 'bob@example.com', '--cc', 'cc@example.com',
       '--one-each', '--integration', 'int_1', '--validation-integration', 'val_1', '--language', 'de',
-      '--notes', 'n', '--token', 'Name=Ada', '--database-integration', 'db_1',
+      '--on-behalf-of', 'usr_7', '--notes', 'n', '--token', 'Name=Ada', '--database-integration', 'db_1',
       '--config', '{"templateId":"ignored","recipientsBcc":["x@example.com"]}', '--yes',
     ])
     expect(call.method).toBe('POST')
@@ -193,6 +196,7 @@ describe('scheduler save', () => {
           integrationId: 'int_1',
           validationIntegrationId: 'val_1',
           language: 'de',
+          initiatorId: 'usr_7',
           notes: 'n',
           mappedTokens: [{key: 'Name', value: 'Ada', resolver: 'Custom'}],
           recipients: ['ada@example.com', 'bob@example.com'],
@@ -211,6 +215,7 @@ describe('scheduler save', () => {
     expect((call.body?.task as {campaign: unknown}).campaign).toEqual({
       source: 'AllUsers',
       templateId: TEMPLATE,
+      integrationId: INTEGRATION,
       rolesNames: ['Admin'],
       userTags: ['beta'],
     })
@@ -246,9 +251,21 @@ describe('scheduler save', () => {
     expect(calls).toHaveLength(0)
   })
 
-  it('requires --name, --cron, --initiator, --template and --audience', async () => {
+  it('refuses a missing --integration before any request (the task sends an email campaign)', async () => {
+    const argv = SAVE.filter((a) => a !== '--integration' && a !== INTEGRATION)
+    const {error} = await runCommand(['scheduler', 'save', ...argv, ...globalArgs])
+    expect(error?.message).toMatch(/Missing required flag integration/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('--on-behalf-of wins over an initiatorId in --config', async () => {
+    const call = await callOf(['scheduler', 'save', ...SAVE, '--on-behalf-of', 'usr_7', '--config', '{"initiatorId":"usr_9"}'])
+    expect((call.body?.task as {campaign: Record<string, unknown>}).campaign.initiatorId).toBe('usr_7')
+  })
+
+  it('requires --name, --cron, --initiator, --template, --integration and --audience', async () => {
     const {error} = await runCommand(['scheduler', 'save', '--yes', ...globalArgs])
-    for (const flag of ['name', 'cron', 'initiator', 'template', 'audience']) {
+    for (const flag of ['name', 'cron', 'initiator', 'template', 'integration', 'audience']) {
       expect(error?.message).toContain(`Missing required flag ${flag}`)
     }
 

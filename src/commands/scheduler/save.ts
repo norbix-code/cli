@@ -21,15 +21,17 @@ The only task type today is an email campaign: each time --cron fires, the task 
 
 --initiator is the user the task runs as (usr_…): yourself, or a service user of this project. It must belong to this project.
 
+--integration is required: name the email provider every run sends through (list them with \`norbix email integrations\`). The server never falls back to the project default; a task without one would fail each time it fires. --language forces one language; it must be one of the project's languages (Project settings), and the template must have a translation for every project language. --on-behalf-of sends each run on behalf of another project user (their details fill the Initiator.User.* tokens; default: the --initiator).
+
 ${EMAIL_AUDIENCE_HELP}
 
 Anything the flags do not cover goes in --config as a JSON object and is merged into the campaign. Prints the task ID.`
 
   static examples = [
-    '<%= config.bin %> scheduler save --name "Weekly digest" --cron "0 9 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience all-users --yes',
-    '<%= config.bin %> scheduler save --name "Beta news" --cron "30 7 1 * *" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience all-users --tag beta --no-enabled --yes',
-    '<%= config.bin %> scheduler save --id 66b2f0a1c3d4e5f6a7b8c9d0 --name "Weekly digest" --cron "0 10 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience emails --email ada@example.com --yes',
-    '<%= config.bin %> scheduler save --name "Weekly digest" --cron "0 9 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --audience all-users --dry-run',
+    '<%= config.bin %> scheduler save --name "Weekly digest" --cron "0 9 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --yes',
+    '<%= config.bin %> scheduler save --name "Beta news" --cron "30 7 1 * *" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --tag beta --no-enabled --yes',
+    '<%= config.bin %> scheduler save --id 66b2f0a1c3d4e5f6a7b8c9d0 --name "Weekly digest" --cron "0 10 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience emails --email ada@example.com --yes',
+    '<%= config.bin %> scheduler save --name "Weekly digest" --cron "0 9 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --dry-run',
   ]
 
   static flags = {
@@ -50,9 +52,17 @@ Anything the flags do not cover goes in --config as a JSON object and is merged 
     'stop-on-error': Flags.boolean({description: 'Switch the task off after a run fails', default: false}),
     template: Flags.string({required: true, description: 'Email template ID'}),
     ...emailAudienceFlags,
-    integration: Flags.string({description: 'Email integration ID (defaults to the project default)'}),
+    integration: Flags.string({
+      required: true,
+      description: 'Email integration ID every run sends through; list them with `norbix email integrations`',
+    }),
     'validation-integration': Flags.string({description: 'Email-validation integration ID — check every address first'}),
-    language: Flags.string({description: 'Template language to send'}),
+    language: Flags.string({
+      description: "Send every message in this language. Must be one of the project's languages (Project settings); default: each recipient's own language, else the project default",
+    }),
+    'on-behalf-of': Flags.string({
+      description: 'Send on behalf of this project user ID — their details fill the Initiator.User.* tokens (default: the --initiator)',
+    }),
     notes: Flags.string({description: 'Internal notes'}),
     token: Flags.string({description: 'Token value as key=value (repeat for several)', multiple: true}),
     'database-integration': Flags.string({description: 'Database integration ID (defaults to the project default)'}),
@@ -76,6 +86,7 @@ Anything the flags do not cover goes in --config as a JSON object and is merged 
       integrationId: flags.integration,
       validationIntegrationId: flags['validation-integration'],
       language: flags.language,
+      initiatorId: flags['on-behalf-of'],
       notes: flags.notes,
       mappedTokens: parseTokens(flags.token),
       ...emailAudienceFields(flags, (message) => this.error(message)),
