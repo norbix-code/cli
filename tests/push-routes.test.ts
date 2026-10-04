@@ -17,6 +17,8 @@ import {afterEach, beforeEach, describe, expect, it} from 'vitest'
  */
 
 const ID = '66b2f0a1'
+/** Every campaign create names its provider — the server never falls back (CM-ERRORS-INTEGRATIONS-003). */
+const INT = 'int_1'
 const BATCH = 'b7c3'
 const MESSAGE = 'n9d4'
 
@@ -96,7 +98,7 @@ const routes: Array<[string[], string, string]> = [
   [['campaign', ID, '--stats'], 'GET', `${P}/campaigns/${ID}/stats`],
   [['preview', '8f2a91c4'], 'GET', `${P}/preview`],
   [['stop', ID, '--yes'], 'POST', `${P}/campaigns/${ID}/stop`],
-  [['campaign', 'create', '--template', ID, '--audience', 'all-users'], 'POST', `${P}/campaigns`],
+  [['campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'all-users'], 'POST', `${P}/campaigns`],
   [['campaign', 'delete', ID, '--yes'], 'DELETE', `${P}/campaigns/${ID}`],
   [['campaign', 'batches', ID], 'GET', `${P}/campaigns/${ID}/batches`],
   [['campaign', 'batch', ID, BATCH], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}`],
@@ -243,24 +245,29 @@ describe('push campaign create — the five audiences', () => {
 
   for (const [audience, extra, expected] of cases) {
     it(`--audience ${audience}`, async () => {
-      const body = await bodyOf(['campaign', 'create', '--template', ID, '--audience', audience, ...extra])
-      expect(body.campaign).toEqual({templateId: ID, ...expected})
+      const body = await bodyOf(['campaign', 'create', '--template', ID, '--integration', INT, '--audience', audience, ...extra])
+      expect(body.campaign).toEqual({templateId: ID, integrationId: INT, ...expected})
     })
   }
 
   it('passes schedule, tokens and the rest of the options', async () => {
     const body = await bodyOf([
-      'campaign', 'create', '--template', ID, '--audience', 'all-users', '--integration', 'int_1',
-      '--language', 'lt', '--notes', 'n', '--at', '2026-09-20T12:00:00Z', '--token', 'Code=42',
-      '--database-integration', 'db_1',
+      'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'all-users', '--language', 'lt', '--notes', 'n', '--at', '2026-09-20T12:00:00Z', '--token', 'Code=42',
+      '--initiator', 'usr_7', '--database-integration', 'db_1',
     ])
     expect(body).toEqual({
       campaign: {
-        source: 'allUsers', templateId: ID, integrationId: 'int_1', language: 'lt', notes: 'n',
+        source: 'allUsers', templateId: ID, integrationId: INT, language: 'lt', initiatorId: 'usr_7', notes: 'n',
         campaignTime: 1789905600, mappedTokens: [{key: 'Code', value: '42', resolver: 'Custom'}],
       },
       databaseIntegrationId: 'db_1',
     })
+  })
+
+  it('refuses a missing --integration before any request (the server never picks the default)', async () => {
+    const {error} = await runCommand(['push', 'campaign', 'create', '--template', ID, '--audience', 'all-users', ...globalArgs])
+    expect(error?.message).toMatch(/Missing required flag integration/)
+    expect(calls).toHaveLength(0)
   })
 
   const missing: Array<[string, string[], RegExp]> = [
@@ -271,7 +278,7 @@ describe('push campaign create — the five audiences', () => {
   ]
   for (const [audience, extra, message] of missing) {
     it(`--audience ${audience} ${extra.join(' ')} fails before sending`, async () => {
-      const {error} = await runCommand(['push', 'campaign', 'create', '--template', ID, '--audience', audience, ...extra, ...globalArgs])
+      const {error} = await runCommand(['push', 'campaign', 'create', '--template', ID, '--integration', INT, '--audience', audience, ...extra, ...globalArgs])
       expect(error?.message).toMatch(message)
       expect(calls).toHaveLength(0)
     })

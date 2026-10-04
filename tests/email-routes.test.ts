@@ -13,6 +13,8 @@ import {afterEach, beforeEach, describe, expect, it} from 'vitest'
  */
 
 const ID = '66b2f0a1'
+/** Every campaign create names its provider — the server never falls back (CM-ERRORS-INTEGRATIONS-003). */
+const INT = 'int_1'
 const BATCH = 'b7c3'
 const MESSAGE = 'n9d4'
 const TO = 'dev@example.com'
@@ -103,7 +105,7 @@ const routes: Array<[string[], string, string]> = [
   [['campaigns'], 'GET', `${P}/campaigns`],
   [['campaign', ID], 'GET', `${P}/campaigns/${ID}`],
   [['campaign', ID, '--stats'], 'GET', `${P}/campaigns/${ID}/stats`],
-  [['campaign', 'create', '--template', ID, '--audience', 'all-users'], 'POST', `${P}/campaigns`],
+  [['campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'all-users'], 'POST', `${P}/campaigns`],
   [['campaign', 'delete', ID, '--yes'], 'DELETE', `${P}/campaigns/${ID}`],
   [['stop', ID, '--yes'], 'POST', `${P}/campaigns/${ID}/stop`],
   [['campaign', 'batches', ID], 'GET', `${P}/campaigns/${ID}/batches`],
@@ -299,15 +301,15 @@ describe('email campaign create — the five audiences', () => {
 
   for (const [audience, extra, fields] of cases) {
     it(`--audience ${audience} → source ${fields.source as string}`, async () => {
-      const body = await bodyOf(['campaign', 'create', '--template', ID, '--audience', audience, ...extra])
-      expect(body).toEqual({campaign: {templateId: ID, ...fields}})
+      const body = await bodyOf(['campaign', 'create', '--template', ID, '--integration', INT, '--audience', audience, ...extra])
+      expect(body).toEqual({campaign: {templateId: ID, integrationId: INT, ...fields}})
     })
   }
 
   it('passes schedule, tokens, language, notes, both integrations and the database integration', async () => {
     const body = await bodyOf([
-      'campaign', 'create', '--template', ID, '--audience', 'all-users', '--language', 'lt', '--notes', 'launch',
-      '--at', '2026-09-20T12:00:00Z', '--token', 'Code=42', '--integration', 'int_1',
+      'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'all-users', '--language', 'lt', '--notes', 'launch',
+      '--at', '2026-09-20T12:00:00Z', '--token', 'Code=42', '--initiator', 'usr_7',
       '--validation-integration', 'val_1', '--database-integration', 'db_1',
     ])
     expect(body).toEqual({
@@ -318,6 +320,7 @@ describe('email campaign create — the five audiences', () => {
         integrationId: 'int_1',
         validationIntegrationId: 'val_1',
         language: 'lt',
+        initiatorId: 'usr_7',
         notes: 'launch',
         campaignTime: 1789905600,
         mappedTokens: [{key: 'Code', value: '42', resolver: 'Custom'}],
@@ -327,16 +330,31 @@ describe('email campaign create — the five audiences', () => {
 
   it('merges --config into the campaign and keeps the flags on top', async () => {
     const body = await bodyOf([
-      'campaign', 'create', '--template', ID, '--audience', 'emails', '--email', 'ada@example.com',
+      'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'emails', '--email', 'ada@example.com',
       '--config', '{"recipients":["ignored"],"initiatorId":"usr_9"}',
     ])
     expect(body.campaign).toEqual({
       source: 'Email',
       templateId: ID,
+      integrationId: INT,
       initiatorId: 'usr_9',
       recipients: ['ada@example.com'],
       singleEmailStrategy: false,
     })
+  })
+
+  it('refuses a missing --integration before any request (the server never picks the default)', async () => {
+    const {error} = await runCommand(['email', 'campaign', 'create', '--template', ID, '--audience', 'all-users', ...globalArgs])
+    expect(error?.message).toMatch(/Missing required flag integration/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('--initiator wins over an initiatorId in --config', async () => {
+    const body = await bodyOf([
+      'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'all-users',
+      '--initiator', 'usr_7', '--config', '{"initiatorId":"usr_9"}',
+    ])
+    expect((body.campaign as Record<string, unknown>).initiatorId).toBe('usr_7')
   })
 
   const missing: Array<[string, string[], RegExp]> = [
@@ -347,7 +365,7 @@ describe('email campaign create — the five audiences', () => {
   ]
   for (const [audience, extra, message] of missing) {
     it(`--audience ${audience} ${extra.join(' ')} fails before sending`, async () => {
-      const {error} = await runCommand(['email', 'campaign', 'create', '--template', ID, '--audience', audience, ...extra, ...globalArgs])
+      const {error} = await runCommand(['email', 'campaign', 'create', '--template', ID, '--integration', INT, '--audience', audience, ...extra, ...globalArgs])
       expect(error?.message).toMatch(message)
       expect(calls).toHaveLength(0)
     })

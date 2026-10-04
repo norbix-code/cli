@@ -14,6 +14,8 @@ import {afterEach, beforeEach, describe, expect, it} from 'vitest'
  */
 
 const ID = '66b2f0a1'
+/** Every campaign create names its provider — the server never falls back (CM-ERRORS-INTEGRATIONS-003). */
+const INT = 'int_1'
 const BATCH = 'b7c3'
 const MESSAGE = 'n9d4'
 const PHONE = '+37060000000'
@@ -88,7 +90,7 @@ const routes: Array<[string[], string, string]> = [
   [['campaign', ID, '--stats'], 'GET', `${P}/campaigns/${ID}/stats`],
   [['preview', '8f2a91c4'], 'GET', `${P}/preview`],
   [['stop', ID, '--yes'], 'POST', `${P}/campaigns/${ID}/stop`],
-  [['campaign', 'create', '--template', ID, '--audience', 'all-users'], 'POST', `${P}/campaigns`],
+  [['campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'all-users'], 'POST', `${P}/campaigns`],
   [['campaign', 'delete', ID, '--yes'], 'DELETE', `${P}/campaigns/${ID}`],
   [['campaign', 'batches', ID], 'GET', `${P}/campaigns/${ID}/batches`],
   [['campaign', 'batch', ID, BATCH], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}`],
@@ -233,21 +235,23 @@ describe('sms campaign create — the four audiences', () => {
 
   for (const [audience, extra, block, settings] of cases) {
     it(`--audience ${audience} → deliveryType ${settings.recipientsSourceType as string} + ${block} block`, async () => {
-      const body = await bodyOf(['campaign', 'create', '--template', ID, '--audience', audience, ...extra])
-      expect(body).toEqual({templateId: ID, deliveryType: settings.recipientsSourceType, [block]: settings})
+      const body = await bodyOf(['campaign', 'create', '--template', ID, '--integration', INT, '--audience', audience, ...extra])
+      expect(body).toEqual({templateId: ID, integrationId: INT, deliveryType: settings.recipientsSourceType, [block]: settings})
     })
   }
 
   it('passes schedule, time-zone rule, tokens, language and the database integration', async () => {
     const body = await bodyOf([
-      'campaign', 'create', '--template', ID, '--audience', 'all-users', '--language', 'lt',
+      'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'all-users', '--language', 'lt',
       '--at', '2026-09-20T12:00:00Z', '--respect-time-zone', 'registration', '--token', 'Code=42',
-      '--database-integration', 'db_1',
+      '--initiator', 'usr_7', '--database-integration', 'db_1',
     ])
     expect(body).toEqual({
       templateId: ID,
       databaseIntegrationId: 'db_1',
+      integrationId: INT,
       language: 'lt',
+      initiatorId: 'usr_7',
       deliveryType: 'AllUsers',
       allUsers: {
         recipientsSourceType: 'AllUsers',
@@ -259,16 +263,22 @@ describe('sms campaign create — the four audiences', () => {
   })
 
   it('takes Unix seconds for --at as they are', async () => {
-    const body = await bodyOf(['campaign', 'create', '--template', ID, '--audience', 'phone-numbers', '--phone', PHONE, '--at', '1789905600'])
+    const body = await bodyOf(['campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'phone-numbers', '--phone', PHONE, '--at', '1789905600'])
     expect((body.phoneNumbers as Record<string, unknown>).campaignTime).toBe(1789905600)
   })
 
   it('merges --config into the settings block and keeps the flags on top', async () => {
     const body = await bodyOf([
-      'campaign', 'create', '--template', ID, '--audience', 'users', '--user', 'usr_1',
+      'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'users', '--user', 'usr_1',
       '--config', '{"recipients":["ignored"],"note":"x"}',
     ])
     expect(body.specifiedUsers).toEqual({recipientsSourceType: 'SpecifiedUsers', recipients: ['usr_1'], note: 'x'})
+  })
+
+  it('refuses a missing --integration before any request (the server never picks the default)', async () => {
+    const {error} = await runCommand(['sms', 'campaign', 'create', '--template', ID, '--audience', 'all-users', ...globalArgs])
+    expect(error?.message).toMatch(/Missing required flag integration/)
+    expect(calls).toHaveLength(0)
   })
 
   const missing: Array<[string, string[], RegExp]> = [
@@ -278,7 +288,7 @@ describe('sms campaign create — the four audiences', () => {
   ]
   for (const [audience, extra, message] of missing) {
     it(`--audience ${audience} ${extra.join(' ')} fails before sending`, async () => {
-      const {error} = await runCommand(['sms', 'campaign', 'create', '--template', ID, '--audience', audience, ...extra, ...globalArgs])
+      const {error} = await runCommand(['sms', 'campaign', 'create', '--template', ID, '--integration', INT, '--audience', audience, ...extra, ...globalArgs])
       expect(error?.message).toMatch(message)
       expect(calls).toHaveLength(0)
     })
@@ -288,7 +298,7 @@ describe('sms campaign create — the four audiences', () => {
     // The SmsCampaignRecipientsSourceTypes enum also lists AccountUsers, but
     // CreateSmsCampaignRequest has no `accountUsers` block, so the server would
     // answer IntegrationTypeNotSupportedError. The CLI does not offer it.
-    const {error} = await runCommand(['sms', 'campaign', 'create', '--template', ID, '--audience', 'account-users', ...globalArgs])
+    const {error} = await runCommand(['sms', 'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'account-users', ...globalArgs])
     expect(error?.message).toMatch(/Expected --audience=account-users to be one of/)
     expect(calls).toHaveLength(0)
   })
