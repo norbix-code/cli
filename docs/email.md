@@ -131,7 +131,7 @@ norbix email template tokens tpl_123
 | `norbix email campaigns [--page-size <n>] [--after <cursor>]` | list campaigns | `GET /campaigns` |
 | `norbix email campaign <id>` | show a campaign | `GET /campaigns/{id}` |
 | `norbix email campaign <id> --stats` | show its delivery statistics instead | `GET /campaigns/{id}/stats` |
-| `norbix email campaign create --template <id> --audience <a> …` | create (and send or schedule) a campaign | `POST /campaigns` |
+| `norbix email campaign create --template <id> --integration <id> --audience <a> …` | create (and send or schedule) a campaign | `POST /campaigns` |
 | `norbix email campaign delete <id> [--yes]` | delete a campaign | `DELETE /campaigns/{Id}` |
 | `norbix email stop <id> [--yes]` | stop a running campaign | `POST /campaigns/{Id}/stop` |
 | `norbix email campaign batches <id> [--batch <b>] [--email <address>]` | list its send batches | `GET /campaigns/{id}/batches` |
@@ -152,16 +152,28 @@ norbix email template tokens tpl_123
 | `collection` | records of a collection whose field holds the recipient | `--schema`, `--field` (repeat), `--field-type User\|Email` (default `User`), `--role` |
 
 `--one-each` sends every recipient a separate e-mail; without it the recipients
-share one e-mail. Other `create` flags: `--integration` (default: the project
-default integration), `--validation-integration` (check every address first),
-`--language`, `--notes`, `--at` (send later — ISO 8601 date-time or Unix
+share one e-mail.
+
+**`--integration` is required** — it names the e-mail provider the campaign sends
+through (list them with `norbix email integrations`). The server never falls back
+to the project default and refuses a campaign without one
+(`CM-ERRORS-INTEGRATIONS-003`). Languages come from Project settings: the
+template must have a translation for every project language
+(`CM-ERRORS-LANGUAGES-004`), and `--language` (send everything in one language)
+must be one of the project's languages (`CM-ERRORS-LANGUAGES-003`). Without
+`--language` each recipient gets their own language, else the project default.
+`--initiator <userId>` sends on behalf of another project user — their details
+fill the `Initiator.User.*` tokens (default: you).
+
+Other `create` flags: `--validation-integration` (check every address first),
+`--language`, `--initiator`, `--notes`, `--at` (send later — ISO 8601 date-time or Unix
 seconds; without it the campaign is sent right away), `--token key=value`
 (repeat), `--database-integration`, and `--config` for any other campaign field
 as a JSON object.
 
 ```bash
-norbix email campaign create --template tpl_123 --audience all-users --tag beta
-norbix email campaign create --template tpl_123 --audience emails --email ada@example.com --at 2026-10-01T09:00:00Z
+norbix email campaign create --template tpl_123 --integration int_123 --audience all-users --tag beta
+norbix email campaign create --template tpl_123 --integration int_123 --audience emails --email ada@example.com --at 2026-10-01T09:00:00Z
 norbix email campaign batches cmp_123
 norbix email campaign batch cmp_123 bat_456 ntf_789
 norbix email preview --notification ntf_789

@@ -112,7 +112,7 @@ norbix push template render --code "Hi @Model.Name" --token Name=Ada
 | `norbix push campaigns [--page-size <n>] [--after <cursor>]` | list campaigns | `GET /campaigns` |
 | `norbix push campaign <id>` | show a campaign | `GET /campaigns/{id}` |
 | `norbix push campaign <id> --stats` | show its delivery statistics instead | `GET /campaigns/{id}/stats` |
-| `norbix push campaign create --template <id> --audience <a> …` | create (and send or schedule) a campaign | `POST /campaigns` |
+| `norbix push campaign create --template <id> --integration <id> --audience <a> …` | create (and send or schedule) a campaign | `POST /campaigns` |
 | `norbix push campaign delete <id> [--yes]` | delete a campaign | `DELETE /campaigns/{Id}` |
 | `norbix push stop <id> [--yes]` | stop a running campaign | `POST /campaigns/{Id}/stop` |
 | `norbix push campaign batches <id>` | list its send batches | `GET /campaigns/{id}/batches` |
@@ -132,15 +132,25 @@ norbix push template render --code "Hi @Model.Name" --token Name=Ada
 | `collection` | users referenced by a field in a collection | `--schema`, `--field` (repeat), `--field-type User\|Email`, `--role` |
 | `devices` | raw device tokens | `--device <token>:<family>` (repeat; family is `Ios`, `Android`, `Chrome`, `Safari` or `Expo`) |
 
-Other `create` flags: `--integration` (default: the project default
-integration), `--language`, `--notes`, `--at` (send later — ISO 8601 date-time
+**`--integration` is required** — it names the push provider the campaign sends
+through (list them with `norbix push integrations`). The server never falls back
+to the project default and refuses a campaign without one
+(`CM-ERRORS-INTEGRATIONS-003`). Languages come from Project settings: the
+template must have a translation for every project language
+(`CM-ERRORS-LANGUAGES-004`), and `--language` (send everything in one language)
+must be one of the project's languages (`CM-ERRORS-LANGUAGES-003`). Without
+`--language` each recipient gets their own language, else the project default.
+`--initiator <userId>` sends on behalf of another project user — their details
+fill the `Initiator.User.*` tokens (default: you).
+
+Other `create` flags: `--language`, `--initiator`, `--notes`, `--at` (send later — ISO 8601 date-time
 or Unix seconds; without it the campaign is sent right away), `--token
 key=value` (repeat), `--database-integration`, and `--config` for any other
 campaign field as a JSON object.
 
 ```bash
-norbix push campaign create --template tpl_123 --audience all-users --tag beta
-norbix push campaign create --template tpl_123 --audience devices --device dGVzdA==:Ios --at 2026-10-01T09:00:00Z
+norbix push campaign create --template tpl_123 --integration int_123 --audience all-users --tag beta
+norbix push campaign create --template tpl_123 --integration int_123 --audience devices --device dGVzdA==:Ios --at 2026-10-01T09:00:00Z
 norbix push campaign batches cmp_123
 ```
 
