@@ -17,9 +17,11 @@ JSON, @file.json, or - for stdin). Pass --id to update an existing integration.`
   static examples = [
     '<%= config.bin %> push integration save --provider Fake',
     '<%= config.bin %> push integration save --provider AndroidFirebase --name Android --config @firebase.json',
+    '<%= config.bin %> push integration save --provider Fake --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     provider: Flags.string({required: true, description: 'Push provider', options: PROVIDERS}),
     name: Flags.string({description: 'Integration name (Fake ignores it and uses its own)'}),
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),

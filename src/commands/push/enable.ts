@@ -3,7 +3,14 @@ import {BaseCommand} from '../../base.js'
 export default class PushEnable extends BaseCommand {
   static description = 'Turn on the push module for the project'
 
-  static examples = ['<%= config.bin %> push enable']
+  static examples = [
+    '<%= config.bin %> push enable',
+    '<%= config.bin %> push enable --dry-run',
+  ]
+
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+  }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(PushEnable)

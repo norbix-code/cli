@@ -2,7 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 import {integrationFlag, resolveIntegration} from '../../lib/files.js'
-import {callPublicFiles} from '../../lib/publicFiles.js'
+import {callPublicFiles, publicFilesRequest} from '../../lib/publicFiles.js'
 
 export default class FilesUnpublish extends BaseCommand {
   static args = {
@@ -14,9 +14,11 @@ export default class FilesUnpublish extends BaseCommand {
   static examples = [
     '<%= config.bin %> files unpublish invoices/2026/invoice.pdf',
     '<%= config.bin %> files unpublish invoices --folder',
+    '<%= config.bin %> files unpublish invoices/2026/invoice.pdf --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     folder: Flags.boolean({
       description: 'Unpublish the whole folder prefix, and every link inside it',
     }),
@@ -33,11 +35,13 @@ export default class FilesUnpublish extends BaseCommand {
       this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
     }
 
-    await callPublicFiles(
-      ctx,
-      flags.folder ? 'makeFolderPrivate' : 'makeFilePrivate',
-      {filesIntegrationId: integration, path: args.remote},
-    )
+    const operation = flags.folder ? 'makeFolderPrivate' : 'makeFilePrivate'
+    const body = {filesIntegrationId: integration, path: args.remote}
+    if (flags['dry-run']) {
+      return this.dryRun({method: `hub.files.${operation}`, request: body, http: publicFilesRequest(ctx, operation, body)})
+    }
+
+    await callPublicFiles(ctx, operation, body)
 
     this.print(
       flags.folder

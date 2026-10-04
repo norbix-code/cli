@@ -8,12 +8,19 @@ export default class ProjectSetLanguages extends ProjectCommand {
 Pass the full list — it replaces the one stored. The default language must stay
 in it (\`project set-default-language\`).`
 
-  static examples = ['<%= config.bin %> project set-languages en lt de']
+  static examples = [
+    '<%= config.bin %> project set-languages en lt de',
+    '<%= config.bin %> project set-languages en lt de --dry-run',
+  ]
 
   static strict = false
 
   static args = {
     language: Args.string({required: true, description: 'Language codes (one or more)'}),
+  }
+
+  static flags = {
+    ...ProjectCommand.dryRunFlags,
   }
 
   async run(): Promise<unknown> {

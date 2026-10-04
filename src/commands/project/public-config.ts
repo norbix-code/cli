@@ -8,7 +8,7 @@ export default class ProjectPublicConfig extends ProjectCommand {
 This is what the admin portal and other apps read before anyone signs in (API
 host, public route).`
 
-  static examples = ['<%= config.bin %> project public-config', '<%= config.bin %> project public-config 66b2f0a1... --json']
+  static examples = ['<%= config.bin %> project public-config', '<%= config.bin %> project public-config 66b2f0a1c3d4e5f6a7b8c9d0 --json']
 
   static args = {
     id: Args.string({description: 'Project ID (defaults to the configured project)'}),

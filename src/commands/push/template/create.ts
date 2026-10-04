@@ -10,9 +10,13 @@ JSON array of {language, content: {title, body}}.`
   static examples = [
     '<%= config.bin %> push template create --name Welcome --title "Hi @Model.Name" --body "Thanks for joining"',
     '<%= config.bin %> push template create --name Welcome --translations @welcome.json',
+    '<%= config.bin %> push template create --name Welcome --title "Hi @Model.Name" --body "Thanks for joining" --dry-run',
   ]
 
-  static flags = templateFlags
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+    ...templateFlags,
+  }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(PushTemplateCreate)

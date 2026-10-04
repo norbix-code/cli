@@ -12,9 +12,11 @@ admin can change things. --env picks the environments (repeat the flag).`
   static examples = [
     '<%= config.bin %> ai service-user create --name "Claude Code on my laptop" --reach project --rights read --env TEST',
     '<%= config.bin %> ai service-user create --name ci-bot --reach account --rights admin --env TEST --env PROD',
+    '<%= config.bin %> ai service-user create --name "Claude Code on my laptop" --reach project --rights read --env TEST --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     name: Flags.string({required: true, description: 'A name people recognise'}),
     reach: Flags.string({description: 'Whole account, or one project', options: ['account', 'project'], default: 'project'}),
     rights: Flags.string({description: 'What it may do', options: ['read', 'admin'], default: 'read'}),

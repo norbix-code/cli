@@ -15,9 +15,9 @@ Two ways in:
 When you are logged in, your session is sent with a hash too.`
 
   static examples = [
-    '<%= config.bin %> email preview 8f2a91c4...',
-    '<%= config.bin %> email preview --hash 8f2a91c4... --region nb-eu-germany',
-    '<%= config.bin %> email preview --notification n9d4...',
+    '<%= config.bin %> email preview 8f2a91c4d7e6b5a4c3d2e1f0',
+    '<%= config.bin %> email preview --hash 8f2a91c4d7e6b5a4c3d2e1f0 --region nb-eu-germany',
+    '<%= config.bin %> email preview --notification 9d4e5f6a7b8c9d0e1f2a3b4c',
   ]
 
   static args = {

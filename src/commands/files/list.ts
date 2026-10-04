@@ -7,7 +7,7 @@ export default class FilesList extends BaseCommand {
   static description = 'List files in a folder of a files integration'
 
   static examples = [
-    '<%= config.bin %> files list --integration 66b2...',
+    '<%= config.bin %> files list --integration 66b2f0a1c3d4e5f6a7b8c9d0',
     '<%= config.bin %> files list invoices/2026',
   ]
 

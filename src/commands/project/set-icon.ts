@@ -14,9 +14,11 @@ Upload the image first with \`files upload\`, then point at it here.`
   static examples = [
     '<%= config.bin %> project set-icon --file-resource @icon-ref.json',
     '<%= config.bin %> project set-icon --clear',
+    '<%= config.bin %> project set-icon --file-resource @icon-ref.json --dry-run',
   ]
 
   static flags = {
+    ...ProjectCommand.dryRunFlags,
     'file-resource': Flags.string({description: 'The stored file as a JSON object, @file or -', exclusive: ['clear']}),
     clear: Flags.boolean({description: 'Remove the icon', default: false}),
   }

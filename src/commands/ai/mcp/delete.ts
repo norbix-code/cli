@@ -1,29 +1,28 @@
-import {confirm} from '@inquirer/prompts'
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 
 export default class AiMcpDelete extends BaseCommand {
   static description = 'Delete an MCP server integration'
 
-  static examples = ['<%= config.bin %> ai mcp delete 66b2f0a1... --yes']
+  static examples = [
+    '<%= config.bin %> ai mcp delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes',
+    '<%= config.bin %> ai mcp delete 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Integration ID'}),
   }
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(AiMcpDelete)
     const client = this.client(flags)
 
-    if (!flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({message: `Delete MCP server integration ${args.id}?`, default: false})
-      if (!ok) return this.print('Cancelled.')
-    }
+    await this.confirmOrFail(`Delete MCP server integration ${args.id}?`, flags)
 
     const res = await client.hub.ai.deleteMcpIntegration({id: args.id})
 

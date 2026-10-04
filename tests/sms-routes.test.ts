@@ -63,7 +63,7 @@ const routes: Array<[string[], string, string]> = [
   [['integrations'], 'GET', `${P}/integrations`],
   [['integration', ID], 'GET', `${P}/integrations/${ID}`],
   [['integration', 'enable', ID], 'PUT', `${P}/integrations/${ID}/enable`],
-  [['integration', 'disable', ID], 'PUT', `${P}/integrations/${ID}/disable`],
+  [['integration', 'disable', ID, '--yes'], 'PUT', `${P}/integrations/${ID}/disable`],
   [['integration', 'default', ID], 'PUT', `${P}/integrations/${ID}/default`],
   [['integration', 'delete', ID, '--yes'], 'DELETE', `${P}/integrations/${ID}`],
   [['integration', 'test', '--integration', ID, '--to', PHONE], 'POST', `${P}/integrations/test`],

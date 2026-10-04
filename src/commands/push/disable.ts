@@ -6,7 +6,10 @@ export default class PushDisable extends BaseCommand {
 
 Run \`push disable-dependencies\` first to see what still depends on push.`
 
-  static examples = ['<%= config.bin %> push disable --yes']
+  static examples = [
+    '<%= config.bin %> push disable --yes',
+    '<%= config.bin %> push disable --dry-run',
+  ]
 
   static flags = {
     ...BaseCommand.mutatingFlags,

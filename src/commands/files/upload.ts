@@ -11,6 +11,7 @@ export default class FilesUpload extends BaseCommand {
   static examples = [
     '<%= config.bin %> files upload ./invoice.pdf',
     '<%= config.bin %> files upload ./invoice.pdf invoices/2026/invoice.pdf',
+    '<%= config.bin %> files upload ./invoice.pdf --dry-run',
   ]
 
   static args = {
@@ -22,6 +23,7 @@ export default class FilesUpload extends BaseCommand {
   }
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     integration: integrationFlag,
     'content-type': Flags.string({description: 'MIME type (default: guessed from extension)'}),
   }

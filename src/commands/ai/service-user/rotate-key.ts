@@ -9,8 +9,9 @@ The new key is shown once — store it now. The old keys keep working until you
 revoke them; --revoke <keyId> revokes one in the same call.`
 
   static examples = [
-    '<%= config.bin %> ai service-user rotate-key 66b2f0a1...',
-    '<%= config.bin %> ai service-user rotate-key 66b2f0a1... --revoke key_123',
+    '<%= config.bin %> ai service-user rotate-key 66b2f0a1c3d4e5f6a7b8c9d0',
+    '<%= config.bin %> ai service-user rotate-key 66b2f0a1c3d4e5f6a7b8c9d0 --revoke key_123',
+    '<%= config.bin %> ai service-user rotate-key 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
   ]
 
   static args = {
@@ -18,6 +19,7 @@ revoke them; --revoke <keyId> revokes one in the same call.`
   }
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     revoke: Flags.string({description: 'Key ID to revoke at the same time'}),
   }
 

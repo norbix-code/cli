@@ -12,6 +12,7 @@ Every origin not in the list stops being allowed. An origin with no scheme
   static examples = [
     '<%= config.bin %> project cors set https://app.example.com https://example.com',
     '<%= config.bin %> project cors set https://app.example.com --remove-admin-portal-origin',
+    '<%= config.bin %> project cors set https://app.example.com https://example.com --dry-run',
   ]
 
   static strict = false
@@ -21,6 +22,7 @@ Every origin not in the list stops being allowed. An origin with no scheme
   }
 
   static flags = {
+    ...ProjectCommand.dryRunFlags,
     'remove-admin-portal-origin': Flags.boolean({
       description: "Allow the list to drop the project's own admin portal origin",
       default: false,

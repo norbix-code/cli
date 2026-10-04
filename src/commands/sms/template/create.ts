@@ -10,9 +10,13 @@ languages: --translations with a JSON array of {language, content: {subject, bod
   static examples = [
     '<%= config.bin %> sms template create --name Welcome --body "Hi @Model.Name, your code is @Model.Code"',
     '<%= config.bin %> sms template create --name Welcome --translations @welcome.json',
+    '<%= config.bin %> sms template create --name Welcome --body "Hi @Model.Name, your code is @Model.Code" --dry-run',
   ]
 
-  static flags = smsTemplateFlags
+  static flags = {
+    ...BaseCommand.dryRunFlags,
+    ...smsTemplateFlags,
+  }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(SmsTemplateCreate)

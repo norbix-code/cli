@@ -22,6 +22,7 @@ export default class Module extends BaseCommand {
   static examples = [
     '<%= config.bin %> module enable database',
     '<%= config.bin %> module disable sms --yes',
+    '<%= config.bin %> module enable database --dry-run',
   ]
 
   static args = {

@@ -10,6 +10,7 @@ export default class ProjectAdminPortalSetUrl extends ProjectCommand {
   static examples = [
     '<%= config.bin %> project admin-portal set-url https://admin.example.com',
     '<%= config.bin %> project admin-portal set-url --clear',
+    '<%= config.bin %> project admin-portal set-url https://admin.example.com --dry-run',
   ]
 
   static args = {
@@ -17,6 +18,7 @@ export default class ProjectAdminPortalSetUrl extends ProjectCommand {
   }
 
   static flags = {
+    ...ProjectCommand.dryRunFlags,
     clear: Flags.boolean({description: 'Use the Norbix address again', default: false}),
   }
 

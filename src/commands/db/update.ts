@@ -7,7 +7,7 @@ export default class DbUpdate extends BaseCommand {
   static description = 'Update records: one by --id, or many by --filter with --many'
 
   static examples = [
-    `<%= config.bin %> db update orders --id 66b2f0a1... --update '{"$set":{"status":"shipped"}}'`,
+    `<%= config.bin %> db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update '{"$set":{"status":"shipped"}}'`,
     `<%= config.bin %> db update orders --filter '{"status":"new"}' --update '{"$set":{"status":"queued"}}' --many --dry-run`,
     `<%= config.bin %> db update orders --filter '{"status":"new"}' --update '{"$set":{"status":"queued"}}' --many --yes`,
   ]

@@ -1,29 +1,28 @@
-import {confirm} from '@inquirer/prompts'
-import {Args, Flags} from '@oclif/core'
+import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 
 export default class EmailCampaignDelete extends BaseCommand {
   static description = 'Delete an email campaign'
 
-  static examples = ['<%= config.bin %> email campaign delete 66b2f0a1... --yes']
+  static examples = [
+    '<%= config.bin %> email campaign delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes',
+    '<%= config.bin %> email campaign delete 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Campaign ID'}),
   }
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(EmailCampaignDelete)
     const client = this.client(flags)
 
-    if (!flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({message: `Delete email campaign ${args.id}?`, default: false})
-      if (!ok) return this.print('Cancelled.')
-    }
+    await this.confirmOrFail(`Delete email campaign ${args.id}?`, flags)
 
     const res = await client.hub.notifications.deleteEmailCampaign({id: args.id})
 

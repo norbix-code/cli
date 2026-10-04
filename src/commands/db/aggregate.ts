@@ -8,7 +8,7 @@ export default class DbAggregate extends BaseCommand {
 
   static examples = [
     `<%= config.bin %> db aggregate orders --pipeline '[{"$group":{"_id":"$status","n":{"$sum":1}}}]'`,
-    '<%= config.bin %> db aggregate orders --id 66b2f0a1...',
+    '<%= config.bin %> db aggregate orders --id 66b2f0a1c3d4e5f6a7b8c9d0',
   ]
 
   static args = {

@@ -1,5 +1,3 @@
-import {Flags} from '@oclif/core'
-
 import {ProjectCommand} from '../../lib/project.js'
 
 export default class ProjectDisable extends ProjectCommand {
@@ -7,17 +5,20 @@ export default class ProjectDisable extends ProjectCommand {
 
 Its APIs stop answering until \`project enable\`. Nothing is deleted.`
 
-  static examples = ['<%= config.bin %> project disable --yes']
+  static examples = [
+    '<%= config.bin %> project disable --yes',
+    '<%= config.bin %> project disable --dry-run',
+  ]
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...ProjectCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(ProjectDisable)
     const {client, projectId} = this.projectClient(flags)
 
-    if (!(await this.confirmOrStop(flags.yes, `Turn off project ${projectId}? Its APIs stop answering.`))) return
+    await this.confirmOrFail(`Turn off project ${projectId}? Its APIs stop answering.`, flags)
 
     const res = await client.hub.account.disableProject({projectId})
 

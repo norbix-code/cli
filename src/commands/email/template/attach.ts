@@ -13,8 +13,9 @@ JSON, @file.json, or - for stdin). --language attaches it to one translation
 only.`
 
   static examples = [
-    '<%= config.bin %> email template attach 66b2f0a1... --file-ref @terms-ref.json',
-    '<%= config.bin %> email template attach 66b2f0a1... --file-ref @terms-ref.json --language lt',
+    '<%= config.bin %> email template attach 66b2f0a1c3d4e5f6a7b8c9d0 --file-ref @terms-ref.json',
+    '<%= config.bin %> email template attach 66b2f0a1c3d4e5f6a7b8c9d0 --file-ref @terms-ref.json --language lt',
+    '<%= config.bin %> email template attach 66b2f0a1c3d4e5f6a7b8c9d0 --file-ref @terms-ref.json --dry-run',
   ]
 
   static args = {
@@ -22,6 +23,7 @@ only.`
   }
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     'file-ref': Flags.string({required: true, description: 'File reference as a JSON object, @file or -'}),
     language: Flags.string({description: 'Attach to this translation only'}),
   }

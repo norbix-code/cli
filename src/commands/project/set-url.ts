@@ -11,6 +11,7 @@ in e-mails). The admin portal's own address is \`project admin-portal set-url\`.
   static examples = [
     '<%= config.bin %> project set-url https://shop.example.com',
     '<%= config.bin %> project set-url --clear',
+    '<%= config.bin %> project set-url https://shop.example.com --dry-run',
   ]
 
   static args = {
@@ -18,6 +19,7 @@ in e-mails). The admin portal's own address is \`project admin-portal set-url\`.
   }
 
   static flags = {
+    ...ProjectCommand.dryRunFlags,
     clear: Flags.boolean({description: 'Remove the address', default: false}),
   }
 

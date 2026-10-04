@@ -6,8 +6,8 @@ export default class EmailCampaignBatches extends BaseCommand {
   static description = 'List the send batches of an email campaign'
 
   static examples = [
-    '<%= config.bin %> email campaign batches 66b2f0a1...',
-    '<%= config.bin %> email campaign batches 66b2f0a1... --email ada@example.com',
+    '<%= config.bin %> email campaign batches 66b2f0a1c3d4e5f6a7b8c9d0',
+    '<%= config.bin %> email campaign batches 66b2f0a1c3d4e5f6a7b8c9d0 --email ada@example.com',
   ]
 
   static args = {

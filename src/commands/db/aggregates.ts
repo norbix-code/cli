@@ -5,7 +5,7 @@ import {BaseCommand} from '../../base.js'
 export default class DbAggregates extends BaseCommand {
   static description = 'List saved database aggregates'
 
-  static examples = ['<%= config.bin %> db aggregates', '<%= config.bin %> db aggregates --schema 66b2...']
+  static examples = ['<%= config.bin %> db aggregates', '<%= config.bin %> db aggregates --schema 66b2f0a1c3d4e5f6a7b8c9d0']
 
   static flags = {
     schema: Flags.string({description: 'Only aggregates of this schema ID'}),

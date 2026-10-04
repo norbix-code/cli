@@ -1,21 +1,22 @@
-import {Flags} from '@oclif/core'
-
 import {ProjectCommand} from '../../../lib/project.js'
 
 export default class ProjectAdminPortalDisable extends ProjectCommand {
   static description = "Turn off the project's admin portal (its users can no longer sign in there)"
 
-  static examples = ['<%= config.bin %> project admin-portal disable --yes']
+  static examples = [
+    '<%= config.bin %> project admin-portal disable --yes',
+    '<%= config.bin %> project admin-portal disable --dry-run',
+  ]
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...ProjectCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(ProjectAdminPortalDisable)
     const {client, projectId} = this.projectClient(flags)
 
-    if (!(await this.confirmOrStop(flags.yes, 'Turn off the admin portal? Its users can no longer sign in there.'))) return
+    await this.confirmOrFail('Turn off the admin portal? Its users can no longer sign in there.', flags)
 
     const res = await client.hub.account.setAdminPortalEnabled({projectId, enabled: false})
 

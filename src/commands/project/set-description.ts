@@ -8,6 +8,7 @@ export default class ProjectSetDescription extends ProjectCommand {
   static examples = [
     '<%= config.bin %> project set-description "Orders and invoices for the web shop"',
     '<%= config.bin %> project set-description --clear',
+    '<%= config.bin %> project set-description "Orders and invoices for the web shop" --dry-run',
   ]
 
   static args = {
@@ -15,6 +16,7 @@ export default class ProjectSetDescription extends ProjectCommand {
   }
 
   static flags = {
+    ...ProjectCommand.dryRunFlags,
     clear: Flags.boolean({description: 'Remove the description', default: false}),
   }
 

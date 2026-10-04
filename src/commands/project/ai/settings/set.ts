@@ -15,11 +15,13 @@ The server replaces all three settings at once, so this reads the current ones
 first and changes only what you pass.`
 
   static examples = [
-    '<%= config.bin %> project ai settings set --enable --llm 66b2f0a1... --model gpt-4o-mini',
+    '<%= config.bin %> project ai settings set --enable --llm 66b2f0a1c3d4e5f6a7b8c9d0 --model gpt-4o-mini',
     '<%= config.bin %> project ai settings set --disable',
+    '<%= config.bin %> project ai settings set --enable --llm 66b2f0a1c3d4e5f6a7b8c9d0 --model gpt-4o-mini --dry-run',
   ]
 
   static flags = {
+    ...ProjectCommand.dryRunFlags,
     enable: Flags.boolean({description: 'Turn AI chat on', exclusive: ['disable']}),
     disable: Flags.boolean({description: 'Turn AI chat off', exclusive: ['enable']}),
     llm: Flags.string({description: 'Default LLM integration ID (see `ai llms`)'}),
@@ -32,9 +34,9 @@ first and changes only what you pass.`
       this.error('Pass --enable, --disable, --llm or --model.')
     }
 
-    const {client, projectId} = this.projectClient(flags)
+    const {client, reader, projectId} = this.projectClient(flags)
 
-    const current = ((await client.hub.account.getProjectAiSettings({projectId})) as {result?: AiSettings}).result ?? {}
+    const current = ((await reader.hub.account.getProjectAiSettings({projectId})) as {result?: AiSettings}).result ?? {}
     const res = await client.hub.account.updateProjectAiSettings({
       projectId,
       enabled: flags.enable ? true : flags.disable ? false : (current.enabled ?? false),

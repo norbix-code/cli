@@ -1,6 +1,3 @@
-import {confirm} from '@inquirer/prompts'
-import {Flags} from '@oclif/core'
-
 import {BaseCommand} from '../../base.js'
 
 export default class EmailDisable extends BaseCommand {
@@ -8,20 +5,20 @@ export default class EmailDisable extends BaseCommand {
 
 Run \`email disable-dependencies\` first to see what still depends on email.`
 
-  static examples = ['<%= config.bin %> email disable --yes']
+  static examples = [
+    '<%= config.bin %> email disable --yes',
+    '<%= config.bin %> email disable --dry-run',
+  ]
 
   static flags = {
-    yes: Flags.boolean({char: 'y', description: 'Skip the confirmation prompt', default: false}),
+    ...BaseCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(EmailDisable)
     const client = this.client(flags)
 
-    if (!flags.yes && process.stdout.isTTY) {
-      const ok = await confirm({message: 'Turn off email for this project?', default: false})
-      if (!ok) return this.print('Cancelled.')
-    }
+    await this.confirmOrFail('Turn off email for this project?', flags)
 
     const res = await client.hub.notifications.disableEmail({})
 

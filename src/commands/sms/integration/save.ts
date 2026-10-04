@@ -18,9 +18,11 @@ credentials — put the provider-specific fields in --config (inline JSON,
   static examples = [
     '<%= config.bin %> sms integration save --provider Fake',
     '<%= config.bin %> sms integration save --provider Twilio --name Twilio --config @twilio.json',
+    '<%= config.bin %> sms integration save --provider Fake --dry-run',
   ]
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     provider: Flags.string({required: true, description: 'SMS provider', options: PROVIDERS}),
     name: Flags.string({description: 'Integration name (Fake ignores it and uses its own)'}),
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),

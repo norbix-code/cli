@@ -4,7 +4,10 @@ import {BaseCommand} from '../../base.js'
 export default class ApikeysRegenerate extends BaseCommand {
   static description = 'Regenerate the API keys for the current environment (old keys stop working!)'
 
-  static examples = ['<%= config.bin %> apikeys regenerate --yes']
+  static examples = [
+    '<%= config.bin %> apikeys regenerate --yes',
+    '<%= config.bin %> apikeys regenerate --dry-run',
+  ]
 
   static flags = {
     ...BaseCommand.mutatingFlags,

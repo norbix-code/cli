@@ -81,7 +81,7 @@ describe('email integrations', () => {
 
   const byId = [
     {command: EmailIntegrationEnable, argv: [ID], method: 'enableEmailIntegration', request: {id: ID}, output: `Integration ${ID} enabled.`},
-    {command: EmailIntegrationDisable, argv: [ID], method: 'disableEmailIntegration', request: {id: ID}, output: `Integration ${ID} disabled.`},
+    {command: EmailIntegrationDisable, argv: [ID, '--yes'], method: 'disableEmailIntegration', request: {id: ID}, output: `Integration ${ID} disabled.`},
     {command: EmailIntegrationDefault, argv: [ID], method: 'setEmailsIntegrationAsDefault', request: {id: ID}, output: `Integration ${ID} is now the default.`},
     {command: EmailIntegrationDelete, argv: [ID, '--yes'], method: 'deleteEmailIntegration', request: {id: ID}, output: `Integration ${ID} deleted.`},
     {

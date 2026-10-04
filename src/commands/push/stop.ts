@@ -5,7 +5,10 @@ import {BaseCommand} from '../../base.js'
 export default class PushStop extends BaseCommand {
   static description = 'Stop a running push campaign'
 
-  static examples = ['<%= config.bin %> push stop 66b2f0a1... --yes']
+  static examples = [
+    '<%= config.bin %> push stop 66b2f0a1c3d4e5f6a7b8c9d0 --yes',
+    '<%= config.bin %> push stop 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Campaign ID'}),

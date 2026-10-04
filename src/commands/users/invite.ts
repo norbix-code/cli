@@ -5,10 +5,17 @@ import {BaseCommand} from '../../base.js'
 export default class UsersInvite extends BaseCommand {
   static description = 'Invite a user by email'
 
-  static examples = ['<%= config.bin %> users invite alice@example.com']
+  static examples = [
+    '<%= config.bin %> users invite alice@example.com',
+    '<%= config.bin %> users invite alice@example.com --dry-run',
+  ]
 
   static args = {
     email: Args.string({required: true, description: 'Email address to invite'}),
+  }
+
+  static flags = {
+    ...BaseCommand.dryRunFlags,
   }
 
   async run(): Promise<unknown> {

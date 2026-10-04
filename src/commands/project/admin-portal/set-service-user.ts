@@ -7,10 +7,17 @@ export default class ProjectAdminPortalSetServiceUser extends ProjectCommand {
 
 The admin portal calls the project's APIs under this user's permissions.`
 
-  static examples = ['<%= config.bin %> project admin-portal set-service-user 66b2f0a1...']
+  static examples = [
+    '<%= config.bin %> project admin-portal set-service-user 66b2f0a1c3d4e5f6a7b8c9d0',
+    '<%= config.bin %> project admin-portal set-service-user 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+  ]
 
   static args = {
     id: Args.string({required: true, description: 'Service user ID'}),
+  }
+
+  static flags = {
+    ...ProjectCommand.dryRunFlags,
   }
 
   async run(): Promise<unknown> {

@@ -19,7 +19,7 @@ path and it becomes v2.`
   static examples = [
     '<%= config.bin %> raw /v2/logs/settings',
     `<%= config.bin %> raw '/{version}/database/collections/orders/count' --api --query filter='{"status":"paid"}'`,
-    `<%= config.bin %> raw /v2/scheduler/tasks --method POST --body '{"name":"nightly",...}'`,
+    `<%= config.bin %> raw /v2/scheduler/tasks --method POST --body '{"name":"nightly","cronExpression":"0 2 * * *"}' --dry-run`,
   ]
 
   static args = {
@@ -27,6 +27,7 @@ path and it becomes v2.`
   }
 
   static flags = {
+    ...BaseCommand.dryRunFlags,
     api: Flags.boolean({description: 'Call the data-plane API service instead of the hub (hub is the default)', default: false}),
     method: Flags.string({char: 'X', description: 'HTTP method', default: 'GET', options: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']}),
     body: Flags.string({char: 'b', description: 'JSON request body (or `-` for stdin)'}),
@@ -71,6 +72,14 @@ path and it becomes v2.`
     if (flags.body) {
       body = await readJsonInput(flags.body, 'body')
       headers['Content-Type'] = 'application/json'
+    }
+
+    if (flags['dry-run']) {
+      return this.dryRun({
+        method: `raw ${flags.method} ${path}`,
+        request: body === undefined ? {} : (JSON.parse(body) as unknown),
+        http: {method: flags.method, url: url.toString(), headers: {...headers, Authorization: 'Bearer ***'}, body: body === undefined ? undefined : (JSON.parse(body) as unknown)},
+      })
     }
 
     const res = await fetch(url, {method: flags.method, headers, body})
