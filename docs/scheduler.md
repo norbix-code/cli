@@ -26,7 +26,7 @@ which the gateway refuses — update the CLI.
 |---|---|---|
 | `norbix scheduler list [--type <type>] [--enabled \| --no-enabled] [--page-size <n>] [--after <cursor>]` | list the tasks | `GET /tasks` |
 | `norbix scheduler get <id>` | show one task | `GET /tasks/{id}` |
-| `norbix scheduler save --name <n> --cron <cron> --initiator <usr_…> --template <id> --audience <a> [--id <id>] [...]` | create a task, or update it with `--id` | `POST /tasks` |
+| `norbix scheduler save --name <n> --cron <cron> --initiator <usr_…> --template <id> --integration <id> --audience <a> [--id <id>] [...]` | create a task, or update it with `--id` | `POST /tasks` |
 | `norbix scheduler enable <id> [--yes]` | switch it on — it fires on its next cron tick | `PUT /tasks/{Id}/enable` |
 | `norbix scheduler disable <id> [--yes]` | switch it off | `PUT /tasks/{Id}/disable` |
 | `norbix scheduler delete <id> [--yes]` | delete it | `DELETE /tasks/{Id}` |
@@ -44,15 +44,15 @@ ask first: in a script or an agent pass `--yes`, and preview with `--dry-run`
 ```bash
 # Every Monday at 09:00 UTC, send template tpl_123 to every user tagged "beta".
 norbix scheduler save --name "Weekly digest" --cron "0 9 * * 1" \
-  --initiator usr_123 --template tpl_123 --audience all-users --tag beta --yes
+  --initiator usr_123 --template tpl_123 --integration int_123 --audience all-users --tag beta --yes
 
 # Change it: the same command with --id, every field again.
 norbix scheduler save --id tsk_456 --name "Weekly digest" --cron "0 10 * * 1" \
-  --initiator usr_123 --template tpl_123 --audience all-users --tag beta --yes
+  --initiator usr_123 --template tpl_123 --integration int_123 --audience all-users --tag beta --yes
 
 # Save it switched off, then turn it on later.
 norbix scheduler save --name "Launch mail" --cron "0 8 1 * *" --initiator usr_123 \
-  --template tpl_123 --audience emails --email ada@example.com --no-enabled --yes
+  --template tpl_123 --integration int_123 --audience emails --email ada@example.com --no-enabled --yes
 norbix scheduler enable tsk_789 --yes
 ```
 
@@ -67,7 +67,7 @@ The first command sends:
   "stopOnError": false,
   "task": {
     "type": "EmailCampaign",
-    "campaign": {"source": "AllUsers", "templateId": "tpl_123", "userTags": ["beta"]}
+    "campaign": {"source": "AllUsers", "templateId": "tpl_123", "integrationId": "int_123", "userTags": ["beta"]}
   }
 }
 ```
@@ -94,6 +94,19 @@ Good to know:
   `--bcc`, `--one-each`, `--schema`, `--field`, `--field-type`, plus
   `--integration`, `--validation-integration`, `--language`, `--notes`,
   `--token key=value`. There is no `--at`: the cron decides when it sends.
+- **`--integration` is required** — the e-mail provider every run sends
+  through (list them with `norbix email integrations`). The server never
+  falls back to the project default: a task without one would fail each time
+  it fires (`CM-ERRORS-INTEGRATIONS-003`).
+- **Languages come from Project settings**: the template must have a
+  translation for every project language (`CM-ERRORS-LANGUAGES-004`), and
+  `--language` (send everything in one language) must be one of the project's
+  languages (`CM-ERRORS-LANGUAGES-003`). Without `--language` each recipient
+  gets their own language, else the project default. Both are checked again
+  each time the task fires — Project settings may change in between.
+- **`--on-behalf-of <userId>`** sends each run on behalf of another project
+  user (`task.campaign.initiatorId`; their details fill the
+  `Initiator.User.*` tokens). Without it, the `--initiator` stands in.
 - **`--database-integration`** goes on the task (`task.databaseIntegrationId`);
   without it the project default is used when the task fires.
 - **`--config`** (a JSON object, `@file.json`, or `-` for stdin) is merged into
