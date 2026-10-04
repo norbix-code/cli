@@ -88,7 +88,7 @@ norbix sms template render --code "Hi @Model.Name" --token Name=Ada
 | `norbix sms campaigns [--page-size <n>] [--after <cursor>]` | list campaigns | `GET /campaigns` |
 | `norbix sms campaign <id>` | show a campaign | `GET /campaigns/{id}` |
 | `norbix sms campaign <id> --stats` | show its delivery statistics instead | `GET /campaigns/{id}/stats` |
-| `norbix sms campaign create --template <id> --audience <a> …` | create (and send or schedule) a campaign | `POST /campaigns` |
+| `norbix sms campaign create --template <id> --integration <id> --audience <a> …` | create (and send or schedule) a campaign | `POST /campaigns` |
 | `norbix sms campaign delete <id> [--yes]` | delete a campaign | `DELETE /campaigns/{id}` |
 | `norbix sms stop <id> [--yes]` | stop a running campaign | `POST /campaigns/{Id}/stop` |
 | `norbix sms campaign batches <id>` | list its send batches | `GET /campaigns/{id}/batches` |
@@ -107,16 +107,29 @@ norbix sms template render --code "Hi @Model.Name" --token Name=Ada
 | `collection` | records of a collection whose field holds the recipient | `--schema`, `--field` (repeat), `--field-type User\|Email`, `--role` |
 | `phone-numbers` | raw phone numbers in international format | `--phone` (repeat) |
 
-Other `create` flags: `--language`, `--at` (send later — ISO 8601 date-time
+**`--integration` is required** — it names the SMS provider the campaign sends
+through (list them with `norbix sms integrations`). The server never falls back
+to the project default and refuses a campaign without one
+(`CM-ERRORS-INTEGRATIONS-003`). Languages come from Project settings: the
+template must have a translation for every project language
+(`CM-ERRORS-LANGUAGES-004`), and `--language` (send everything in one language)
+must be one of the project's languages (`CM-ERRORS-LANGUAGES-003`). Without
+`--language` each recipient gets their own language, else the project default.
+`--initiator <userId>` sends on behalf of another project user — their details
+fill the `Initiator.User.*` tokens (default: you).
+
+Other `create` flags: `--language`, `--initiator`, `--at` (send later — ISO 8601 date-time
 or Unix seconds; without it the campaign is sent right away),
 `--respect-time-zone last-login|registration|registration-project` (send
 `--at` in each recipient's own time zone), `--token key=value` (repeat),
 `--database-integration`, and `--config` for any other delivery-settings
-field as a JSON object. The integration is the project default one.
+field as a JSON object. `--integration` and `--initiator` go on the top
+level of the request (`integrationId`, `initiatorId`), not into the settings
+block.
 
 ```bash
-norbix sms campaign create --template tpl_123 --audience all-users --tag beta
-norbix sms campaign create --template tpl_123 --audience phone-numbers --phone +37060000000 --at 2026-10-01T09:00:00Z
+norbix sms campaign create --template tpl_123 --integration int_123 --audience all-users --tag beta
+norbix sms campaign create --template tpl_123 --integration int_123 --audience phone-numbers --phone +37060000000 --at 2026-10-01T09:00:00Z
 norbix sms campaign batches cmp_123
 ```
 
@@ -136,6 +149,3 @@ norbix sms preview --hash 8f2a91c4... --region nb-eu-germany
 - **`--audience account-users`**: the gateway's audience enum lists
   `AccountUsers`, but the Sms campaign request has no settings block for it,
   so the server would refuse the campaign. Push has it; SMS does not yet.
-- **Choosing the integration per campaign**: the Sms campaign request has no
-  integration field — the project default integration sends every campaign
-  (`sms integration default <id>` picks it).
