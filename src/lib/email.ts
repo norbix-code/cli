@@ -146,3 +146,91 @@ export const EMAIL_AUDIENCES: Record<string, string> = {
   emails: 'Email',
   collection: 'Collection',
 }
+
+/** What `--audience` means — shared by `email campaign create` and `scheduler save`. */
+export const EMAIL_AUDIENCE_HELP = `--audience picks who receives it:
+  all-users      every user with an e-mail; narrow with --role / --tag
+  users          the users named with --user (copies with --cc / --bcc user IDs)
+  account-users  the account users named with --user
+  emails         raw addresses, --email (copies with --cc / --bcc addresses)
+  collection     the recipients in --field of the --schema collection`
+
+/** The audience flags of an email campaign, in the order `email campaign create` shows them. */
+export const emailAudienceFlags = {
+  audience: Flags.string({required: true, description: 'Who receives it', options: Object.keys(EMAIL_AUDIENCES)}),
+  user: Flags.string({description: 'User ID (users / account-users; repeat for several)', multiple: true}),
+  email: Flags.string({description: 'E-mail address (emails; repeat for several)', multiple: true}),
+  cc: Flags.string({description: 'Copy to — a user ID (users / account-users) or address (emails); repeat', multiple: true}),
+  bcc: Flags.string({description: 'Blind copy — a user ID or address, like --cc; repeat', multiple: true}),
+  'one-each': Flags.boolean({
+    description: 'Send every recipient a separate e-mail instead of one e-mail to all (users / account-users / emails)',
+    default: false,
+  }),
+  role: Flags.string({description: 'Role name (all-users / collection; repeat for several)', multiple: true}),
+  tag: Flags.string({description: 'User tag (all-users; repeat for several)', multiple: true}),
+  schema: Flags.string({description: 'Collection name (collection)'}),
+  field: Flags.string({description: 'Field that holds the recipient (collection; repeat for several)', multiple: true}),
+  'field-type': Flags.string({description: 'What --field holds (collection)', options: ['User', 'Email'], default: 'User'}),
+}
+
+export interface EmailAudienceFlags {
+  audience: string
+  user?: string[]
+  email?: string[]
+  cc?: string[]
+  bcc?: string[]
+  'one-each': boolean
+  role?: string[]
+  tag?: string[]
+  schema?: string
+  field?: string[]
+  'field-type': string
+}
+
+/**
+ * The audience part of an email campaign request: `source` (the discriminator
+ * the server picks the campaign subclass by) and the fields of that subclass.
+ * `fail` reports a missing flag (the command's `this.error`).
+ */
+export function emailAudienceFields(flags: EmailAudienceFlags, fail: (message: string) => never): Record<string, unknown> {
+  const source = {source: EMAIL_AUDIENCES[flags.audience]}
+  switch (flags.audience) {
+    case 'all-users': {
+      return {...source, rolesNames: flags.role, userTags: flags.tag}
+    }
+
+    case 'users':
+    case 'account-users': {
+      if (!flags.user?.length) fail(`--audience ${flags.audience} needs at least one --user`)
+      return {
+        ...source,
+        userRecipients: flags.user,
+        userCc: flags.cc,
+        userBcc: flags.bcc,
+        singleEmailStrategy: flags['one-each'],
+      }
+    }
+
+    case 'emails': {
+      if (!flags.email?.length) fail('--audience emails needs at least one --email')
+      return {
+        ...source,
+        recipients: flags.email,
+        recipientsCc: flags.cc,
+        recipientsBcc: flags.bcc,
+        singleEmailStrategy: flags['one-each'],
+      }
+    }
+
+    default: {
+      if (!flags.schema || !flags.field?.length) fail('--audience collection needs --schema and --field')
+      return {
+        ...source,
+        schemaName: flags.schema,
+        fields: flags.field,
+        fieldType: flags['field-type'],
+        roleNames: flags.role,
+      }
+    }
+  }
+}
