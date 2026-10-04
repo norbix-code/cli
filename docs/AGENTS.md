@@ -46,7 +46,7 @@ When there is none, every SDK endpoint is reachable with plain words:
 
 ```sh
 norbix hub scheduler task delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes --json
-norbix hub scheduler task save --body '{"name":"nightly","cronExpression":"0 2 * * *"}' --json
+norbix hub scheduler task save --body '{"name":"nightly","cron":"0 2 * * *","initiatorUserId":"usr_123","isEnabled":true,"stopOnError":false,"task":{"type":"EmailCampaign","campaign":{"source":"AllUsers","templateId":"tpl_123"}}}' --json
 ```
 
 `--body` takes the whole request as JSON (nothing is merged with

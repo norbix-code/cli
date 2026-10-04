@@ -44,7 +44,7 @@ norbix scheduler list
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
 | `norbix env list/use/delete` | Manage project environments |
 | `norbix logs list/trail` | Read project logs, follow one correlation ID |
-| `norbix scheduler list/get/enable/disable/delete` | Manage scheduler tasks |
+| `norbix scheduler list/get/save/enable/disable/delete` | Scheduler tasks — a cron that sends an email campaign; every scheduler endpoint, see [docs/scheduler.md](docs/scheduler.md) |
 | `norbix apikeys list/regenerate` | Show or regenerate project API keys |
 | `norbix webhooks show/secret/enable/disable/remove` | Inspect the webhook integration |
 | `norbix email ...` | Email module, integrations, validation, footers, signatures, templates, campaigns, preview — every Email endpoint a developer calls, see [docs/email.md](docs/email.md) |
