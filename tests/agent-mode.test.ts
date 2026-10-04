@@ -42,7 +42,7 @@ const DESTRUCTIVE: string[][] = [
   ['scheduler', 'delete', 'abc123'],
   ['scheduler', 'disable', 'abc123'],
   ['scheduler', 'enable', 'abc123'],
-  ['scheduler', 'save', '--name', 'Weekly', '--cron', '0 9 * * 1', '--initiator', 'usr_1', '--template', 'abc123', '--audience', 'all-users'],
+  ['scheduler', 'save', '--name', 'Weekly', '--cron', '0 9 * * 1', '--initiator', 'usr_1', '--template', 'abc123', '--integration', 'int_1', '--audience', 'all-users'],
   ['env', 'delete', 'STAGING'],
   ['apikeys', 'regenerate'],
   ['webhooks', 'remove', 'abc123'],
@@ -130,7 +130,7 @@ describe('--dry-run', () => {
   it('scheduler save shows the whole task body it would send', async () => {
     const r = await cli(home, [
       'scheduler', 'save', '--name', 'Weekly', '--cron', '0 9 * * 1', '--initiator', 'usr_1',
-      '--template', 'abc123', '--audience', 'all-users', '--profile', 'x', '--dry-run', '--json',
+      '--template', 'abc123', '--integration', 'int_1', '--audience', 'all-users', '--profile', 'x', '--dry-run', '--json',
     ])
     expect(r.code).toBe(0)
     const doc = parseSingleJson(r.stdout) as {method: string; http: {method: string; url: string; body: unknown}}
@@ -143,7 +143,7 @@ describe('--dry-run', () => {
       initiatorUserId: 'usr_1',
       isEnabled: true,
       stopOnError: false,
-      task: {type: 'EmailCampaign', campaign: {source: 'AllUsers', templateId: 'abc123'}},
+      task: {type: 'EmailCampaign', campaign: {source: 'AllUsers', templateId: 'abc123', integrationId: 'int_1'}},
     })
     expect(gateway.hits).toEqual([])
   })

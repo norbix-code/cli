@@ -2279,6 +2279,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "integration:string",
       "validation-integration:string",
       "language:string",
+      "on-behalf-of:string",
       "notes:string",
       "token:string",
       "database-integration:string",
