@@ -3,7 +3,7 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**242 endpoints have a dedicated CLI command (the sum of the table below;
+**243 endpoints have a dedicated CLI command (the sum of the table below;
 the line said 117 until the Project campaign, 2026-10-03, and had not kept
 up with the push / SMS / Email rows). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
@@ -32,7 +32,7 @@ out of reach.
 | notifications/email | 48/51 | every endpoint except the three recipient / provider callbacks — see `docs/email.md`; each command is run through the real transport in `tests/email-routes.test.ts` |
 | notifications/push | 37/37 | every endpoint — see `docs/push.md`; each command is run through the real transport in `tests/push-routes.test.ts` |
 | notifications/sms | 34/34 | every endpoint — see `docs/sms.md`; each command is run through the real transport in `tests/sms-routes.test.ts` |
-| scheduler | 7/8 | all except save-task (complex DTO) |
+| scheduler | 8/8 | every endpoint, `save` included (email-campaign task built from flags) — see `docs/scheduler.md`; each command is run through the real transport in `tests/scheduler-routes.test.ts`, with the exact `save` body |
 | webhooks | 6/9 | show, secret, rotate, enable/disable/remove destination |
 | payments | 7/16 | integrations list, triggers list/get/enable/disable, module toggle |
 | account/* | 10/62 | profile, status, usage, projects, team, regions, billing-portal, api keys. Missing: team roles/policies management |
