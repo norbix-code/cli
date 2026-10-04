@@ -16,9 +16,9 @@ All paths below are under `/{version}/scheduler`.
 | `norbix module enable scheduler` | turn the scheduler module on | `PUT /enable` |
 | `norbix module disable scheduler [--yes]` | turn it off: every task stops firing (the tasks are kept) | `PUT /disable` |
 
-The gateway answers these two routes on **PUT** only. `@norbix.ai/ts` sends PUT
-from 4.6.0; with an older SDK installed the CLI still sends GET, which the
-gateway refuses.
+The gateway answers these two routes on **PUT** only. The CLI sends PUT from
+version 1.9.1 on (it uses `@norbix.ai/ts` 4.6.0); older CLI versions send GET,
+which the gateway refuses — update the CLI.
 
 ## Tasks
 
