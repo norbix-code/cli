@@ -41,6 +41,8 @@ const DESTRUCTIVE: string[][] = [
   ['files', 'delete', 'invoices/2026/invoice.pdf', '--integration', 'fi_1'],
   ['scheduler', 'delete', 'abc123'],
   ['scheduler', 'disable', 'abc123'],
+  ['scheduler', 'enable', 'abc123'],
+  ['scheduler', 'save', '--name', 'Weekly', '--cron', '0 9 * * 1', '--initiator', 'usr_1', '--template', 'abc123', '--audience', 'all-users'],
   ['env', 'delete', 'STAGING'],
   ['apikeys', 'regenerate'],
   ['webhooks', 'remove', 'abc123'],
@@ -122,6 +124,27 @@ describe('--dry-run', () => {
     expect(doc.http.method).toBe('DELETE')
     expect(doc.http.url).toMatch(/\/v2\/membership\/auth\?id=abc123$/)
     expect(doc.http.headers.authorization).toBe('Bearer ***')
+    expect(gateway.hits).toEqual([])
+  })
+
+  it('scheduler save shows the whole task body it would send', async () => {
+    const r = await cli(home, [
+      'scheduler', 'save', '--name', 'Weekly', '--cron', '0 9 * * 1', '--initiator', 'usr_1',
+      '--template', 'abc123', '--audience', 'all-users', '--profile', 'x', '--dry-run', '--json',
+    ])
+    expect(r.code).toBe(0)
+    const doc = parseSingleJson(r.stdout) as {method: string; http: {method: string; url: string; body: unknown}}
+    expect(doc.method).toBe('hub.scheduler.saveSchedulerTask')
+    expect(doc.http.method).toBe('POST')
+    expect(doc.http.url).toMatch(/\/v2\/scheduler\/tasks$/)
+    expect(doc.http.body).toEqual({
+      name: 'Weekly',
+      cron: '0 9 * * 1',
+      initiatorUserId: 'usr_1',
+      isEnabled: true,
+      stopOnError: false,
+      task: {type: 'EmailCampaign', campaign: {source: 'AllUsers', templateId: 'abc123'}},
+    })
     expect(gateway.hits).toEqual([])
   })
 
