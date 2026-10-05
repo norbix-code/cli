@@ -114,7 +114,21 @@
         "description": "Read and write the local CLI configuration"
       },
       "db": {
-        "description": "Database records, schemas, schema triggers, integrations, taxonomies and terms, test data"
+        "description": "Database records, schemas, schema triggers, integrations, taxonomies and terms, test data",
+        "subtopics": {
+          "integration": {
+            "description": "Show, test or set the default database integration"
+          },
+          "schema": {
+            "description": "Show, create, change, publish or delete a database schema"
+          },
+          "term": {
+            "description": "Show, create, change or delete a taxonomy term; show the term tree"
+          },
+          "trigger": {
+            "description": "Show, create, turn on/off or delete a schema trigger"
+          }
+        }
       },
       "env": {
         "description": "Manage project environments (PROD, TEST, ...)"
