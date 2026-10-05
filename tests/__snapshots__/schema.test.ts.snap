@@ -426,6 +426,20 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   {
     "args": [
       "collection",
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+      "user:string",
+    ],
+    "id": "db change-owner",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "collection",
     ],
     "destructive": false,
     "flags": [
@@ -491,6 +505,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "destructive": false,
     "flags": [
+      "integration:string",
+    ],
+    "id": "db indexes",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": false,
+    "flags": [
       "dry-run:boolean",
       "doc:string",
     ],
@@ -508,6 +533,46 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "db insert-many",
     "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db integration",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "db integration default",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db integration test",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "db integrations",
+    "supportsDryRun": false,
   },
   {
     "args": [
@@ -535,11 +600,116 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [],
     "destructive": false,
     "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "file:string",
+      "ui-file:string",
+      "settings:string",
+    ],
+    "id": "db schema create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "db schema delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "from:string",
+      "to:string",
+    ],
+    "id": "db schema diff",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "db schema discard",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db schema draft",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "db schema publish",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file:string",
+      "ui-file:string",
+    ],
+    "id": "db schema update",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db schema versions",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
       "page-size:string",
       "after:string",
     ],
     "id": "db schemas",
     "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "integration:string",
+      "collections:string",
+      "mode:option",
+    ],
+    "id": "db seed",
+    "supportsDryRun": true,
   },
   {
     "args": [],
@@ -558,6 +728,163 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [],
     "id": "db taxonomy",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "taxonomyId",
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+    ],
+    "id": "db term",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "taxonomyId",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+      "doc:string",
+    ],
+    "id": "db term create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "taxonomyId",
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "integration:string",
+    ],
+    "id": "db term delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "taxonomy",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "root:string",
+      "depth:string",
+      "merged:boolean",
+    ],
+    "id": "db term tree",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "taxonomyId",
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+      "set:string",
+    ],
+    "id": "db term update",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "taxonomy",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "filter:string",
+      "parent:string",
+      "page-size:string",
+      "after:string",
+      "before:string",
+      "desc:boolean",
+    ],
+    "id": "db terms",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "schema:string",
+    ],
+    "id": "db trigger",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file:string",
+      "schema:string",
+      "id:string",
+    ],
+    "id": "db trigger create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "schema:string",
+    ],
+    "id": "db trigger delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "schema:string",
+    ],
+    "id": "db trigger disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "schema:string",
+    ],
+    "id": "db trigger enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "schema:string",
+      "page-size:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "db triggers",
     "supportsDryRun": false,
   },
   {
