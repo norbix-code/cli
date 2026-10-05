@@ -79,11 +79,13 @@ const routes: Array<[string[], string, string]> = [
   [['distinct', COL, 'status'], 'GET', `${P}/collections/${COL}/distinct`],
   [['insert', COL, '--doc', '{"status":"new"}'], 'POST', `${P}/collections/${COL}`],
   [['insert-many', COL, '--docs', '[{"status":"new"}]'], 'POST', `${P}/collections/${COL}/many`],
-  [['update', COL, '--id', ID, '--update', '{"$set":{"status":"paid"}}'], 'PUT', `${P}/collections/${COL}/${ID}`],
-  [['update', COL, '--many', '--filter', '{}', '--update', '{"$set":{"status":"paid"}}', '--yes'], 'PUT', `${P}/collections/${COL}/many`],
+  [['update', COL, '--id', ID, '--update', '{"status":"paid"}'], 'PUT', `${P}/collections/${COL}/${ID}`],
+  [['update', COL, '--many', '--filter', '{"status":"new"}', '--update', '{"status":"paid"}', '--yes'], 'PUT', `${P}/collections/${COL}/many`],
+  [['update', COL, '--all', '--update', '{"status":"paid"}', '--yes'], 'PUT', `${P}/collections/${COL}/many`],
   [['replace', COL, '--id', ID, '--doc', '{"status":"new"}'], 'PUT', `${P}/collections/${COL}/${ID}/replace`],
   [['delete', COL, '--id', ID, '--yes'], 'DELETE', `${P}/collections/${COL}/${ID}`],
-  [['delete', COL, '--many', '--filter', '{}', '--yes'], 'DELETE', `${P}/collections/${COL}/many`],
+  [['delete', COL, '--many', '--filter', '{"status":"new"}', '--yes'], 'DELETE', `${P}/collections/${COL}/many`],
+  [['delete', COL, '--all', '--yes'], 'DELETE', `${P}/collections/${COL}/many`],
   [['aggregate', COL, '--pipeline', '[]'], 'POST', `${P}/collections/${COL}/aggregate`],
   [['aggregate', COL, '--id', ID], 'POST', `${P}/collections/${COL}/aggregates/${ID}/execute`],
   [['change-owner', COL, ID, '--user', USER], 'PUT', `${P}/collections/${COL}/${ID}/responsibility`],
@@ -162,6 +164,73 @@ async function callOf(argv: string[]): Promise<Call> {
 async function bodyOf(argv: string[]): Promise<Record<string, unknown>> {
   return (await callOf(argv)).body ?? {}
 }
+
+/** Query and body of one request, as one object (DELETE sends its fields in the query). */
+async function sentOf(argv: string[]): Promise<Record<string, unknown>> {
+  const call = await callOf(argv)
+  return {...Object.fromEntries(call.query), ...call.body}
+}
+
+describe('db update / delete of many records', () => {
+  it('update --many sends the filter and the plain fields, without allRecords', async () => {
+    expect(await bodyOf(['update', COL, '--many', '--filter', '{"status":"new"}', '--update', '{"status":"paid"}', '--yes'])).toEqual({
+      filter: '{"status":"new"}',
+      update: '{"status":"paid"}',
+    })
+  })
+
+  it('update --all sends an empty filter with allRecords: true', async () => {
+    expect(await bodyOf(['update', COL, '--all', '--update', '{"status":"paid"}', '--yes'])).toEqual({
+      filter: '{}',
+      allRecords: true,
+      update: '{"status":"paid"}',
+    })
+  })
+
+  it('delete --many sends the filter, without allRecords', async () => {
+    const sent = await sentOf(['delete', COL, '--many', '--filter', '{"status":"new"}', '--yes'])
+    expect(sent).toMatchObject({filter: '{"status":"new"}'})
+    expect(sent).not.toHaveProperty('allRecords')
+  })
+
+  it('delete --all sends an empty filter with allRecords: true', async () => {
+    expect(await sentOf(['delete', COL, '--all', '--yes'])).toMatchObject({filter: '{}', allRecords: 'true'})
+  })
+
+  for (const command of ['update', 'delete']) {
+    const update = command === 'update' ? ['--update', '{"status":"paid"}'] : []
+
+    it(`${command} --many with an empty filter is refused and points at --all`, async () => {
+      const {error} = await runCommand(['db', command, COL, '--many', '--filter', '{}', ...update, '--yes', ...globalArgs])
+      expect(error?.message).toMatch(/matches every record/)
+      expect(calls).toHaveLength(0)
+    })
+
+    it(`${command} --all without --yes in a non-interactive shell sends nothing`, async () => {
+      const {error} = await runCommand(['db', command, COL, '--all', ...update, ...globalArgs])
+      expect(error?.message).toMatch(/Confirmation required: .*EVERY record/)
+      expect(calls).toHaveLength(0)
+    })
+
+    it(`${command} --all cannot be combined with --filter`, async () => {
+      const {error} = await runCommand(['db', command, COL, '--all', '--many', '--filter', '{"a":1}', ...update, '--yes', ...globalArgs])
+      expect(error?.message).toMatch(/cannot also be provided/)
+      expect(calls).toHaveLength(0)
+    })
+  }
+
+  it('update with a $ operator is refused before anything is sent', async () => {
+    const {error} = await runCommand(['db', 'update', COL, '--id', ID, '--update', '{"$inc":{"n":1}}', ...globalArgs])
+    expect(error?.message).toMatch(/\$inc; a record update takes the plain fields/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('update with a JSON array is refused', async () => {
+    const {error} = await runCommand(['db', 'update', COL, '--id', ID, '--update', '[1]', ...globalArgs])
+    expect(error?.message).toMatch(/must be a JSON object/)
+    expect(calls).toHaveLength(0)
+  })
+})
 
 describe('db term', () => {
   // The taxonomy and term ids travel in the path (rows above), not the body.
