@@ -57,8 +57,8 @@ norbix sms integration confirm-delivery int_123
 |---|---|---|
 | `norbix sms templates [--archived]` | list templates | `GET /templates` |
 | `norbix sms template <id>` | show one template | `GET /templates/{id}` |
-| `norbix sms template create --name <n> (--body <b> [--subject <s>] \| --translations <json>)` | create a template | `POST /templates` |
-| `norbix sms template update <id> --name <n> (--body <b> [--subject <s>] \| --translations <json>)` | replace a template | `PUT /templates` |
+| `norbix sms template create --name <n> (--body <b> \| --translations <json>)` | create a template | `POST /templates` |
+| `norbix sms template update <id> --name <n> (--body <b> \| --translations <json>)` | replace a template | `PUT /templates` |
 | `norbix sms template tokens <id>` | list the tokens the template uses | `GET /templates/{id}/tokens` |
 | `norbix sms template render --code <razor> [--token key=value]... [--preview]` | render text with token values | `POST /templates/render` |
 | `norbix sms archive <id>` | archive a template | `PUT /templates/{Id}/archive` |
@@ -69,10 +69,12 @@ norbix sms integration confirm-delivery int_123
 `create` and `update` also take `--description`, `--channel`
 (`Transactional` · `Marketing` · `System`, default `Transactional`) and `--tag`
 (repeat for several). For one language use `--body` (plus `--language`,
-default `en`, and `--subject` — the sender id, empty by default, as in the
-portal). For several, pass `--translations` with a JSON array of
-`{"language": "en", "content": {"subject": "", "body": "…"}}` (inline,
-`@file.json`, or `-`). `update` sends the whole template, so include every
+default `en`). For several, pass `--translations` with a JSON array of
+`{"language": "en", "content": {"body": "…"}}` (inline, `@file.json`, or
+`-`). An SMS template is the text only: it has no subject and no sender —
+the sender is set on the SMS integration (provider). The `--subject` flag is
+gone (the server stopped reading `subject` with `@norbix.ai/ts` 4.8.0).
+`update` sends the whole template, so include every
 language you want to keep. Tokens are Razor: `@Model.Name`, not `{{Name}}`.
 
 ```bash

@@ -4,8 +4,9 @@ import {smsTemplateBody, smsTemplateFlags} from '../../../lib/sms.js'
 export default class SmsTemplateCreate extends BaseCommand {
   static description = `Create an SMS template
 
-One language: --body (and an optional --subject, the sender id). Several
-languages: --translations with a JSON array of {language, content: {subject, body}}.`
+One language: --body. Several languages: --translations with a JSON array of
+{language, content: {body}}. An SMS template has no subject or sender: the
+sender is set on the SMS integration (provider).`
 
   static examples = [
     '<%= config.bin %> sms template create --name Welcome --body "Hi @Model.Name, your code is @Model.Code"',
