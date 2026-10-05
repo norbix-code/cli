@@ -57,8 +57,8 @@ const P = '/v2/notifications/sms'
 const routes: Array<[string[], string, string]> = [
   // Module
   [['settings'], 'GET', `${P}/settings`],
-  [['enable'], 'GET', `${P}/enable`],
-  [['disable', '--yes'], 'GET', `${P}/disable`],
+  [['enable'], 'PUT', `${P}/enable`],
+  [['disable', '--yes'], 'PUT', `${P}/disable`],
   [['disable-dependencies'], 'GET', `${P}/disable-dependencies`],
 
   // Integrations
