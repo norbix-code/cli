@@ -14,8 +14,8 @@ All paths below are under `/{version}/notifications/push`.
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix push enable` | turn the push module on | `GET /enable` |
-| `norbix push disable [--yes]` | turn the push module off | `GET /disable` |
+| `norbix push enable` | turn the push module on | `PUT /enable` |
+| `norbix push disable [--yes]` | turn the push module off | `PUT /disable` |
 | `norbix push disable-dependencies` | list what still depends on push — check before `disable` | `GET /disable-dependencies` |
 | `norbix push settings [--id <id>]` | show the project push settings | `GET /settings` |
 

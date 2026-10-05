@@ -25,7 +25,8 @@ than the project default.
 ## Module
 
 `norbix module enable database` / `norbix module disable database` turn the
-module on and off (`GET /enable`, `GET /disable`).
+module on and off (`PUT /enable`, `PUT /disable`). A gateway older than
+refactoringV2 (2026-10) has only the GET routes, so this CLI needs a current gateway.
 
 ## Records
 
@@ -84,7 +85,7 @@ counts, the new ids, and any errors.
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix db schemas [--page-size <n>] [--after <cursor>]` | list schemas | `GET /schemas` |
+| `norbix db schemas [--page-size <n>] [--after <cursor>]` | list the schemas of one environment (`--env`, default PROD); each row carries `env` | `GET /schemas` |
 | `norbix db schema <id>` | show one schema | `GET /schemas/{id}` |
 | `norbix db schema create --name <name> --file <data-schema.json> [--ui-file <ui.json>] [--settings <json>]` | create a schema | `POST /schemas` |
 | `norbix db schema update <id> [--file <data-schema.json>] [--ui-file <ui.json>]` | save a change as the draft | `PUT /schemas/{Id}/draft` |
