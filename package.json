@@ -111,9 +111,6 @@
       "db": {
         "description": "Work with database collections (find, insert, update, delete)"
       },
-      "email": {
-        "description": "Email templates and campaigns"
-      },
       "env": {
         "description": "Manage project environments (PROD, TEST, ...)"
       },
