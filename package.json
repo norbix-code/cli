@@ -114,7 +114,7 @@
         "description": "Read and write the local CLI configuration"
       },
       "db": {
-        "description": "Work with database collections (find, insert, update, delete)"
+        "description": "Database records, schemas, schema triggers, integrations, taxonomies and terms, test data"
       },
       "env": {
         "description": "Manage project environments (PROD, TEST, ...)"
