@@ -7,7 +7,8 @@ export default class AccountRegions extends BaseCommand {
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(AccountRegions)
-    const client = this.client(flags)
+    // Anonymous on the gateway: no login and no project needed.
+    const client = this.client(flags, {requireAuth: false, requireProject: false})
 
     const res = await client.hub.account.getAccountRegions({
     })
