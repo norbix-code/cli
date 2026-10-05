@@ -1,5 +1,3 @@
-import {readFileSync} from 'node:fs'
-
 import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
@@ -47,19 +45,8 @@ const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '-
 
 const P = '/v2/scheduler'
 
-/**
- * Module enable / disable: the gateway moved them to PUT; `@norbix.ai/ts`
- * sends PUT from 4.6.0 on (GET before). The CLI calls the SDK method, so the
- * verb follows the installed SDK — this row stays true across the bump.
- */
-const sdkVersion = (
-  JSON.parse(
-    // The package's `exports` hide package.json, so read it from node_modules.
-    readFileSync(new URL('../node_modules/@norbix.ai/ts/package.json', import.meta.url), 'utf8'),
-  ) as {version: string}
-).version
-const [major, minor] = sdkVersion.split('.').map(Number)
-const MODULE_VERB = major > 4 || (major === 4 && minor >= 6) ? 'PUT' : 'GET'
+/** Module enable / disable are PUT on the gateway and in `@norbix.ai/ts` 4.10+ (the floor in package.json). */
+const MODULE_VERB = 'PUT'
 
 /** A cron as one argv item: @oclif/test's runCommand splits on spaces outside quotes. */
 const CRON = '"0 9 * * 1"'
