@@ -10,25 +10,24 @@
  * SDK and commit the result.
  *
  * Sources (no runtime cost — pure text parsing at build time):
- *   dist/index.js          method → {target, path, method, dto}  (JSDoc + send call)
- *   dist/types/*.dtos.d.ts dto    → fields                       (class bodies)
+ *   dist/index.js          method → {target, path, method}  (the transport.send call)
+ *                          method → dto                     ("Request DTO: X" in the JSDoc)
+ *   dist/types/*.dtos.d.ts dto    → fields                  (class bodies)
+ *
+ * If any SDK method cannot be read, the script lists each one, writes
+ * nothing and exits with code 1. A loud stop costs the person bumping the
+ * SDK a minute; a silently missing method breaks `--help` and value typing
+ * for that command and nobody notices (that happened with 4.9.1, issue S187).
  */
 import {readFileSync, writeFileSync, mkdirSync} from 'node:fs'
 import {createRequire} from 'node:module'
 import {dirname, join} from 'node:path'
-import {fileURLToPath} from 'node:url'
-
-const require = createRequire(import.meta.url)
-const root = dirname(dirname(fileURLToPath(import.meta.url)))
-// The package exports map hides package.json; resolve the entry point and walk up.
-const sdkDir = dirname(dirname(require.resolve('@norbix.ai/ts')))
-const sdkVersion = JSON.parse(readFileSync(join(sdkDir, 'package.json'), 'utf8')).version
-const indexJs = readFileSync(join(sdkDir, 'dist/index.js'), 'utf8')
+import {fileURLToPath, pathToFileURL} from 'node:url'
 
 // ---- 1. module classes → methods -------------------------------------------
 
 /** `var FooModule = class {` … up to the next top-level `var X = class`. */
-function classBlocks(source) {
+export function classBlocks(source) {
   const blocks = new Map()
   const re = /^var (\w+) = class \{$/gm
   const starts = []
@@ -42,31 +41,96 @@ function classBlocks(source) {
   return blocks
 }
 
-const METHOD_RE =
-  /\/\*\*\s*\n\s*\* (GET|POST|PUT|PATCH|DELETE) (\S+)\s*\n\s*\* Request DTO: (\w+)\s*\n\s*\*\/\s*\n\s*(\w+) = \(request = \{\}, options = \{\}\) => \{\s*\n\s*return this\.transport\.send\(\{\s*\n\s*target: "(api|hub)",/g
+const SIGNATURE_RE = /^[ \t]+(\w+) = \(request = \{\}, options = \{\}\) => \{[ \t]*$/gm
+const SEND = 'this.transport.send({'
 
-function methodsOf(block) {
-  const out = {}
-  let m
-  while ((m = METHOD_RE.exec(block))) {
-    const [, http, path, dto, name, target] = m
-    out[name] = {http, path, dto, target}
+/** `key: "value"` inside the object passed to `transport.send`. */
+function sendField(call, key) {
+  const m = call.match(new RegExp(`\\b${key}: "([^"]*)"`))
+  return m ? m[1] : undefined
+}
+
+/** The `/** … *\/` comment that ends right before `at`, or '' when there is none. */
+function docBefore(block, at) {
+  const before = block.slice(0, at).trimEnd()
+  if (!before.endsWith('*/')) return ''
+  const start = before.lastIndexOf('/**')
+  return start === -1 ? '' : before.slice(start)
+}
+
+/**
+ * Every SDK method in one module class block.
+ *
+ * The HTTP method, path and target come from the `transport.send({...})` call
+ * itself — that is what runs, so it is the truth. The request DTO comes from
+ * the `Request DTO: X` text anywhere in the doc comment, so extra doc lines
+ * (descriptions, "Anonymous — no token needed", blank ` *` lines) before or
+ * after the `VERB path` line do not matter.
+ *
+ * A method that cannot be read is never dropped silently: it goes into
+ * `problems`, and the generator stops (see main()).
+ */
+export function methodsOf(block, label = 'module') {
+  const methods = {}
+  const problems = []
+  let sendsInMethods = 0
+  for (const m of block.matchAll(SIGNATURE_RE)) {
+    const name = m[1]
+    const where = `${label}.${name}`
+    const afterSig = block.slice(m.index + m[0].length)
+    const body = afterSig.match(/^\s*return this\.transport\.send\(\{([\s\S]*?)\}\);/)
+    if (!body) {
+      problems.push(`${where}: the method body is not \`return this.transport.send({...})\``)
+      continue
+    }
+
+    sendsInMethods++
+    const call = body[1]
+    const target = sendField(call, 'target')
+    const path = sendField(call, 'path')
+    const http = sendField(call, 'method')
+    if (!['api', 'hub'].includes(target) || !path || !/^(GET|POST|PUT|PATCH|DELETE)$/.test(http ?? '')) {
+      problems.push(`${where}: cannot read target / path / method from the send call`)
+      continue
+    }
+
+    const doc = docBefore(block, m.index)
+    if (!doc) {
+      problems.push(`${where}: no doc comment, so no "Request DTO:" line`)
+      continue
+    }
+
+    const dtos = [...doc.matchAll(/Request DTO: (\w+)/g)].map((d) => d[1])
+    if (dtos.length !== 1) {
+      problems.push(`${where}: ${dtos.length === 0 ? 'no' : dtos.length} "Request DTO:" line${dtos.length > 1 ? 's' : ''} in the doc comment`)
+      continue
+    }
+
+    const verbLine = doc.match(/^\s*\* (GET|POST|PUT|PATCH|DELETE) (\S+)\s*$/m)
+    if (verbLine && (verbLine[1] !== http || verbLine[2] !== path)) {
+      problems.push(`${where}: doc says "${verbLine[1]} ${verbLine[2]}" but the send call is "${http} ${path}"`)
+      continue
+    }
+
+    methods[name] = {http, path, dto: dtos[0], target}
   }
 
-  return out
+  const sends = block.split(SEND).length - 1
+  if (sends !== sendsInMethods) {
+    problems.push(`${label}: ${sends - sendsInMethods} send call(s) outside a method of the shape \`name = (request = {}, options = {}) => {\``)
+  }
+
+  return {methods, problems}
 }
 
 /** `this.membership = new MembershipModule(transport)` inside a namespace class. */
-function modulesOf(block) {
+export function modulesOf(block) {
   const out = {}
   const re = /this\.(\w+) = new (\w+)\(transport\)/g
   let m
   while ((m = re.exec(block))) out[m[1]] = m[2]
   return out
 }
-
-const blocks = classBlocks(indexJs)
-const namespaces = {api: modulesOf(blocks.get('ApiNamespace')), hub: modulesOf(blocks.get('HubNamespace'))}
 
 // ---- 2. DTO declarations → fields -------------------------------------------
 
@@ -147,34 +211,84 @@ function fieldsOf(dto, {classes, enums}) {
   return [...seen.values()]
 }
 
-const dts = {
-  api: parseDts(join(sdkDir, 'dist/types/api2.dtos.d.ts')),
-  hub: parseDts(join(sdkDir, 'dist/types/hub2.dtos.d.ts')),
-}
-
 // ---- 3. assemble --------------------------------------------------------------
 
-const out = {sdk: `@norbix.ai/ts@${sdkVersion}`, api: {}, hub: {}}
-let methodCount = 0
-let missingDto = 0
-for (const target of ['api', 'hub']) {
-  for (const [moduleName, className] of Object.entries(namespaces[target])) {
-    const block = blocks.get(className)
-    if (!block) continue
-    const methods = methodsOf(block)
-    const entry = {}
-    for (const [method, info] of Object.entries(methods)) {
-      const fields = dts[target].classes.has(info.dto) ? fieldsOf(info.dto, dts[target]) : null
-      if (!fields) missingDto++
-      entry[method] = {http: info.http, path: info.path, dto: info.dto, fields: fields ?? []}
-      methodCount++
+/**
+ * Every method of every `api.*` / `hub.*` module in the SDK's dist/index.js,
+ * plus the list of methods (or modules) that could not be read.
+ */
+export function sdkMethods(indexJs) {
+  const blocks = classBlocks(indexJs)
+  const problems = []
+  const result = {api: {}, hub: {}}
+  for (const [target, nsClass] of [['api', 'ApiNamespace'], ['hub', 'HubNamespace']]) {
+    const ns = blocks.get(nsClass)
+    if (!ns) {
+      problems.push(`${target}: class ${nsClass} not found in dist/index.js`)
+      continue
     }
 
-    out[target][moduleName] = entry
+    for (const [moduleName, className] of Object.entries(modulesOf(ns))) {
+      const block = blocks.get(className)
+      if (!block) {
+        problems.push(`${target}.${moduleName}: class ${className} not found in dist/index.js`)
+        continue
+      }
+
+      const {methods, problems: p} = methodsOf(block, `${target}.${moduleName}`)
+      problems.push(...p)
+      for (const [name, info] of Object.entries(methods)) {
+        if (info.target !== target) problems.push(`${target}.${moduleName}.${name}: sends to "${info.target}", not "${target}"`)
+      }
+
+      result[target][moduleName] = methods
+    }
   }
+
+  return {methods: result, problems}
 }
 
-const target = join(root, 'src/generated/request-fields.json')
-mkdirSync(dirname(target), {recursive: true})
-writeFileSync(target, JSON.stringify(out) + '\n')
-console.log(`wrote ${target}: ${methodCount} methods (${missingDto} without a DTO declaration), sdk ${sdkVersion}`)
+function main() {
+  const require = createRequire(import.meta.url)
+  const root = dirname(dirname(fileURLToPath(import.meta.url)))
+  // The package exports map hides package.json; resolve the entry point and walk up.
+  const sdkDir = dirname(dirname(require.resolve('@norbix.ai/ts')))
+  const sdkVersion = JSON.parse(readFileSync(join(sdkDir, 'package.json'), 'utf8')).version
+  const indexJs = readFileSync(join(sdkDir, 'dist/index.js'), 'utf8')
+
+  const {methods: all, problems} = sdkMethods(indexJs)
+  if (problems.length > 0) {
+    console.error(`gen:fields: ${problems.length} SDK method(s) could not be read from @norbix.ai/ts ${sdkVersion}; nothing written:`)
+    for (const p of problems) console.error(`  ${p}`)
+    process.exit(1)
+  }
+
+  const dts = {
+    api: parseDts(join(sdkDir, 'dist/types/api2.dtos.d.ts')),
+    hub: parseDts(join(sdkDir, 'dist/types/hub2.dtos.d.ts')),
+  }
+
+  const out = {sdk: `@norbix.ai/ts@${sdkVersion}`, api: {}, hub: {}}
+  let methodCount = 0
+  let missingDto = 0
+  for (const target of ['api', 'hub']) {
+    for (const [moduleName, methods] of Object.entries(all[target])) {
+      const entry = {}
+      for (const [method, info] of Object.entries(methods)) {
+        const fields = dts[target].classes.has(info.dto) ? fieldsOf(info.dto, dts[target]) : null
+        if (!fields) missingDto++
+        entry[method] = {http: info.http, path: info.path, dto: info.dto, fields: fields ?? []}
+        methodCount++
+      }
+
+      out[target][moduleName] = entry
+    }
+  }
+
+  const file = join(root, 'src/generated/request-fields.json')
+  mkdirSync(dirname(file), {recursive: true})
+  writeFileSync(file, JSON.stringify(out) + '\n')
+  console.log(`wrote ${file}: ${methodCount} methods (${missingDto} without a DTO declaration), sdk ${sdkVersion}`)
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
