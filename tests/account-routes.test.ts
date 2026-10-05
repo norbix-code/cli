@@ -12,6 +12,7 @@ interface Call {
   method: string
   path: string
   query: URLSearchParams
+  headers: Headers
   body?: Record<string, unknown>
 }
 
@@ -27,6 +28,7 @@ beforeEach(() => {
       method: init?.method ?? 'GET',
       path: url.pathname,
       query: url.searchParams,
+      headers: new Headers(init?.headers),
       body: typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : undefined,
     })
     return new Response('{}', {status: 200, headers: {'Content-Type': 'application/json'}})
@@ -46,6 +48,7 @@ const routes: Array<[string[], string, string]> = [
   [['me'], 'GET', '/v2/account/me'],
   [['me', 'set-phone', PHONE], 'PUT', '/v2/account/me/phone'],
   [['me', 'set-phone', '--clear'], 'PUT', '/v2/account/me/phone'],
+  [['regions'], 'GET', '/v2/account/regions'],
 ]
 
 describe('every account command of this round reaches its route', () => {
@@ -109,5 +112,24 @@ describe('account me set-phone — the JSON body', () => {
     const {error} = await runCommand(['account', 'me', 'set-phone', PHONE, '--dry-run', ...globalArgs])
     expect(error).toBeUndefined()
     expect(calls).toHaveLength(0)
+  })
+})
+
+/**
+ * `account regions` is anonymous on the gateway (no [Authenticate] on
+ * GET /{version}/account/regions) and `@norbix.ai/ts` 4.9.1 sends it with no
+ * Authorization header. The test HOME is empty (see test/setup.ts), so there
+ * is no login session and no profile.
+ */
+describe('account regions — no login, no project', () => {
+  it('runs without a login or a project and sends no Authorization header', async () => {
+    const {error} = await runCommand(['account', 'regions', '--region', 'nb-eu-germany'])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('GET')
+    expect(calls[0]?.path).toBe('/v2/account/regions')
+    expect(calls[0]?.headers.get('Authorization')).toBeNull()
+    expect(calls[0]?.headers.get('norbix-project-id')).toBeNull()
   })
 })
