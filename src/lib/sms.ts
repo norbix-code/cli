@@ -83,9 +83,9 @@ export const TIME_ZONE_RULES: Record<string, number> = {
   'registration-project': 4,
 }
 
-export function toUnixSeconds(value: string): number {
+export function toUnixSeconds(value: string, flag = 'at'): number {
   if (/^\d+$/.test(value)) return Number(value)
   const ms = Date.parse(value)
-  if (Number.isNaN(ms)) throw new Error(`--at is not a date: "${value}"`)
+  if (Number.isNaN(ms)) throw new Error(`--${flag} is not a date: "${value}"`)
   return Math.floor(ms / 1000)
 }

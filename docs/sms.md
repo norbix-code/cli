@@ -87,7 +87,7 @@ norbix sms template render --code "Hi @Model.Name" --token Name=Ada
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix sms campaigns [--page-size <n>] [--after <cursor>]` | list campaigns | `GET /campaigns` |
+| `norbix sms campaigns [--campaign-id <id>] [--template <id>] [--from <time>] [--to <time>] [--page-size <n>] [--after <cursor>]` | list campaigns; filters are optional (`--from` / `--to`: ISO 8601 or Unix seconds, UTC, on the campaign time) | `GET /campaigns` |
 | `norbix sms campaign <id>` | show a campaign | `GET /campaigns/{id}` |
 | `norbix sms campaign <id> --stats` | show its delivery statistics instead | `GET /campaigns/{id}/stats` |
 | `norbix sms campaign create --template <id> --integration <id> --audience <a> …` | create (and send or schedule) a campaign | `POST /campaigns` |

@@ -339,6 +339,20 @@ describe('sms campaign reads', () => {
     expect(calls[0]?.query.get('startingAfter')).toBe('cur_1')
   })
 
+  it('campaigns sends the campaign id, template and time filters as query fields', async () => {
+    await bodyOf(['campaigns', '--campaign-id', 'cmp_1', '--template', 'tpl_1', '--from', '2026-10-01T00:00:00Z', '--to', '1793404799'])
+    expect(calls[0]?.path).toBe(`${P}/campaigns`)
+    expect(calls[0]?.query.get('campaignId')).toBe('cmp_1')
+    expect(calls[0]?.query.get('templateId')).toBe('tpl_1')
+    expect(calls[0]?.query.get('from')).toBe('1790812800')
+    expect(calls[0]?.query.get('to')).toBe('1793404799')
+  })
+
+  it('campaigns without filters sends none of them', async () => {
+    await bodyOf(['campaigns'])
+    for (const key of ['campaignId', 'templateId', 'from', 'to']) expect(calls[0]?.query.has(key)).toBe(false)
+  })
+
   it('templates --archived goes out as showArchived=true', async () => {
     await bodyOf(['templates', '--archived'])
     expect(calls[0]?.query.get('showArchived')).toBe('true')
