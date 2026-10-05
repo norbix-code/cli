@@ -169,25 +169,34 @@ describe('sms integration test / confirm-delivery', () => {
 })
 
 describe('sms template create / update', () => {
-  it('builds one translation from --body, with an empty subject like the portal', async () => {
+  it('builds one translation from --body — body only, no subject (gone from SmsMessageContentDto)', async () => {
     const body = await bodyOf(['template', 'create', '--name', 'Welcome', '--body', 'Thanks', '--tag', 'a', '--tag', 'b'])
     expect(body).toEqual({
       templateName: 'Welcome',
       communicationChannel: 'Transactional',
       tags: ['a', 'b'],
-      translations: [{language: 'en', content: {subject: '', body: 'Thanks'}}],
+      translations: [{language: 'en', content: {body: 'Thanks'}}],
     })
   })
 
-  it('puts --subject and --language into the translation', async () => {
-    const body = await bodyOf(['template', 'create', '--name', 'Welcome', '--subject', 'Norbix', '--body', 'Ačiū', '--language', 'lt'])
-    expect(body.translations).toEqual([{language: 'lt', content: {subject: 'Norbix', body: 'Ačiū'}}])
+  it('puts --language into the translation', async () => {
+    const body = await bodyOf(['template', 'create', '--name', 'Welcome', '--body', 'Ačiū', '--language', 'lt'])
+    expect(body.translations).toEqual([{language: 'lt', content: {body: 'Ačiū'}}])
   })
+
+  for (const sub of ['create', 'update']) {
+    it(`template ${sub} no longer offers --subject (the sender is the integration's)`, async () => {
+      const argv = sub === 'create' ? ['template', 'create'] : ['template', 'update', ID]
+      const {error} = await runCommand(['sms', ...argv, '--name', 'Welcome', '--subject', 'Norbix', '--body', 'Thanks', ...globalArgs])
+      expect(error?.message).toMatch(/Nonexistent flag: --subject/)
+      expect(calls).toHaveLength(0)
+    })
+  }
 
   it('takes several languages from --translations', async () => {
     const translations = [
-      {language: 'en', content: {subject: '', body: 'Thanks'}},
-      {language: 'lt', content: {subject: '', body: 'Ačiū'}},
+      {language: 'en', content: {body: 'Thanks'}},
+      {language: 'lt', content: {body: 'Ačiū'}},
     ]
     const body = await bodyOf(['template', 'create', '--name', 'Welcome', '--translations', JSON.stringify(translations)])
     expect(body.translations).toEqual(translations)

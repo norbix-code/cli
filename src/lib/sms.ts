@@ -15,18 +15,17 @@ export interface SmsTemplateFlags {
   channel: string
   tag?: string[]
   language: string
-  subject?: string
   body?: string
   translations?: string
 }
 
 /**
  * Build the template body. Either --translations (a JSON array, @file or -)
- * for several languages, or --body (plus an optional --subject) for one.
+ * for several languages, or --body for one.
  *
- * An SMS translation carries `subject` and `body`; the portal sends an empty
- * subject by default (it is the sender id, not a title), so --subject is
- * optional here and defaults to ''.
+ * An SMS translation carries only `body`: the sender is set on the
+ * integration (provider), not on the template, and the gateway removed
+ * `subject` from `SmsMessageContentDto` (@norbix.ai/ts 4.8.0).
  */
 export async function smsTemplateBody(flags: SmsTemplateFlags): Promise<Record<string, unknown>> {
   let translations: unknown
@@ -39,7 +38,7 @@ export async function smsTemplateBody(flags: SmsTemplateFlags): Promise<Record<s
       throw new Error('Pass --body, or --translations for several languages.')
     }
 
-    translations = [{language: flags.language, content: {subject: flags.subject ?? '', body: flags.body}}]
+    translations = [{language: flags.language, content: {body: flags.body}}]
   }
 
   return {
@@ -61,11 +60,10 @@ export const smsTemplateFlags = {
   }),
   tag: Flags.string({description: 'Tag (repeat for several)', multiple: true}),
   language: Flags.string({description: 'Language of --body', default: 'en'}),
-  subject: Flags.string({description: 'Sender id / subject line (Razor allowed; empty by default)'}),
   body: Flags.string({description: 'SMS text (Razor allowed)'}),
   translations: Flags.string({
-    description: 'All languages as a JSON array of {language, content: {subject, body}} — inline, @file or -',
-    exclusive: ['subject', 'body'],
+    description: 'All languages as a JSON array of {language, content: {body}} — inline, @file or -',
+    exclusive: ['body'],
   }),
 }
 
