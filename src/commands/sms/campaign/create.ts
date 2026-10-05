@@ -13,7 +13,7 @@ export default class SmsCampaignCreate extends BaseCommand {
   phone-numbers  raw phone numbers, --phone +37060000000 (international format)
   account-users  the account owner / team members named with --user (their
                  ids from \`norbix account team\`); each gets the SMS on the
-                 phone they saved (\`norbix account me phone\`); members without
+                 phone they saved (\`norbix account me set-phone\`); members without
                  a phone are skipped
 
 --integration is required: name the SMS provider the campaign sends through

@@ -2,7 +2,7 @@ import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 /**
- * `account team` (and, later, the other account commands) through oclif and the
+ * `account team`, `account me` and `account me set-phone` through oclif and the
  * real `@norbix.ai/ts` transport: verb, path, query string and body of the one
  * request each sends. `fetch` is replaced, so nothing leaves the process.
  * `account.test.ts` checks the SDK method and fields with a recorder.
@@ -38,10 +38,14 @@ afterEach(() => {
 })
 
 const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '--region', 'nb-eu-germany']
+const PHONE = '+37060000000'
 
 /** [argv, verb, path] — argv without the leading `account`. */
 const routes: Array<[string[], string, string]> = [
   [['team'], 'GET', '/v2/account/collaborators'],
+  [['me'], 'GET', '/v2/account/me'],
+  [['me', 'set-phone', PHONE], 'PUT', '/v2/account/me/phone'],
+  [['me', 'set-phone', '--clear'], 'PUT', '/v2/account/me/phone'],
 ]
 
 describe('every account command of this round reaches its route', () => {
@@ -79,5 +83,31 @@ describe('account team — flat paging and filters on the query string', () => {
     for (const key of ['pageSize', 'startingAfter', 'endingBefore', 'projectId', 'includeAccountOwner']) {
       expect(calls[0]?.query.has(key)).toBe(false)
     }
+  })
+})
+
+describe('account me set-phone — the JSON body', () => {
+  it('sends the phone', async () => {
+    await runCommand(['account', 'me', 'set-phone', PHONE, ...globalArgs])
+    expect(calls[0]?.body).toEqual({phone: PHONE})
+  })
+
+  it('--clear sends an empty phone, which clears it', async () => {
+    await runCommand(['account', 'me', 'set-phone', '--clear', ...globalArgs])
+    expect(calls[0]?.body).toEqual({phone: ''})
+  })
+
+  it('needs a phone or --clear, and not both — refused before any request', async () => {
+    const none = await runCommand(['account', 'me', 'set-phone', ...globalArgs])
+    expect(none.error?.message).toMatch(/Pass a phone number/)
+    const both = await runCommand(['account', 'me', 'set-phone', PHONE, '--clear', ...globalArgs])
+    expect(both.error?.message).toMatch(/not both/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('--dry-run sends nothing', async () => {
+    const {error} = await runCommand(['account', 'me', 'set-phone', PHONE, '--dry-run', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(0)
   })
 })
