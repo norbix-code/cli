@@ -56,9 +56,9 @@ like a number.
 ## 4. Change things in two steps
 
 ```sh
-norbix db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update '{"$set":{"status":"shipped"}}' --dry-run --json
+norbix db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update '{"status":"shipped"}' --dry-run --json
 # inspect "http" and "request" …
-norbix db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update '{"$set":{"status":"shipped"}}' --json
+norbix db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update '{"status":"shipped"}' --json
 ```
 
 A **destructive** command (`destructive: true` in the schema) additionally

@@ -40,9 +40,11 @@ refactoringV2 (2026-10) has only the GET routes, so this CLI needs a current gat
 | `norbix db insert-many <collection> --docs <json-array>` | insert many | `POST /collections/{collectionName}/many` |
 | `norbix db update <collection> --id <id> --update <json>` | update one | `PUT /collections/{collectionName}/{id}` |
 | `norbix db update <collection> --many --filter <json> --update <json> [--yes]` | update many | `PUT /collections/{collectionName}/many` |
+| `norbix db update <collection> --all --update <json> [--yes]` | update every record | `PUT /collections/{collectionName}/many` (`allRecords: true`) |
 | `norbix db replace <collection> --id <id> --doc <json>` | replace one record fully | `PUT /collections/{collectionName}/{id}/replace` |
 | `norbix db delete <collection> --id <id> [--yes]` | delete one | `DELETE /collections/{collectionName}/{id}` |
 | `norbix db delete <collection> --many --filter <json> [--yes]` | delete many | `DELETE /collections/{collectionName}/many` |
+| `norbix db delete <collection> --all [--yes]` | delete every record | `DELETE /collections/{collectionName}/many` (`allRecords: true`) |
 | `norbix db aggregate <collection> --pipeline <json>` | run an inline aggregation | `POST /collections/{collectionName}/aggregate` |
 | `norbix db aggregate <collection> --id <aggregateId> [--tokens <json>]` | run a saved aggregate | `POST /collections/{collectionName}/aggregates/{aggregateId}/execute` |
 | `norbix db aggregates [--schema <id>]` | list saved aggregates | `GET /aggregates` |
@@ -50,7 +52,27 @@ refactoringV2 (2026-10) has only the GET routes, so this CLI needs a current gat
 
 The record's owner (responsible user) decides who may read or change it under
 "own" permissions. `change-owner` is the only way to move a record to another
-user: an update or a replace does not change the owner.
+user: an update or a replace does not change the owner. The new owner must be a
+user of the project in the same environment (`CM-ERRORS-MEMBERSHIP-USERS-012`
+otherwise).
+
+Rules for record writes:
+
+- `--update` is the **plain fields** to change, e.g. `'{"status":"paid"}'`. The
+  gateway applies them with `$set`. An operator (`$set`, `$inc`, …) is refused
+  (`CM-ERRORS-DATABASE-035`); the CLI refuses it before sending.
+- An empty filter (`--filter '{}'`) would touch every record, so `update --many`
+  and `delete --many` refuse it (`CM-ERRORS-DATABASE-037`). To change or delete
+  the whole collection on purpose, use `--all`: it sends `allRecords: true` and
+  always asks first (`--yes` skips the question).
+- A user with only "own" rights (create as user, update own, delete own) may
+  run `insert-many`, `update --many` and `delete --many`; they touch only that
+  user's own records.
+- A broken `insert`, `insert-many` or `replace` document answers
+  `CM-ERRORS-DATABASE-036` ("Invalid record document", with the item index for
+  `insert-many`).
+- A soft-deleted record is "not found" for `update`, `replace` and
+  `change-owner`; `update --many` skips it.
 
 ## Collections: indexes and test data
 
@@ -94,7 +116,7 @@ counts, the new ids, and any errors.
 | `norbix db schema publish <id> [--yes]` | publish the draft | `POST /schemas/{Id}/publish` |
 | `norbix db schema versions <id>` | list the published versions | `GET /schemas/{Id}/versions` |
 | `norbix db schema diff <id> --from <n> --to <n>` | what changed between two versions | `GET /schemas/{Id}/versions/diff` |
-| `norbix db schema delete <id> [--yes]` | delete the schema | `DELETE /schemas/{Id}` |
+| `norbix db schema delete <id> [--yes]` | delete the schema (refused while a saved aggregate joins it: `CM-ERRORS-SCHEMA-018`, the aggregates are in `BlockerAggregateNames`) | `DELETE /schemas/{Id}` |
 
 `--file` is the data schema (the JSON Schema of one record); `--ui-file` is the
 UI schema the dashboard form uses. A change is a draft first: records keep the
@@ -124,6 +146,14 @@ webhook …) when records of a schema are inserted, updated or deleted.
 | `norbix db trigger enable <id>` | turn it on | `PATCH /schemas/triggers/{triggerId}/enable` |
 | `norbix db trigger disable <id> [--yes]` | turn it off | `PATCH /schemas/triggers/{triggerId}/disable` |
 | `norbix db trigger delete <id> [--yes]` | delete it | `DELETE /schemas/triggers/{triggerId}` |
+
+Schema triggers belong to one environment. Every trigger command works on the
+copy in the request environment (`--env`, PROD when none is set): `db triggers`
+lists only that environment's triggers (each row has `env`), and enable /
+disable / delete of an id with no copy there answers `CM-ERRORS-TRIGGERS-002`
+(not found). `db trigger <id>` shows `schemaId` (the owning schema, `sch_…`)
+and `env`. `trigger create --id` with an id that belongs to another schema is
+also `CM-ERRORS-TRIGGERS-002`.
 
 The file holds the trigger — the same shape `db trigger <id> --json` shows:
 name, `schemaId`, the record events it reacts to, and `action` (`{type, …}`).
@@ -171,6 +201,18 @@ gateway routes them). `--set` is applied with `$set`: only the fields you give
 change — `name` (a string or a `{lang: value}` map), `description`, `order`
 (lower shows first), `parentId`, `multiParents`.
 
+`db taxonomies` lists each taxonomy's parents as `dependencyRefs`
+(`[{id, name}]`, in the order of `dependencies`; a parent that no longer exists
+keeps its place with `name: null`).
+
+Reading terms by taxonomy name (`terms`, `term tree`, `term tree --merged`)
+needs read rights on that taxonomy's terms (`database:term:<taxonomy id>`); the
+merged tree checks every parent taxonomy too. Errors you may meet:
+`CM-ERRORS-TAXONOMIES-010` (no taxonomy with that name),
+`CM-ERRORS-TAXONOMIES-011` (the tree has more than 5000 terms — read a
+`--root` branch or page with `terms` instead) and `CM-ERRORS-TAXONOMIES-005`
+(a name longer than 40 characters).
+
 ```bash
 norbix db term create 66b2f0a1c3d4e5f6a7b8c9d0 --doc '{"name":"Lithuania","order":1}'
 norbix db term update 66b2f0a1c3d4e5f6a7b8c9d0 66b2f0a1c3d4e5f6a7b8c9d1 --set '{"order":2}'
@@ -183,7 +225,7 @@ norbix db term tree countries --depth 2
 - `--dry-run` on every write prints the SDK call and the HTTP request, and
   sends nothing.
 - `delete`, `discard`, `publish`, `seed`, `trigger disable`, `trigger delete`,
-  `term delete` and the `--many` record writes ask first; `--yes` skips the
+  `term delete` and the `--many` / `--all` record writes ask first; `--yes` skips the
   question, and without a terminal they exit 3 unless `--yes` is given.
 - Exit codes are in the README ("Errors and exit codes").
 
