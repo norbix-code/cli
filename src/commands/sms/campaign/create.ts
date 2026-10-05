@@ -11,6 +11,10 @@ export default class SmsCampaignCreate extends BaseCommand {
   users          the users named with --user
   collection     the records of --schema whose --field holds the recipient
   phone-numbers  raw phone numbers, --phone +37060000000 (international format)
+  account-users  the account owner / team members named with --user (their
+                 ids from \`norbix account team\`); each gets the SMS on the
+                 phone they saved (\`norbix account me phone\`); members without
+                 a phone are skipped
 
 --integration is required: name the SMS provider the campaign sends through
 (list them with \`norbix sms integrations\`). The server never falls back to
@@ -26,6 +30,7 @@ goes in --config as a JSON object and is merged into the delivery settings.`
     '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --tag beta',
     '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience users --user usr_1 --user usr_2',
     '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience phone-numbers --phone +37060000000 --at 2026-10-01T09:00:00Z',
+    '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience account-users --user 66d0e1f2a3b4c5d6e7f8a9b0',
     '<%= config.bin %> sms campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --tag beta --dry-run',
   ]
 
@@ -33,7 +38,7 @@ goes in --config as a JSON object and is merged into the delivery settings.`
     ...BaseCommand.dryRunFlags,
     template: Flags.string({required: true, description: 'Template ID'}),
     audience: Flags.string({required: true, description: 'Who receives it', options: Object.keys(SMS_AUDIENCES)}),
-    user: Flags.string({description: 'User ID (users; repeat for several)', multiple: true}),
+    user: Flags.string({description: 'User ID (users) or team member ID (account-users); repeat for several', multiple: true}),
     role: Flags.string({description: 'Role name (all-users / collection; repeat for several)', multiple: true}),
     tag: Flags.string({description: 'User tag (all-users; repeat for several)', multiple: true}),
     schema: Flags.string({description: 'Collection name (collection)'}),
@@ -76,7 +81,7 @@ goes in --config as a JSON object and is merged into the delivery settings.`
     }
 
     // The server reads `deliveryType` and then exactly the matching settings
-    // block (allUsers / specifiedUsers / collection / phoneNumbers).
+    // block (allUsers / specifiedUsers / accountUsers / collection / phoneNumbers).
     const res = await client.hub.notifications.createSmsCampaign({
       templateId: flags.template,
       databaseIntegrationId: flags['database-integration'],
@@ -106,6 +111,9 @@ goes in --config as a JSON object and is merged into the delivery settings.`
         return {rolesNames: flags.role, userTags: flags.tag}
       case 'users':
         if (!flags.user?.length) this.error('--audience users needs at least one --user')
+        return {recipients: flags.user}
+      case 'account-users':
+        if (!flags.user?.length) this.error('--audience account-users needs at least one --user (a team member ID)')
         return {recipients: flags.user}
       case 'collection':
         if (!flags.schema || !flags.field?.length) this.error('--audience collection needs --schema and --field')

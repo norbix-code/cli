@@ -225,7 +225,7 @@ describe('sms template render', () => {
   })
 })
 
-describe('sms campaign create — the four audiences', () => {
+describe('sms campaign create — the five audiences', () => {
   // The server reads `deliveryType` and then exactly the matching settings
   // block (Hub.Sms/Campaigns/Create.cs `Settings` switch), so each audience is
   // checked on the wire, not just the flags. This is NOT the push shape
@@ -240,6 +240,8 @@ describe('sms campaign create — the four audiences', () => {
       {recipientsSourceType: 'Collection', schemaName: 'subscribers', fields: ['owner'], fieldType: 'User', roleNames: ['Member']},
     ],
     ['phone-numbers', ['--phone', PHONE, '--phone', '+37060000001'], 'phoneNumbers', {recipientsSourceType: 'PhoneNumbers', phoneNumbers: [PHONE, '+37060000001']}],
+    // Team members (owner included) get it on the phone saved with `account me phone`.
+    ['account-users', ['--user', 'acc_usr_1', '--user', 'acc_usr_2'], 'accountUsers', {recipientsSourceType: 'AccountUsers', recipients: ['acc_usr_1', 'acc_usr_2']}],
   ]
 
   for (const [audience, extra, block, settings] of cases) {
@@ -294,6 +296,7 @@ describe('sms campaign create — the four audiences', () => {
     ['users', [], /needs at least one --user/],
     ['collection', ['--schema', 's'], /needs --schema and --field/],
     ['phone-numbers', [], /needs at least one --phone/],
+    ['account-users', [], /account-users needs at least one --user/],
   ]
   for (const [audience, extra, message] of missing) {
     it(`--audience ${audience} ${extra.join(' ')} fails before sending`, async () => {
@@ -303,13 +306,20 @@ describe('sms campaign create — the four audiences', () => {
     })
   }
 
-  it('refuses an audience the server does not have a settings block for', async () => {
-    // The SmsCampaignRecipientsSourceTypes enum also lists AccountUsers, but
-    // CreateSmsCampaignRequest has no `accountUsers` block, so the server would
-    // answer IntegrationTypeNotSupportedError. The CLI does not offer it.
-    const {error} = await runCommand(['sms', 'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'account-users', ...globalArgs])
-    expect(error?.message).toMatch(/Expected --audience=account-users to be one of/)
+  it('refuses an audience the server has no settings block for', async () => {
+    const {error} = await runCommand(['sms', 'campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'devices', ...globalArgs])
+    expect(error?.message).toMatch(/Expected --audience=devices to be one of/)
     expect(calls).toHaveLength(0)
+  })
+
+  it('--audience account-users schedules with --at like every other audience', async () => {
+    const body = await bodyOf(['campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'account-users', '--user', 'acc_usr_1', '--at', '1789905600'])
+    expect(body).toEqual({
+      templateId: ID,
+      integrationId: INT,
+      deliveryType: 'AccountUsers',
+      accountUsers: {recipientsSourceType: 'AccountUsers', recipients: ['acc_usr_1'], campaignTime: 1789905600},
+    })
   })
 })
 

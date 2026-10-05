@@ -108,6 +108,7 @@ norbix sms template render --code "Hi @Model.Name" --token Name=Ada
 | `users` | the named users | `--user` (repeat) |
 | `collection` | records of a collection whose field holds the recipient | `--schema`, `--field` (repeat), `--field-type User\|Email`, `--role` |
 | `phone-numbers` | raw phone numbers in international format | `--phone` (repeat) |
+| `account-users` | the account owner / team members, on the phone each saved with `norbix account me phone` (members without one are skipped) | `--user <team member id>` (repeat; ids from `norbix account team`) |
 
 **`--integration` is required** — it names the SMS provider the campaign sends
 through (list them with `norbix sms integrations`). The server never falls back
@@ -132,6 +133,7 @@ block.
 ```bash
 norbix sms campaign create --template tpl_123 --integration int_123 --audience all-users --tag beta
 norbix sms campaign create --template tpl_123 --integration int_123 --audience phone-numbers --phone +37060000000 --at 2026-10-01T09:00:00Z
+norbix sms campaign create --template tpl_123 --integration int_123 --audience account-users --user acc_usr_1
 norbix sms campaign batches cmp_123
 ```
 
@@ -148,6 +150,5 @@ norbix sms preview --hash 8f2a91c4... --region nb-eu-germany
 
 ## Not offered on purpose
 
-- **`--audience account-users`**: the gateway's audience enum lists
-  `AccountUsers`, but the Sms campaign request has no settings block for it,
-  so the server would refuse the campaign. Push has it; SMS does not yet.
+- nothing at the moment. (`--audience account-users` was listed here until the
+  gateway added the `accountUsers` settings block — `@norbix.ai/ts` 4.8.0.)

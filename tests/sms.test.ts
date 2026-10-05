@@ -5,6 +5,7 @@ import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 import SmsCampaignBatch from '../src/commands/sms/campaign/batch.js'
 import SmsCampaignBatches from '../src/commands/sms/campaign/batches.js'
+import SmsCampaignCreate from '../src/commands/sms/campaign/create.js'
 import SmsCampaignDelete from '../src/commands/sms/campaign/delete.js'
 import SmsCampaignMessage from '../src/commands/sms/campaign/message.js'
 import SmsCampaignMessages from '../src/commands/sms/campaign/messages.js'
@@ -258,6 +259,29 @@ describe('sms campaign reads and delete', () => {
     const {calls, output} = await runCommand(SmsCampaignDelete, [ID, '--yes'])
     expect(calls).toEqual([{method: 'deleteSmsCampaign', request: {id: ID}}])
     expect(output).toEqual([`Campaign ${ID} deleted.`])
+  })
+})
+
+describe('sms campaign create --audience account-users', () => {
+  it('sends the team member ids in the accountUsers block with deliveryType AccountUsers', async () => {
+    const {calls} = await runCommand(SmsCampaignCreate, [
+      '--template', ID, '--integration', 'int_1', '--audience', 'account-users', '--user', 'acc_usr_1', '--user', 'acc_usr_2',
+    ])
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('createSmsCampaign')
+    expect(calls[0]?.request).toMatchObject({
+      templateId: ID,
+      integrationId: 'int_1',
+      deliveryType: 'AccountUsers',
+      accountUsers: {recipientsSourceType: 'AccountUsers', recipients: ['acc_usr_1', 'acc_usr_2']},
+    })
+    expect(calls[0]?.request).not.toHaveProperty('specifiedUsers')
+  })
+
+  it('needs at least one --user', async () => {
+    await expect(
+      runCommand(SmsCampaignCreate, ['--template', ID, '--integration', 'int_1', '--audience', 'account-users']),
+    ).rejects.toThrow(/account-users needs at least one --user/)
   })
 })
 
