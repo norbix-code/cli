@@ -69,6 +69,22 @@ describe('sms campaigns', () => {
     expect(calls[0]?.request).toEqual({pageSize: 10, startingAfter: 'cur_1'})
   })
 
+  it('filters by campaign id, template and campaign time (ISO or Unix seconds → Unix seconds)', async () => {
+    const {calls} = await runCommand(SmsCampaigns, [
+      '--campaign-id', 'cmp_1', '--template', 'tpl_1', '--from', '2026-10-01T00:00:00Z', '--to', '1793404799',
+    ])
+    expect(calls).toEqual([
+      {
+        method: 'getSmsCampaigns',
+        request: {pageSize: undefined, startingAfter: undefined, campaignId: 'cmp_1', templateId: 'tpl_1', from: 1790812800, to: 1793404799},
+      },
+    ])
+  })
+
+  it('refuses a --from that is not a date, before any call', async () => {
+    await expect(runCommand(SmsCampaigns, ['--from', 'yesterday'])).rejects.toThrow(/--from is not a date/)
+  })
+
   it('shows one campaign', async () => {
     const {calls} = await runCommand(SmsCampaign, [ID])
     expect(calls).toEqual([{method: 'getSmsCampaign', request: {id: ID}}])
