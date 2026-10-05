@@ -1,5 +1,7 @@
 import {describe, expect, it} from 'vitest'
 
+import AccountMe from '../src/commands/account/me.js'
+import AccountMeSetPhone from '../src/commands/account/me/set-phone.js'
 import AccountTeam from '../src/commands/account/team.js'
 import {type RecordedCall, recordingNotifications, runCommand} from './_helpers.js'
 
@@ -30,5 +32,30 @@ describe('account team', () => {
         request: {projectId: 'prj_1', includeAccountOwner: true, pageSize: 50, startingAfter: 'acc_usr_20', endingBefore: 'acc_usr_90'},
       },
     ])
+  })
+})
+
+describe('account me', () => {
+  it('reads your own record', async () => {
+    const {calls} = await run(AccountMe, [])
+    expect(calls).toEqual([{method: 'getMyAccountUserProfile', request: {}}])
+  })
+})
+
+describe('account me set-phone', () => {
+  it('saves the phone and says so', async () => {
+    const {calls, output} = await run(AccountMeSetPhone, ['+37060000000'])
+    expect(calls).toEqual([{method: 'updateMyAccountUserPhone', request: {phone: '+37060000000'}}])
+    expect(output).toEqual(['Phone number set to +37060000000.'])
+  })
+
+  it('--clear sends an empty phone', async () => {
+    const {calls, output} = await run(AccountMeSetPhone, ['--clear'])
+    expect(calls).toEqual([{method: 'updateMyAccountUserPhone', request: {phone: ''}}])
+    expect(output).toEqual(['Phone number cleared.'])
+  })
+
+  it('refuses no phone and no --clear', async () => {
+    await expect(run(AccountMeSetPhone, [])).rejects.toThrow(/Pass a phone number/)
   })
 })

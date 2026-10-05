@@ -78,7 +78,12 @@
     ],
     "topics": {
       "account": {
-        "description": "Account profile, projects, team, usage, billing"
+        "description": "Account profile, projects, team, usage, billing",
+        "subtopics": {
+          "me": {
+            "description": "Your own team-member record and phone number"
+          }
+        }
       },
       "ai": {
         "description": "LLM and MCP server integrations, AI service users, and coding-agent setup (ai init)",

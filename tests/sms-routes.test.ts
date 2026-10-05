@@ -240,7 +240,7 @@ describe('sms campaign create — the five audiences', () => {
       {recipientsSourceType: 'Collection', schemaName: 'subscribers', fields: ['owner'], fieldType: 'User', roleNames: ['Member']},
     ],
     ['phone-numbers', ['--phone', PHONE, '--phone', '+37060000001'], 'phoneNumbers', {recipientsSourceType: 'PhoneNumbers', phoneNumbers: [PHONE, '+37060000001']}],
-    // Team members (owner included) get it on the phone saved with `account me phone`.
+    // Team members (owner included) get it on the phone saved with `account me set-phone`.
     ['account-users', ['--user', 'acc_usr_1', '--user', 'acc_usr_2'], 'accountUsers', {recipientsSourceType: 'AccountUsers', recipients: ['acc_usr_1', 'acc_usr_2']}],
   ]
 

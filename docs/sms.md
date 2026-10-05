@@ -108,7 +108,7 @@ norbix sms template render --code "Hi @Model.Name" --token Name=Ada
 | `users` | the named users | `--user` (repeat) |
 | `collection` | records of a collection whose field holds the recipient | `--schema`, `--field` (repeat), `--field-type User\|Email`, `--role` |
 | `phone-numbers` | raw phone numbers in international format | `--phone` (repeat) |
-| `account-users` | the account owner / team members, on the phone each saved with `norbix account me phone` (members without one are skipped) | `--user <team member id>` (repeat; ids from `norbix account team`) |
+| `account-users` | the account owner / team members, on the phone each saved with `norbix account me set-phone` (members without one are skipped) | `--user <team member id>` (repeat; ids from `norbix account team`) |
 
 **`--integration` is required** — it names the SMS provider the campaign sends
 through (list them with `norbix sms integrations`). The server never falls back

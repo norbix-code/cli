@@ -35,7 +35,7 @@ out of reach.
 | scheduler | 8/8 | every endpoint, `save` included (email-campaign task built from flags) — see `docs/scheduler.md`; each command is run through the real transport in `tests/scheduler-routes.test.ts`, with the exact `save` body |
 | webhooks | 6/9 | show, secret, rotate, enable/disable/remove destination |
 | payments | 7/16 | integrations list, triggers list/get/enable/disable, module toggle |
-| account/* | 10/62 | profile, status, usage, projects, team, regions, billing-portal, api keys. Missing: team roles/policies management |
+| account/* | 12/64 | profile, status, usage, projects, team (paging + project / owner filters), regions, billing-portal, api keys, me, me set-phone — see `docs/account.md`; team / me / set-phone run through the real transport in `tests/account-routes.test.ts`. Missing: team roles/policies management |
 | account/projects (settings, CORS, admin portal, legal, AI chat) | 30/30 | every project route in `@norbix.ai/ts` 4.4.0 a developer calls (28 hub + the 2 public API-host reads) — see `docs/project.md`; each command is run through the real transport in `tests/project-routes.test.ts`. Not counted: create project, environments, notification groups/tags, AI plans/knowledge/credits (internal), expose brand/auth (next wave) |
 | ai/integrations (LLM, MCP) | 15/20 | every LLM and MCP route — see `docs/ai.md`, same route test. Missing: the 5 embedding-integration routes (not asked for; `norbix hub ai …` reaches them) |
 | account/ai/service-users | 5/5 | list, create, delete, rotate-key, revoke-key — see `docs/ai.md`, same route test |
