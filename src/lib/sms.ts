@@ -73,6 +73,7 @@ export const SMS_AUDIENCES: Record<string, {deliveryType: string; block: string}
   users: {deliveryType: 'SpecifiedUsers', block: 'specifiedUsers'},
   collection: {deliveryType: 'Collection', block: 'collection'},
   'phone-numbers': {deliveryType: 'PhoneNumbers', block: 'phoneNumbers'},
+  'account-users': {deliveryType: 'AccountUsers', block: 'accountUsers'},
 }
 
 /** --respect-time-zone value → the RespectTimeZoneSettings flag the server stores. */
