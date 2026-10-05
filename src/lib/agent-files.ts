@@ -61,7 +61,7 @@ export function claudeSkill(): string {
     '',
     '```sh',
     'norbix db find orders --filter \'{"status":"paid"}\' --page-size 20 --json',
-    'norbix db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update \'{"$set":{"status":"shipped"}}\' --dry-run --json',
+    'norbix db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update \'{"status":"shipped"}\' --dry-run --json',
     'norbix users delete 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run --json   # then: --yes --json',
     'norbix hub scheduler --json                                      # methods + fields',
     'norbix hub scheduler task delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes --json',
