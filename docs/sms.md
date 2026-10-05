@@ -14,8 +14,8 @@ All paths below are under `/{version}/notifications/sms`.
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix sms enable` | turn the SMS module on | `GET /enable` |
-| `norbix sms disable [--yes]` | turn the SMS module off | `GET /disable` |
+| `norbix sms enable` | turn the SMS module on | `PUT /enable` |
+| `norbix sms disable [--yes]` | turn the SMS module off | `PUT /disable` |
 | `norbix sms disable-dependencies` | list what still depends on SMS — check before `disable` | `GET /disable-dependencies` |
 | `norbix sms settings [--id <id>]` | show the project SMS settings | `GET /settings` |
 

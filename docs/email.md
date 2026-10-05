@@ -16,8 +16,8 @@ All paths below are under `/{version}/notifications/email`, except
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix email enable` | turn the email module on | `GET /enable` |
-| `norbix email disable [--yes]` | turn the email module off | `GET /disable` |
+| `norbix email enable` | turn the email module on | `PUT /enable` |
+| `norbix email disable [--yes]` | turn the email module off | `PUT /disable` |
 | `norbix email disable-dependencies` | list what still depends on email — check before `disable` | `GET /disable-dependencies` |
 | `norbix email settings [--id <id>]` | show the project email settings | `GET /settings` |
 
