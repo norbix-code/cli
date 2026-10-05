@@ -51,8 +51,10 @@ const DESTRUCTIVE: string[][] = [
   ['payments', 'disable', 'abc123'],
   ['module', 'disable', 'sms'],
   ['db', 'delete', 'orders', '--id', 'abc123'],
-  ['db', 'delete', 'orders', '--many', '--filter', '{}'],
-  ['db', 'update', 'orders', '--many', '--filter', '{}', '--update', '{"$set":{"a":1}}'],
+  ['db', 'delete', 'orders', '--many', '--filter', '{"a":1}'],
+  ['db', 'delete', 'orders', '--all'],
+  ['db', 'update', 'orders', '--many', '--filter', '{"a":1}', '--update', '{"a":2}'],
+  ['db', 'update', 'orders', '--all', '--update', '{"a":2}'],
   ['api', 'membership', 'user', 'delete', 'abc123'],
   ['hub', 'scheduler', 'task', 'delete', 'abc123'],
   ['ai', 'llm', 'delete', 'abc123'],
@@ -149,7 +151,7 @@ describe('--dry-run', () => {
   })
 
   it('prints the SDK call in text mode too', async () => {
-    const r = await cli(home, ['db', 'update', 'orders', '--many', '--filter', '{}', '--update', '{"$set":{"a":1}}', '--profile', 'x', '--dry-run'])
+    const r = await cli(home, ['db', 'update', 'orders', '--many', '--filter', '{"a":1}', '--update', '{"a":2}', '--profile', 'x', '--dry-run'])
     expect(r.code).toBe(0)
     expect(r.stdout).toContain('api.database.updateMany')
     expect(r.stdout).toContain('PUT ')
