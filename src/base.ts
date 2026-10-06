@@ -3,7 +3,7 @@ import {Command, Flags, ux} from '@oclif/core'
 
 import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
 import {EXIT} from './lib/exit-codes.js'
-import {resolveHubEndpoint, type HubEndpoint} from './lib/hub-version.js'
+import {cleanVersion, resolveHubEndpoint, splitVersionedUrl, type HubEndpoint} from './lib/hub-version.js'
 import {
   DEFAULT_API_URL,
   DEFAULT_HUB_URL,
@@ -72,8 +72,15 @@ export interface ResolvedContext {
    * fields from it, never print or return it whole.
    */
   session?: Session
-  /** Hub version set by hand (`NORBIX_HUB_VERSION`, profile `hub_version`); else discovered. */
+  /**
+   * Hub version set by hand (`NORBIX_HUB_VERSION`, profile `hub_version`) or
+   * taken from a Hub URL that ends in `/vN`; else undefined (discovered from /echo).
+   */
   hubVersion?: string
+  /** API version from an API URL that ends in `/vN`; else undefined (the SDK default). */
+  apiVersion?: string
+  /** The Hub / API base URL when it is not the default norbix.ai one (no region, no version). */
+  customEndpoints: {api?: string; hub?: string}
   stored: StoredConfig
 }
 
@@ -283,10 +290,22 @@ export abstract class BaseCommand extends Command {
             ? 'legacy config'
             : 'none'
 
-    const apiUrlBase =
-      prof.api_url ?? (explicitProfile ? undefined : legacy.apiUrl) ?? DEFAULT_API_URL
-    const hubUrlBase =
-      prof.hub_url ?? (explicitProfile ? undefined : legacy.hubUrl) ?? DEFAULT_HUB_URL
+    // Endpoints: an explicit --profile's own URL wins; then NORBIX_API_URL /
+    // NORBIX_HUB_URL; then (no --profile) the URL a browser sign-in was made
+    // against, the [default] profile, the legacy config; then norbix.ai.
+    const envApiUrl = process.env.NORBIX_API_URL?.trim() || undefined
+    const envHubUrl = process.env.NORBIX_HUB_URL?.trim() || undefined
+    const apiUrlRaw = explicitProfile
+      ? (prof.api_url ?? envApiUrl ?? DEFAULT_API_URL)
+      : (envApiUrl ?? session?.apiUrl ?? prof.api_url ?? legacy.apiUrl ?? DEFAULT_API_URL)
+    const hubUrlRaw = explicitProfile
+      ? (prof.hub_url ?? envHubUrl ?? DEFAULT_HUB_URL)
+      : (envHubUrl ?? session?.hubUrl ?? prof.hub_url ?? legacy.hubUrl ?? DEFAULT_HUB_URL)
+
+    // A URL may be given with its version (`https://hub.example.com/v3`) or
+    // without; the SDK adds the version itself, so it is split off here.
+    const {base: apiUrlBase, version: apiUrlVersion} = splitVersionedUrl(apiUrlRaw)
+    const {base: hubUrlBase, version: hubUrlVersion} = splitVersionedUrl(hubUrlRaw)
 
     const region =
       flags.region ?? (explicitProfile ? prof.region : (session?.region ?? prof.region ?? legacy.region))
@@ -319,7 +338,12 @@ export abstract class BaseCommand extends Command {
       profileName,
       userName: session?.userName,
       session: bearerToken ? session : undefined,
-      hubVersion: process.env.NORBIX_HUB_VERSION || prof.hub_version,
+      hubVersion: cleanVersion(process.env.NORBIX_HUB_VERSION) ?? cleanVersion(prof.hub_version) ?? hubUrlVersion,
+      apiVersion: apiUrlVersion,
+      customEndpoints: {
+        api: apiUrlBase === DEFAULT_API_URL ? undefined : apiUrlBase,
+        hub: hubUrlBase === DEFAULT_HUB_URL ? undefined : hubUrlBase,
+      },
       stored: legacy,
     }
   }
@@ -430,6 +454,10 @@ export abstract class BaseCommand extends Command {
         // Always explicit: CLI defaults are api/hub.norbix.ai (the SDK's own
         // defaults still point at .dev — tracked as an SDK bug).
         baseUrl: {api: ctx.apiUrl, hub: ctx.hubUrl},
+        // Only when known (a /vN in the URL, NORBIX_HUB_VERSION, hub_version);
+        // otherwise the SDK default, unchanged.
+        ...(ctx.hubVersion ? {hubVersion: ctx.hubVersion} : {}),
+        ...(ctx.apiVersion ? {apiVersion: ctx.apiVersion} : {}),
         // A dry run stops in the middleware; the SDK must not retry it.
         ...(flags['dry-run'] ? {retry: {maxRetries: 0}} : {}),
         // A 401 on a browser sign-in: refresh once and retry the call.

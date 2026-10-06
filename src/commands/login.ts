@@ -148,6 +148,8 @@ NORBIX_API_KEY in the environment. Without one of these the command exits 2.`
       clientId: token.clientId,
       method: 'browser',
       hubVersion: hub.version,
+      hubUrl: ctx.customEndpoints.hub,
+      apiUrl: ctx.customEndpoints.api,
       projectId: token.projectId ?? projectId,
       accountId: token.accountId ?? flags.account,
       env: flags.env,
