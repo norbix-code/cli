@@ -21,6 +21,9 @@ import {hubRoute, type HubEndpoint} from './hub-version.js'
  *       { error: "slow_down" }              → poll again, 5 s slower
  *       { error: "access_denied" }          → the person pressed Deny
  *       { error: "expired_token" }          → the code ran out
+ *       { error: "invalid_grant" }          → unknown / spent code, user deleted
+ *       { error: "invalid_request" }        → no deviceCode
+ *       (an error may carry `errorDescription`; it is shown)
  *       { bearerToken, refreshToken, expiresIn, clientId, userId, userName,
  *         displayName, accountId, projectId? }
  *
@@ -151,7 +154,7 @@ export async function pollDeviceToken(
 
     if (res.status === 428) continue // pending, the older shape
 
-    const data = (await res.json().catch(() => ({}))) as DeviceTokenSuccess & {error?: string}
+    const data = (await res.json().catch(() => ({}))) as DeviceTokenSuccess & {error?: string; errorDescription?: string}
     switch (data.error) {
       case 'authorization_pending':
         continue
@@ -168,6 +171,24 @@ export async function pollDeviceToken(
         })
       case 'expired_token':
         throw expiredError()
+      case 'invalid_grant':
+        // Unknown code, tokens already handed out once, or the AI service
+        // user was deleted: polling again can never succeed.
+        throw new CliError({
+          exit: EXIT.AUTH,
+          code: 'INVALID_GRANT',
+          message: withDescription('The Hub no longer accepts this sign-in code.', data.errorDescription),
+          hint: 'Run `norbix login` again to get a new code.',
+          docs: 'norbix login --help',
+        })
+      case 'invalid_request':
+        throw new CliError({
+          exit: EXIT.AUTH,
+          code: 'INVALID_REQUEST',
+          message: withDescription('The Hub refused the sign-in request.', data.errorDescription),
+          hint: 'Run `norbix login` again. If it keeps failing, the CLI and the Hub disagree on the sign-in contract — update the CLI.',
+          docs: 'norbix login --help',
+        })
       default:
         break
     }
@@ -186,6 +207,12 @@ export async function pollDeviceToken(
   }
 
   throw expiredError()
+}
+
+/** `message` plus the Hub's own words, when it sent any. */
+function withDescription(message: string, description: string | undefined): string {
+  const text = description?.trim()
+  return text ? `${message} The Hub says: ${text}` : message
 }
 
 function expiredError(): CliError {

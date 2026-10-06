@@ -139,6 +139,7 @@ asks you to run `norbix login` again.
 | --- | --- | --- |
 | You press **Deny** | `Sign-in was denied in the browser.` (`ACCESS_DENIED`) | 4 |
 | Nobody approves within 10 minutes | `The sign-in code expired before it was approved.` (`EXPIRED_TOKEN`) | 4 |
+| The Hub refuses the code (already used, unknown, the AI service user deleted) | The Hub's reason is shown (`INVALID_GRANT` / `INVALID_REQUEST`) | 4 |
 | The sign-in was removed or ran out | The stored tokens are cleared (`SESSION_EXPIRED`) | 4 |
 | The Hub is older than the browser sign-in | A one-line note, then user + password as before | — |
 

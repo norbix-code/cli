@@ -174,6 +174,36 @@ describe('pollDeviceToken', () => {
     })
   })
 
+  it.each([
+    ['invalid_grant', 'INVALID_GRANT', 'The Hub no longer accepts this sign-in code.', 'The device code was already used.'],
+    ['invalid_request', 'INVALID_REQUEST', 'The Hub refused the sign-in request.', 'deviceCode is required.'],
+  ])('%s stops the polling at once with exit 4 and shows errorDescription', async (wire, code, message, description) => {
+    const clock = fakeClock()
+    const {calls, fetchFn} = fakeHub({
+      '/v3/auth/device/token': [
+        {body: {error: 'authorization_pending'}},
+        {body: {error: wire, errorDescription: description}},
+        {body: SUCCESS},
+      ],
+    })
+    const error = (await pollDeviceToken(HUB, START, () => {}, {fetch: fetchFn, ...clock}).catch((e: unknown) => e)) as CliError
+    expect(error).toBeInstanceOf(CliError)
+    expect({exit: error.exit, code: error.code, message: error.message, hint: error.hint}).toEqual({
+      exit: EXIT.AUTH,
+      code,
+      message: `${message} The Hub says: ${description}`,
+      hint: expect.stringMatching(/^Run `norbix login` again/),
+    })
+    expect(calls.length).toBe(2) // no third poll
+  })
+
+  it('invalid_grant without errorDescription still stops with the plain message', async () => {
+    const clock = fakeClock()
+    const {fetchFn} = fakeHub({'/v3/auth/device/token': [{body: {error: 'invalid_grant'}}]})
+    const error = (await pollDeviceToken(HUB, START, () => {}, {fetch: fetchFn, ...clock}).catch((e: unknown) => e)) as CliError
+    expect([error.exit, error.code, error.message]).toEqual([EXIT.AUTH, 'INVALID_GRANT', 'The Hub no longer accepts this sign-in code.'])
+  })
+
   it('stops by itself when the code lifetime runs out while still pending', async () => {
     const clock = fakeClock()
     const pending = Array.from({length: 10}, () => ({body: {error: 'authorization_pending'}}))
