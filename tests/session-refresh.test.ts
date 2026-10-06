@@ -158,6 +158,19 @@ describe('token refresh', () => {
   })
 })
 
+describe('NORBIX_HUB_URL / NORBIX_API_URL', () => {
+  it('point every call at that install, with the version from the URL, without editing ~/.norbix/config', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'norbix-env-urls-'))
+    const r = await cli(dir, ['env', 'list', '--api-key', 'k', '--project', 'p1', '--json'], {
+      NORBIX_HUB_URL: `http://127.0.0.1:${port}/v3`,
+      NORBIX_API_URL: `http://127.0.0.1:${port}/v3/`,
+    })
+    expect(r.code).toBe(0)
+    expect(hits.map((h) => h.url.split('?')[0])).toEqual(['/v3/account/projects/environments'])
+    expect(hits[0].auth).toBe('Bearer k')
+  })
+})
+
 describe('whoami and logout with a browser sign-in', () => {
   it('whoami shows the AI service user and the expiry, never the tokens', async () => {
     home = makeHome(30 * 60)
