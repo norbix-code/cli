@@ -116,7 +116,7 @@ counts, the new ids, and any errors.
 | `norbix db schema publish <id> [--yes]` | publish the draft | `POST /schemas/{Id}/publish` |
 | `norbix db schema versions <id>` | list the published versions | `GET /schemas/{Id}/versions` |
 | `norbix db schema diff <id> --from <n> --to <n>` | what changed between two versions | `GET /schemas/{Id}/versions/diff` |
-| `norbix db schema delete <id> [--yes]` | delete the schema (refused while a saved aggregate joins it: `CM-ERRORS-SCHEMA-018`, the aggregates are in `BlockerAggregateNames`) | `DELETE /schemas/{Id}` |
+| `norbix db schema delete <id> [--yes]` | delete the schema **and its records**: the collection (records and indexes) in the environment is dropped, and removed from the AI knowledge when AI embed is on; no undo. Refused while a schema trigger uses it (`CM-ERRORS-SCHEMA-017`) or a saved aggregate starts on / joins it (`CM-ERRORS-SCHEMA-018`, the aggregates are in `BlockerAggregateNames`); then nothing is dropped | `DELETE /schemas/{Id}` |
 
 `--file` is the data schema (the JSON Schema of one record); `--ui-file` is the
 UI schema the dashboard form uses. A change is a draft first: records keep the

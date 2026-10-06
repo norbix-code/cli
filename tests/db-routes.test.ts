@@ -5,6 +5,8 @@ import {join} from 'node:path'
 import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
+import DbSchemaDelete from '../src/commands/db/schema/delete.js'
+
 /**
  * One row per `db` command: run it the way a user types it, through oclif and
  * the real `@norbix.ai/ts` transport, and check the verb and path of the
@@ -338,6 +340,18 @@ describe('db schema writes', () => {
     const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
     expect(error?.message).toMatch(/Confirmation required/)
     expect(calls).toHaveLength(0)
+  })
+
+  it('delete without --yes in a non-interactive shell warns that the records go too, and sends nothing', async () => {
+    const {error} = await runCommand(['db', 'schema', 'delete', ID, ...globalArgs])
+    expect(error?.message).toBe(`Confirmation required: Delete schema ${ID} and all its records in this environment?`)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('delete help says the records are dropped and when the delete is refused', () => {
+    expect(DbSchemaDelete.description).toContain('Delete a database schema and its records')
+    expect(DbSchemaDelete.description).toContain('CM-ERRORS-SCHEMA-017')
+    expect(DbSchemaDelete.description).toContain('CM-ERRORS-SCHEMA-018')
   })
 
   it('diff passes both versions in the query', async () => {
