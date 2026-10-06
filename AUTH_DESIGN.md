@@ -33,7 +33,8 @@ files_integration_id = ...        # optional
 
 ```jsonc
 // ~/.norbix/session.json  (mode 600, machine-managed — do not edit)
-{ "bearerToken": "...", "refreshToken": "...", "projectId": "...", "userName": "..." }
+{ "bearerToken": "...", "refreshToken": "...", "expiresAt": "...", "clientId": "norbix-cli",
+  "method": "browser", "hubVersion": "v3", "projectId": "...", "userName": "...", "displayName": "..." }
 ```
 
 Why sessions are a separate file even though config is merged: the config
@@ -74,45 +75,66 @@ an SDK bug; the CLI always passes URLs explicitly, so it is not affected.
   account ID, optional environment (empty = PROD), optional region. Flags
   `--api-url` / `--hub-url` for self-hosted setups.
 - `norbix profiles` — list profiles (keys redacted) + session state.
-- `norbix login` — user+password today, writes the session.
+- `norbix login` — browser sign-in (an AI service user with the roles picked in the dashboard), or user+password with `--user`; writes the session.
   `norbix login --api-key ... --profile ci` writes a profile instead.
-- `norbix logout` — removes the session only; never touches profiles.
+- `norbix logout` — revokes the refresh token on the Hub, removes the session; never touches profiles.
 - `norbix env use X` — writes to the session when logged in, else to the
   profile.
 
-## Phase 2 — browser login (CLI DONE — hub endpoints to implement)
+## Phase 2 — browser sign-in (done)
 
-The CLI side is implemented: `norbix login` (with no --user/--password) runs
-the OAuth 2.0 Device Authorization Grant (RFC 8628) — prints a one-time code,
-opens the browser on ENTER, polls until approved, writes the session. When
-the hub answers 404/405/501 it falls back to password login automatically,
-so this ships safely before the backend exists.
+`norbix login` (with no --user/--password) runs the OAuth 2.0 Device
+Authorization Grant (RFC 8628): it prints a one-time code, opens the
+dashboard on ENTER, polls until approved, and writes the session. The person
+picks the roles on the dashboard page; the tokens belong to an **AI service
+user** "Norbix CLI (<computer name>)" with exactly those roles, listed and
+removed under Account → AI service users. When the Hub answers 404/405/501
+the CLI prints a note that the Hub is older than the browser sign-in and
+falls back to password login.
 
-### Hub endpoint contract (for the backend team)
+### Hub contract
+
+The binding version is in the gateway: `docs/tasks/cli-browser-sign-in.md`
+("Contract") and `docs/architecture/AI.OAuthConsent.md`. `{v}` is the Hub
+version from `/echo` (`hubVersion`), never a fixed `v2`
+(`src/lib/hub-version.ts`).
 
 ```
-POST /v2/auth/device/start
-  body:     { clientName: "norbix-cli", projectId?: string }
+POST /{v}/auth/device/start            (anonymous)
+  body:     { clientName: "norbix-cli", deviceName?, projectId? }
   response: { deviceCode, userCode, verificationUri,
-              verificationUriComplete?, expiresIn?: 600, interval?: 5 }
+              verificationUriComplete, expiresIn: 600, interval: 5 }
 
-POST /v2/auth/device/token
+POST /{v}/auth/device/token            (anonymous, always HTTP 200)
   body:     { deviceCode }
-  pending:  HTTP 428  (or 200 + { error: "authorization_pending" })
-  slower:   { error: "slow_down" }        → CLI adds 5s to poll interval
-  denied:   { error: "access_denied" }    → CLI aborts
-  expired:  { error: "expired_token" }    → CLI asks to run login again
-  success:  { bearerToken, refreshToken?, userId?, userName?,
-              displayName?, projectId?, accountId? }
+  pending:  { error: "authorization_pending" }   → poll again
+  slower:   { error: "slow_down" }               → CLI adds 5 s to the interval
+  denied:   { error: "access_denied" }           → exit 4 ACCESS_DENIED
+  expired:  { error: "expired_token" }           → exit 4 EXPIRED_TOKEN
+  success:  { bearerToken, refreshToken, expiresIn, clientId, userId,
+              userName, displayName, accountId, projectId? }
+
+POST /{v}/oauth/token                  (form)
+  grant_type=refresh_token & refresh_token & client_id
+  → { access_token, expires_in, refresh_token (rotated), ... }
+  → 400 { error: "invalid_grant" }               → tokens cleared, exit 4 SESSION_EXPIRED
+
+POST /{v}/oauth/revoke                 (form, RFC 7009; `norbix logout`)
+  token & token_type_hint=refresh_token & client_id → 200 {}
 ```
 
-`verificationUri` should be a hub page (e.g. hub.norbix.ai/activate) where a
-logged-in user types the userCode and approves. Suggested lifetimes: ~1h
-bearer + ~30d refresh; `norbix logout` should revoke the refresh token
-server-side (future). Why device-code over Cursor-style localhost redirect:
-works over SSH (open the URL on any device), and it is one standard flow the
-backend implements once; the localhost redirect can be added later as a
-desktop nicety.
+### Refresh
+
+The access token lasts one hour, the refresh token 30 days and rotates on
+every use. Before a call, when the access token has less than 60 s left, the
+CLI refreshes it; a 401 triggers one refresh and one retry. The new pair and
+its expiry are written in one step (a temporary file, then a rename). Before
+refreshing, the CLI re-reads the session file: another terminal may already
+have rotated the token. A dry run never refreshes. `src/lib/session-auth.ts`.
+
+Why device-code over a Cursor-style localhost redirect: it works over SSH
+(open the URL on any device), and it is one standard flow the backend
+implements once.
 
 ## Phase 3
 

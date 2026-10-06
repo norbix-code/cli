@@ -18,10 +18,10 @@ npx @norbix.ai/cli --help
 ## Quick start
 
 ```sh
-# 1. Log in (stores a token in your user config folder)
+# 1. Sign in through the browser (the Norbix dashboard asks which roles the CLI gets)
 norbix login
-# or with an API key:
-norbix login --api-key nbk_... --project <projectId>
+# or, for CI and scripts, with an API key:
+norbix login --api-key nbk_... --project <projectId> --profile ci
 
 # 2. Check everything is wired up
 norbix whoami
@@ -115,6 +115,42 @@ ignores any login session — predictable for scripts.
 While it is valid, every command (in every terminal window) uses it.
 `norbix logout` removes it. Profiles are untouched by login/logout.
 
+### Signing in: `norbix login`
+
+`norbix login` signs in through the browser (the OAuth device flow):
+
+1. The CLI prints a one-time code (`BCDF-GHJK`) and, after ENTER, opens the
+   Norbix dashboard on the sign-in page. Over SSH, open the printed link on
+   any device.
+2. In the dashboard you check the code, pick the roles the CLI gets — account
+   roles and project roles, the same pickers as when an AI tool connects over
+   OAuth — and press **Allow**. You can never give more than you have.
+3. The CLI works as an **AI service user** named `Norbix CLI (<computer
+   name>)` with exactly those roles. `norbix whoami` shows it. Signing in
+   again from the same computer with the same roles reuses the same user.
+
+The access token lasts one hour and is refreshed by itself (the refresh
+token lasts 30 days). To end the sign-in, run `norbix logout` (it also
+revokes the refresh token on the Hub) or remove the user in the dashboard
+under **Account → AI service users**; the next command then exits 4 and
+asks you to run `norbix login` again.
+
+| Situation | What happens | Exit |
+| --- | --- | --- |
+| You press **Deny** | `Sign-in was denied in the browser.` (`ACCESS_DENIED`) | 4 |
+| Nobody approves within 10 minutes | `The sign-in code expired before it was approved.` (`EXPIRED_TOKEN`) | 4 |
+| The sign-in was removed or ran out | The stored tokens are cleared (`SESSION_EXPIRED`) | 4 |
+| The Hub is older than the browser sign-in | A one-line note, then user + password as before | — |
+
+`norbix login --user <email>` forces the user + password sign-in (you, with
+all your rights). **CI and scripts** use an API key instead, never a browser
+sign-in: `norbix login --api-key nbk_... --project <id> --profile ci`, or the
+`NORBIX_API_KEY` / `NORBIX_PROJECT_ID` / `NORBIX_REGION` variables.
+
+The Hub version in the sign-in paths (`/v3/auth/device/...`, `/v3/oauth/token`)
+is read from the Hub's `/echo`; set `NORBIX_HUB_VERSION` or `hub_version` in a
+profile only to override it.
+
 Resolution order (most specific wins): flags → `NORBIX_*` env vars →
 `--profile` (profile only) → session → `[default]` profile.
 `norbix whoami` shows exactly what was resolved and verifies it against the
@@ -192,10 +228,18 @@ norbix ai init                 # writes .claude/skills/norbix/SKILL.md + a CLAUD
 norbix ai init --target all    # also AGENTS.md (Codex, OpenCode) and a Cursor rule
 ```
 
-Then give the agent credentials with a profile (`norbix login --api-key … --profile ci`)
-or `NORBIX_API_KEY` / `NORBIX_PROJECT_ID` / `NORBIX_REGION`. The recipe the
-agent follows is in [docs/AGENTS.md](docs/AGENTS.md); the guarantees it
-relies on are in [docs/agent-contract.md](docs/agent-contract.md).
+Then sign in once with `norbix login` in your own terminal: the dashboard
+asks which roles the agent gets, and the agent works as an AI service user
+you can remove any time (Account → AI service users). The written rules tell
+the agent to start with `norbix whoami --json`, to ask you to run
+`norbix login` when that exits 4 (never to run it itself), to pass `--json`
+to everything it parses, to run every change with `--dry-run` first and show
+it to you, and never to print or ask for keys or tokens. In CI, give the
+agent a profile (`norbix login --api-key … --profile ci`) or
+`NORBIX_API_KEY` / `NORBIX_PROJECT_ID` / `NORBIX_REGION` instead.
+
+The recipe the agent follows is in [docs/AGENTS.md](docs/AGENTS.md); the
+guarantees it relies on are in [docs/agent-contract.md](docs/agent-contract.md).
 
 ## Versioning
 
@@ -330,7 +374,6 @@ and login session are never read.
 ## Roadmap
 
 - Standalone binaries (no Node needed): Homebrew, curl installer, Scoop/winget
-- Device-code login (no password typed into the terminal)
 - OS keychain storage for tokens
 - `norbix logs list --follow` (live tail via SSE)
 
