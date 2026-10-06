@@ -51,6 +51,11 @@ the tool constantly rewrites a hand-edited file.
 4. Otherwise: valid session → `[default]` profile → legacy config.json
    (pre-profiles CLI versions)
 
+Endpoints (`hub_url` / `api_url`) follow their own order: an explicit
+profile's URL → `NORBIX_HUB_URL` / `NORBIX_API_URL` → (no profile) the URL
+stored by a browser sign-in → `[default]` profile → legacy config →
+norbix.ai. A trailing `/vN` is split off and used as the version.
+
 `norbix whoami` always prints which profile and auth source won.
 
 ## Endpoints and the region rule

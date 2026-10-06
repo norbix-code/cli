@@ -32,8 +32,8 @@ export function hubRoute(hub: HubEndpoint, path: string): string {
   return `${hub.base}/${hub.version}/${path.replace(/^\//, '')}`
 }
 
-/** Split a trailing `/vN` off a Hub URL: `https://h/v3` → base `https://h`, version `v3`. */
-export function splitHubUrl(url: string): {base: string; version?: string} {
+/** Split a trailing `/vN` off a Hub or API URL: `https://h/v3/` → base `https://h`, version `v3`. */
+export function splitVersionedUrl(url: string): {base: string; version?: string} {
   const trimmed = url.replace(/\/+$/, '')
   const match = trimmed.match(/^(.*)\/(v\d+)$/)
   return match ? {base: match[1], version: match[2]} : {base: trimmed}
@@ -67,7 +67,7 @@ export async function resolveHubEndpoint(
   hubUrl: string,
   opts: {explicit?: string; stored?: string; fetch?: typeof fetch} = {},
 ): Promise<HubEndpoint> {
-  const {base, version: inUrl} = splitHubUrl(hubUrl)
+  const {base, version: inUrl} = splitVersionedUrl(hubUrl)
   const known = cleanVersion(opts.explicit) ?? cleanVersion(opts.stored) ?? inUrl
   if (known) return {base, version: known}
   return {base, version: (await discoverHubVersion(base, opts.fetch)) ?? FALLBACK_HUB_VERSION}

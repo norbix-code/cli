@@ -142,6 +142,12 @@ export interface Session {
   method?: 'browser' | 'password'
   /** The Hub version path the session was made with (`v3`), reused for refresh and revoke. */
   hubVersion?: string
+  /**
+   * The Hub / API the browser sign-in was made against, when not norbix.ai —
+   * so later commands, the refresh and the revoke reach the Hub that issued the token.
+   */
+  hubUrl?: string
+  apiUrl?: string
   projectId?: string
   accountId?: string
   env?: string

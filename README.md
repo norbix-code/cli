@@ -158,6 +158,26 @@ Resolution order (most specific wins): flags → `NORBIX_*` env vars →
 server. Defaults endpoints are `https://api.norbix.ai` and
 `https://hub.norbix.ai`. See `AUTH_DESIGN.md` for the full design.
 
+**Endpoints (self-hosted / enterprise)** — the Hub and API URLs are resolved
+on their own, first match wins:
+
+1. `--profile <name>` (or `NORBIX_PROFILE`) whose profile sets `hub_url` / `api_url`;
+2. `NORBIX_HUB_URL` / `NORBIX_API_URL`;
+3. without `--profile`: the Hub and API a browser sign-in was made against
+   (kept in the session, so the token refresh reaches the Hub that issued it);
+4. the `[default]` profile, then the legacy config;
+5. `https://hub.norbix.ai` / `https://api.norbix.ai` (with the region).
+
+A URL may be written with or without its version: `https://hub.example.com`
+or `https://hub.example.com/v3`. With a version, the CLI uses it for every
+call; without one, the sign-in paths read it from the Hub's `/echo`.
+
+```sh
+export NORBIX_HUB_URL=https://hub.example.com/v3
+export NORBIX_API_URL=https://api.example.com/v3
+norbix login          # signs in on hub.example.com, no ~/.norbix/config edit
+```
+
 For CI/CD, use environment variables only:
 
 ```sh
