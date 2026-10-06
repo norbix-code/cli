@@ -36,7 +36,7 @@ path and it becomes v2.`
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(Raw)
-    const ctx = this.resolveContext(flags)
+    const ctx = await this.freshContext(flags)
     this.assertEndpoints(ctx)
 
     if (!ctx.projectId) this.error('No project ID configured. Run `norbix login` or pass --project.')

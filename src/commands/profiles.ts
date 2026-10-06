@@ -1,5 +1,5 @@
 import {BaseCommand} from '../base.js'
-import {PROFILES_PATH, isSessionValid, readProfiles, readSession} from '../lib/profiles.js'
+import {PROFILES_PATH, isSessionRefreshable, isSessionValid, readProfiles, readSession} from '../lib/profiles.js'
 import {redact} from '../lib/store.js'
 
 export default class Profiles extends BaseCommand {
@@ -24,6 +24,8 @@ export default class Profiles extends BaseCommand {
           user: session.userName ?? session.userId,
           projectId: session.projectId,
           valid: isSessionValid(session),
+          refreshes: isSessionRefreshable(session),
+          expiresAt: session.expiresAt,
         }
       : undefined
 
