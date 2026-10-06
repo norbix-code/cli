@@ -1,26 +1,35 @@
 import {spawn} from 'node:child_process'
+import {hostname} from 'node:os'
+
+import {CliError} from './cli-error.js'
+import {EXIT, exitForStatus} from './exit-codes.js'
+import {hubRoute, type HubEndpoint} from './hub-version.js'
 
 /**
- * Browser login — OAuth 2.0 Device Authorization Grant (RFC 8628), the same
- * flow GitHub CLI uses. The CLI defines this contract; the hub implements it:
+ * Browser sign-in — OAuth 2.0 Device Authorization Grant (RFC 8628), the same
+ * flow GitHub CLI uses. Contract (gateway docs/tasks/cli-browser-sign-in.md):
  *
- *   POST {hub}/v2/auth/device/start
- *     body:     { clientName: "norbix-cli", projectId?: string }
+ *   POST {hub}/{v}/auth/device/start          (anonymous)
+ *     body:     { clientName: "norbix-cli", deviceName?, projectId? }
  *     response: { deviceCode, userCode, verificationUri,
- *                 verificationUriComplete?, expiresIn?: 600, interval?: 5 }
+ *                 verificationUriComplete, expiresIn: 600, interval: 5 }
  *
- *   POST {hub}/v2/auth/device/token
+ *   POST {hub}/{v}/auth/device/token          (anonymous)
  *     body:     { deviceCode }
- *     pending:  HTTP 428 — or 200 with { error: "authorization_pending" }
- *     slower:   { error: "slow_down" }  → add 5s to the poll interval
- *     denied:   { error: "access_denied" | "expired_token" }
- *     success:  { bearerToken, refreshToken?, userId?, userName?,
- *                 displayName?, projectId?, accountId? }
+ *     always HTTP 200 with one of
+ *       { error: "authorization_pending" }  → poll again
+ *       { error: "slow_down" }              → poll again, 5 s slower
+ *       { error: "access_denied" }          → the person pressed Deny
+ *       { error: "expired_token" }          → the code ran out
+ *       { bearerToken, refreshToken, expiresIn, clientId, userId, userName,
+ *         displayName, accountId, projectId? }
  *
- * The user flow: CLI prints the code, opens {verificationUri} in the browser,
- * the user logs in on hub.norbix.ai and approves; the CLI polls until it
- * receives the tokens.
+ * `{v}` is the Hub version (hub-version.ts) — never a fixed `v2`. The person
+ * approves on the dashboard page `verificationUriComplete` and picks the roles
+ * there; the tokens belong to an AI service user with exactly those roles.
  */
+
+export const CLIENT_NAME = 'norbix-cli'
 
 export interface DeviceStartResponse {
   deviceCode: string
@@ -34,6 +43,10 @@ export interface DeviceStartResponse {
 export interface DeviceTokenSuccess {
   bearerToken: string
   refreshToken?: string
+  /** Seconds the access token is valid. */
+  expiresIn?: number
+  /** OAuth client of the refresh token — needed for `/oauth/token`. */
+  clientId?: string
   userId?: string
   userName?: string
   displayName?: string
@@ -41,75 +54,158 @@ export interface DeviceTokenSuccess {
   accountId?: string
 }
 
+/** The Hub has no device sign-in (HTTP 404 / 405 / 501): an older Hub. */
 export class DeviceFlowUnsupportedError extends Error {}
 
+export interface DeviceDeps {
+  fetch?: typeof fetch
+  sleep?: (ms: number) => Promise<void>
+  now?: () => number
+}
+
+/** This computer's name for the AI service user ("Norbix CLI (<name>)"). */
+export function deviceName(raw: string = safeHostname()): string | undefined {
+  const name = raw.trim().replace(/\.local$/i, '').slice(0, 64).trim()
+  return name || undefined
+}
+
+function safeHostname(): string {
+  try {
+    return hostname()
+  } catch {
+    return ''
+  }
+}
+
 export async function startDeviceFlow(
-  hubUrl: string,
-  projectId?: string,
+  hub: HubEndpoint,
+  body: {deviceName?: string; projectId?: string},
+  deps: DeviceDeps = {},
 ): Promise<DeviceStartResponse> {
+  const fetchFn = deps.fetch ?? fetch
+  const url = hubRoute(hub, 'auth/device/start')
   let res: Response
   try {
-    res = await fetch(`${hubUrl.replace(/\/$/, '')}/v2/auth/device/start`, {
+    res = await fetchFn(url, {
       method: 'POST',
       headers: {'Content-Type': 'application/json', Accept: 'application/json'},
-      body: JSON.stringify({clientName: 'norbix-cli', projectId}),
+      body: JSON.stringify({clientName: CLIENT_NAME, deviceName: body.deviceName, projectId: body.projectId}),
     })
   } catch (error) {
-    throw new DeviceFlowUnsupportedError(
-      `Could not reach ${hubUrl}: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    throw networkError(url, error)
   }
 
-  // 404/405/501 → the hub does not implement browser login (yet).
+  // 404/405/501 → this Hub has no browser sign-in (older than the feature).
   if ([404, 405, 501].includes(res.status)) {
-    throw new DeviceFlowUnsupportedError(`Hub returned HTTP ${res.status} for the device flow.`)
+    throw new DeviceFlowUnsupportedError(`Hub returned HTTP ${res.status} for ${url}.`)
   }
 
-  if (!res.ok) throw new Error(`Device login start failed: HTTP ${res.status}`)
-  const data = (await res.json()) as DeviceStartResponse
+  if (!res.ok) {
+    throw new CliError({
+      exit: exitForStatus(res.status),
+      message: `Browser sign-in could not start: HTTP ${res.status}.`,
+      status: res.status,
+      url,
+    })
+  }
+
+  const data = (await res.json().catch(() => ({}))) as DeviceStartResponse
   if (!data.deviceCode || !data.userCode || !data.verificationUri) {
-    throw new Error('Device login start returned an unexpected response.')
+    throw new CliError({exit: EXIT.SERVER, message: 'Browser sign-in start returned an unexpected answer.', url})
   }
 
   return data
 }
 
-/** Poll until the user approves in the browser (or the code expires). */
+/**
+ * Poll until the person approves in the browser. Honours `interval` and adds
+ * 5 s on every `slow_down` (RFC 8628 §3.5). A denial or an expired code ends
+ * with exit 4 and a message that says what to do.
+ */
 export async function pollDeviceToken(
-  hubUrl: string,
+  hub: HubEndpoint,
   start: DeviceStartResponse,
   log: (msg: string) => void,
+  deps: DeviceDeps = {},
 ): Promise<DeviceTokenSuccess> {
-  const deadline = Date.now() + (start.expiresIn ?? 600) * 1000
+  const fetchFn = deps.fetch ?? fetch
+  const wait = deps.sleep ?? sleep
+  const now = deps.now ?? Date.now
+  const url = hubRoute(hub, 'auth/device/token')
+  const deadline = now() + (start.expiresIn ?? 600) * 1000
   let intervalMs = (start.interval ?? 5) * 1000
 
-  while (Date.now() < deadline) {
-    await sleep(intervalMs)
+  while (now() < deadline) {
+    await wait(intervalMs)
 
-    const res = await fetch(`${hubUrl.replace(/\/$/, '')}/v2/auth/device/token`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', Accept: 'application/json'},
-      body: JSON.stringify({deviceCode: start.deviceCode}),
-    })
-
-    if (res.status === 428) continue // still pending
-
-    const data = (await res.json().catch(() => ({}))) as DeviceTokenSuccess & {error?: string}
-    if (data.error === 'authorization_pending') continue
-    if (data.error === 'slow_down') {
-      intervalMs += 5000
-      continue
+    let res: Response
+    try {
+      res = await fetchFn(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+        body: JSON.stringify({deviceCode: start.deviceCode}),
+      })
+    } catch (error) {
+      throw networkError(url, error)
     }
 
-    if (data.error === 'access_denied') throw new Error('Login was denied in the browser.')
-    if (data.error === 'expired_token') break
-    if (!res.ok) throw new Error(`Device login failed: HTTP ${res.status}`)
-    if (data.bearerToken) return data
+    if (res.status === 428) continue // pending, the older shape
 
-    log('Unexpected response while waiting — retrying...')
+    const data = (await res.json().catch(() => ({}))) as DeviceTokenSuccess & {error?: string}
+    switch (data.error) {
+      case 'authorization_pending':
+        continue
+      case 'slow_down':
+        intervalMs += 5000
+        continue
+      case 'access_denied':
+        throw new CliError({
+          exit: EXIT.AUTH,
+          code: 'ACCESS_DENIED',
+          message: 'Sign-in was denied in the browser.',
+          hint: 'Run `norbix login` again and choose Allow on the dashboard page.',
+          docs: 'norbix login --help',
+        })
+      case 'expired_token':
+        throw expiredError()
+      default:
+        break
+    }
+
+    if (!res.ok) {
+      throw new CliError({
+        exit: exitForStatus(res.status),
+        message: `Browser sign-in failed: HTTP ${res.status}.`,
+        status: res.status,
+        url,
+      })
+    }
+
+    if (data.bearerToken) return data
+    log('Unexpected answer while waiting — trying again...')
   }
 
-  throw new Error('The login code expired. Run `norbix login` again.')
+  throw expiredError()
+}
+
+function expiredError(): CliError {
+  return new CliError({
+    exit: EXIT.AUTH,
+    code: 'EXPIRED_TOKEN',
+    message: 'The sign-in code expired before it was approved.',
+    hint: 'Run `norbix login` again and approve within 10 minutes.',
+    docs: 'norbix login --help',
+  })
+}
+
+function networkError(url: string, error: unknown): CliError {
+  return new CliError({
+    exit: EXIT.NETWORK,
+    code: 'NETWORK_ERROR',
+    message: `Could not reach the Hub: ${error instanceof Error ? error.message : String(error)}`,
+    hint: 'Check --region, hub_url in the profile, and the network.',
+    url,
+  })
 }
 
 /**

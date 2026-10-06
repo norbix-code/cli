@@ -1,10 +1,11 @@
 import {Norbix} from '@norbix.ai/ts'
 import {Flags} from '@oclif/core'
 
-import {BaseCommand} from '../base.js'
+import {BaseCommand, type ResolvedContext} from '../base.js'
 import {usageError} from '../lib/cli-error.js'
 import {
   DeviceFlowUnsupportedError,
+  deviceName,
   openBrowser,
   pollDeviceToken,
   startDeviceFlow,
@@ -14,10 +15,19 @@ import {SESSION_PATH, readProfiles, writeProfile, writeSession} from '../lib/pro
 export default class Login extends BaseCommand {
   static description = `Log in to Norbix.
 
-Default: browser login — the CLI shows a code, opens hub in your browser,
-you approve there, and a session is saved to ~/.norbix/session.json. New
-terminal windows reuse the session while it is valid. If the hub does not
-support browser login yet, the CLI falls back to user + password.
+Default: browser sign-in. The CLI shows a one-time code and opens the
+Norbix dashboard; you sign in there, pick the roles the CLI gets, and press
+Allow. The CLI then works as an AI service user named "Norbix CLI
+(<this computer>)" with exactly those roles — never more than you have. You
+can remove it any time in the dashboard under Account → AI service users.
+
+The session is saved to ~/.norbix/session.json and every terminal window
+uses it. The access token lasts one hour and is refreshed by itself; when
+the sign-in is removed or runs out, the next command asks you to log in
+again (exit 4).
+
+If the Hub is older than the browser sign-in, the CLI says so and falls
+back to user + password.
 
 --user / --password  force the password flow.
 --api-key            saves a long-lived key into a profile instead
@@ -76,13 +86,13 @@ NORBIX_API_KEY in the environment. Without one of these the command exits 2.`
     const ctx = this.resolveContext(flags)
     this.assertEndpoints(ctx)
 
-    // Mode 2 (default): browser login via the device flow.
+    // Mode 2 (default): browser sign-in via the device flow.
     if (!flags.user && !flags.password) {
       try {
-        return await this.browserLogin(ctx.hubUrl, flags.project ?? existing.project_id, flags)
+        return await this.browserLogin(ctx, flags.project ?? existing.project_id, flags)
       } catch (error) {
         if (!(error instanceof DeviceFlowUnsupportedError)) throw error
-        this.log('Browser login is not available on this hub yet — falling back to password login.\n')
+        this.log('Note: this Hub is older than the browser sign-in, so the CLI signs in with user + password.\n')
       }
     }
 
@@ -106,40 +116,64 @@ NORBIX_API_KEY in the environment. Without one of these the command exits 2.`
   }
 
   private async browserLogin(
-    hubUrl: string,
+    ctx: ResolvedContext,
     projectId: string | undefined,
     flags: {account?: string; env?: string; region?: string},
   ): Promise<unknown> {
-    const start = await startDeviceFlow(hubUrl, projectId)
+    const hub = await this.hubEndpoint(ctx)
+    const start = await startDeviceFlow(hub, {deviceName: deviceName(), projectId})
+    const link = start.verificationUriComplete ?? start.verificationUri
+    const minutes = Math.round((start.expiresIn ?? 600) / 60)
 
-    this.log(`First, copy your one-time code: ${start.userCode}`)
+    this.log('')
+    this.log(`  Your one-time code:  ${start.userCode}`)
+    this.log('')
+    this.log(`Approve this sign-in on the Norbix dashboard: ${link}`)
+    this.log('Check that the dashboard shows the same code, then pick the roles the CLI gets.')
     if (this.isInteractive()) {
       const {input} = await import('@inquirer/prompts')
       await input({message: 'Press ENTER to open the browser...'})
-      openBrowser(start.verificationUriComplete ?? start.verificationUri)
+      openBrowser(link)
     }
 
-    this.log(`Or open this URL yourself: ${start.verificationUri}`)
-    this.log('Waiting for you to approve in the browser...')
+    this.log(`Waiting for you to approve in the browser (the code expires in ${minutes} minutes)...`)
 
-    const token = await pollDeviceToken(hubUrl, start, (m) => this.log(m))
+    const token = await pollDeviceToken(hub, start, (m) => this.log(m))
+    const now = Date.now()
 
     writeSession({
       bearerToken: token.bearerToken,
       refreshToken: token.refreshToken,
+      expiresAt: typeof token.expiresIn === 'number' ? new Date(now + token.expiresIn * 1000).toISOString() : undefined,
+      clientId: token.clientId,
+      method: 'browser',
+      hubVersion: hub.version,
       projectId: token.projectId ?? projectId,
       accountId: token.accountId ?? flags.account,
       env: flags.env,
-      region: flags.region,
+      region: flags.region ?? ctx.region,
       userId: token.userId,
       userName: token.userName,
-      savedAt: new Date().toISOString(),
+      displayName: token.displayName,
+      savedAt: new Date(now).toISOString(),
     })
 
+    const who = token.displayName ?? token.userName ?? 'an AI service user'
     this.print(
-      `Logged in as ${token.displayName ?? token.userName ?? 'user'}.\nSession saved to ${SESSION_PATH}.`,
+      [
+        `Signed in as ${who}${token.userName && token.displayName && token.userName !== token.displayName ? ` (${token.userName})` : ''} — an AI service user with the roles you picked.`,
+        'Remove it any time in the dashboard: Account → AI service users.',
+        `Session saved to ${SESSION_PATH}.`,
+      ].join('\n'),
     )
-    return {method: 'browser', userId: token.userId, userName: token.userName}
+    return {
+      method: 'browser',
+      userId: token.userId,
+      userName: token.userName,
+      displayName: token.displayName,
+      accountId: token.accountId ?? flags.account,
+      projectId: token.projectId ?? projectId,
+    }
   }
 
   private async passwordLogin(
@@ -170,12 +204,14 @@ NORBIX_API_KEY in the environment. Without one of these the command exits 2.`
     writeSession({
       bearerToken: res.bearerToken,
       refreshToken: res.refreshToken,
+      method: 'password',
       projectId,
       accountId: flags.account ?? existing.account_id,
       env: flags.env ?? existing.env,
       region,
       userId: res.userId,
       userName: res.userName ?? userName,
+      displayName: res.displayName,
       savedAt: new Date().toISOString(),
     })
 
