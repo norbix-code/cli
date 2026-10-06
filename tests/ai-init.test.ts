@@ -88,6 +88,39 @@ describe('norbix ai init', () => {
     expect(readFileSync(join(project, '.cursor/rules/norbix.mdc'), 'utf8')).toMatch(/^---\ndescription: /)
   })
 
+  it('the block and the skill carry the rules: browser login by the user, --json, --dry-run first, no secrets', async () => {
+    const r = await cli(home, ['ai', 'init', '--target', 'all', '--dir', project])
+    expect(r.code).toBe(0)
+    expect(r.stdout).toContain('Sign in once with `norbix login` (browser: you pick the roles the agent gets in the dashboard).')
+
+    const block = readFileSync(join(project, 'AGENTS.md'), 'utf8')
+    const bullets = block.split('\n').filter((l) => l.startsWith('- '))
+    expect(bullets.map((l) => l.slice(0, 40))).toEqual([
+      '- Start with `norbix whoami --json`. Exi',
+      '- Pass `--json` to every command whose o',
+      '- Discover, do not guess: `norbix schema',
+      '- Before any change, run it with `--dry-',
+      '- Never print, paste or ask for API keys',
+      '- Branch on the exit code: 0 ok · 2 usag',
+      '- Full contract: `docs/agent-contract.md',
+    ])
+    expect(bullets[0]).toContain('ask the user to run `norbix login` in their own terminal')
+    expect(bullets[0]).toContain('they pick the roles you get')
+    expect(bullets[0]).toContain('Account → AI service users')
+    expect(bullets[3]).toContain('show the user the request')
+    expect(block).not.toMatch(/norbix login --api-key|nbk_/)
+    expect(block.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(12)
+
+    const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
+    expect(skill).toContain('## Secrets\n\nNever print, echo, paste or ask for API keys, passwords or tokens')
+    expect(skill).toContain('Exit 4: ask the user to run `norbix login` in their own terminal')
+    expect(skill).toContain('`norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user.')
+    expect(skill).not.toMatch(/--api-key|nbk_/)
+    expect(skill.split('\n').length).toBeLessThanOrEqual(40)
+
+    expect(readFileSync(join(project, '.cursor/rules/norbix.mdc'), 'utf8')).toContain(bullets[4])
+  })
+
   it('rejects an unknown target with exit 2', async () => {
     const r = await cli(home, ['ai', 'init', '--target', 'emacs', '--dir', project, '--json'])
     expect(r.code).toBe(2)

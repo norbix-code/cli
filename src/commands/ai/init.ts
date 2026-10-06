@@ -77,8 +77,9 @@ written.`
       [
         ...files.map((f) => `${f.action === 'append' ? 'updated' : f.action === 'replace' ? 'replaced' : 'wrote'}  ${f.path}`),
         '',
-        'Done. The agent now knows to use `norbix` with --json, --dry-run and --yes.',
-        'Give it credentials with a profile (`norbix login --api-key ... --profile <name>`) or NORBIX_* env vars.',
+        'Done. The agent now knows to use `norbix` with --json, --dry-run first, and --yes only for destructive changes.',
+        'Sign in once with `norbix login` (browser: you pick the roles the agent gets in the dashboard).',
+        'CI and scripts: `norbix login --api-key ... --profile <name>` or NORBIX_* variables.',
       ].join('\n'),
     )
     return {dir: root, targets, files}
