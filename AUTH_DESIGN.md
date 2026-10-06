@@ -111,6 +111,8 @@ POST /{v}/auth/device/token            (anonymous, always HTTP 200)
   slower:   { error: "slow_down" }               → CLI adds 5 s to the interval
   denied:   { error: "access_denied" }           → exit 4 ACCESS_DENIED
   expired:  { error: "expired_token" }           → exit 4 EXPIRED_TOKEN
+  refused:  { error: "invalid_grant" | "invalid_request", errorDescription? }
+                                                 → exit 4 INVALID_GRANT / INVALID_REQUEST, the description shown
   success:  { bearerToken, refreshToken, expiresIn, clientId, userId,
               userName, displayName, accountId, projectId? }
 
