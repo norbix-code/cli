@@ -99,6 +99,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  delete process.env.NORBIX_HUB_URL
+  delete process.env.NORBIX_API_URL
 })
 
 describe('norbix login (browser sign-in)', () => {
@@ -139,6 +141,8 @@ describe('norbix login (browser sign-in)', () => {
       clientId: 'norbix-cli',
       method: 'browser',
       hubVersion: 'v3',
+      hubUrl: 'http://hub.test',
+      apiUrl: 'http://api.test',
       projectId: 'p1',
       accountId: 'acc-1',
       userId: 'u-ai-1',
@@ -162,6 +166,23 @@ describe('norbix login (browser sign-in)', () => {
     await runLogin()
     expect(hits.map((h) => new URL(h.url).pathname)).toEqual(['/v3/echo', '/v4/auth/device/start', '/v4/auth/device/token'])
     expect(JSON.parse(readFileSync(SESSION_PATH, 'utf8')).hubVersion).toBe('v4')
+  })
+
+  it('signs in on the Hub NORBIX_HUB_URL names (with its /vN) and remembers it for later commands', async () => {
+    process.env.NORBIX_HUB_URL = 'https://hub.finlo.space/v3'
+    process.env.NORBIX_API_URL = 'https://api.finlo.space/v3'
+    const hits = stubNetwork({
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: SUCCESS}],
+    })
+    await runLogin()
+    // The version came with the URL: no /echo call, nothing sent to the profile's hub.test.
+    expect(hits.map((h) => `${h.method} ${h.url}`)).toEqual([
+      'POST https://hub.finlo.space/v3/auth/device/start',
+      'POST https://hub.finlo.space/v3/auth/device/token',
+    ])
+    const session = JSON.parse(readFileSync(SESSION_PATH, 'utf8')) as Record<string, string>
+    expect([session.hubUrl, session.apiUrl, session.hubVersion]).toEqual(['https://hub.finlo.space', 'https://api.finlo.space', 'v3'])
   })
 
   it('a denial in the browser ends with exit 4 and stores nothing', async () => {
