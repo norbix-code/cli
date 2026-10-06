@@ -28,7 +28,7 @@ export default class FilesPublish extends BaseCommand {
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesPublish)
-    const ctx = this.resolveContext(flags)
+    const ctx = await this.freshContext(flags)
     // Builds nothing itself, but it is what refuses early and with a useful
     // sentence when there is no project or no credentials.
     this.client(flags)

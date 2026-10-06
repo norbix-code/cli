@@ -1,7 +1,7 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
-import {PROFILES_PATH, SESSION_PATH, isSessionValid, readProfiles, readSession, writeProfile, writeSession} from '../../lib/profiles.js'
+import {PROFILES_PATH, SESSION_PATH, isSessionUsable, readProfiles, readSession, writeProfile, writeSession} from '../../lib/profiles.js'
 import {configFilePath, writeStore} from '../../lib/store.js'
 
 export default class EnvUse extends BaseCommand {
@@ -41,7 +41,7 @@ profile. Override per command with --env.`
     }
 
     const session = readSession()
-    if (isSessionValid(session)) {
+    if (isSessionUsable(session)) {
       if (flags['dry-run']) return dry('session', SESSION_PATH)
       writeSession({...session, env: args.name})
       this.print(`Session now targets environment ${args.name}.`)

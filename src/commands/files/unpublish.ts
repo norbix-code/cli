@@ -27,7 +27,7 @@ export default class FilesUnpublish extends BaseCommand {
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesUnpublish)
-    const ctx = this.resolveContext(flags)
+    const ctx = await this.freshContext(flags)
     this.client(flags)
 
     const integration = resolveIntegration(flags.integration, ctx.filesIntegrationId)

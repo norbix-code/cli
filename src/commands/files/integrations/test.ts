@@ -38,7 +38,7 @@ Needs the files:create permission, because the probe writes to the storage.`
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesIntegrationsTest)
-    const ctx = this.resolveContext(flags)
+    const ctx = await this.freshContext(flags)
     // Builds nothing itself, but it is what refuses early and with a useful
     // sentence when there is no project, region or credentials.
     this.client(flags)

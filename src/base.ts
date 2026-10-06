@@ -3,14 +3,18 @@ import {Command, Flags, ux} from '@oclif/core'
 
 import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
 import {EXIT} from './lib/exit-codes.js'
+import {resolveHubEndpoint, type HubEndpoint} from './lib/hub-version.js'
 import {
   DEFAULT_API_URL,
   DEFAULT_HUB_URL,
-  isSessionValid,
+  isSessionRefreshable,
+  isSessionUsable,
   readProfiles,
   readSession,
   type Profile,
+  type Session,
 } from './lib/profiles.js'
+import {SessionRefresher} from './lib/session-auth.js'
 import {readStore, type StoredConfig} from './lib/store.js'
 
 /** One link of the SDK's transport middleware chain. */
@@ -63,6 +67,13 @@ export interface ResolvedContext {
   authSource: 'flag/env api key' | 'session' | `profile [${string}]` | 'legacy config' | 'none'
   profileName?: string
   userName?: string
+  /**
+   * The login session in use (authSource 'session'). Holds tokens: read
+   * fields from it, never print or return it whole.
+   */
+  session?: Session
+  /** Hub version set by hand (`NORBIX_HUB_VERSION`, profile `hub_version`); else discovered. */
+  hubVersion?: string
   stored: StoredConfig
 }
 
@@ -254,7 +265,8 @@ export abstract class BaseCommand extends Command {
       prof = profiles.default ?? {}
       profileName = profiles.default ? 'default' : undefined
       const s = readSession()
-      if (isSessionValid(s)) session = s
+      // An expired access token is still usable when it can be refreshed.
+      if (isSessionUsable(s)) session = s
     }
 
     const apiKeyOverride = flags['api-key']
@@ -306,8 +318,43 @@ export abstract class BaseCommand extends Command {
       authSource,
       profileName,
       userName: session?.userName,
+      session: bearerToken ? session : undefined,
+      hubVersion: process.env.NORBIX_HUB_VERSION || prof.hub_version,
       stored: legacy,
     }
+  }
+
+  private hubEndpoints = new Map<string, Promise<HubEndpoint>>()
+  private refresher?: SessionRefresher
+
+  /** The Hub base + version for calls the CLI makes without the SDK (sign-in, refresh, revoke). */
+  protected hubEndpoint(ctx: ResolvedContext): Promise<HubEndpoint> {
+    const key = `${ctx.hubUrl}|${ctx.hubVersion ?? ''}|${ctx.session?.hubVersion ?? ''}`
+    let hub = this.hubEndpoints.get(key)
+    if (!hub) {
+      hub = resolveHubEndpoint(ctx.hubUrl, {explicit: ctx.hubVersion, stored: ctx.session?.hubVersion})
+      this.hubEndpoints.set(key, hub)
+    }
+
+    return hub
+  }
+
+  /** One refresher per run, when the session in use can refresh its token. */
+  protected sessionRefresher(ctx: ResolvedContext): SessionRefresher | undefined {
+    if (ctx.authSource !== 'session' || !isSessionRefreshable(ctx.session)) return undefined
+    this.refresher ??= new SessionRefresher(ctx.session, () => this.hubEndpoint(ctx))
+    return this.refresher
+  }
+
+  /**
+   * `resolveContext` for commands that call `fetch` themselves: the session
+   * token is refreshed first when it is about to expire. A dry run sends
+   * nothing, so it refreshes nothing.
+   */
+  protected async freshContext(flags: GlobalFlags): Promise<ResolvedContext> {
+    const ctx = this.resolveContext(flags)
+    const refresher = flags['dry-run'] ? undefined : this.sessionRefresher(ctx)
+    return refresher ? {...ctx, bearerToken: await refresher.ensureFresh()} : ctx
   }
 
   /**
@@ -365,7 +412,10 @@ export abstract class BaseCommand extends Command {
       })
     }
 
+    // The last middleware runs first: a dry run stops before any refresh.
     const middleware: NorbixMiddleware[] = noProject ? [dropProjectHeaders] : []
+    const refresher = this.sessionRefresher(ctx)
+    if (refresher) middleware.push(sessionMiddleware(refresher))
     if (flags['dry-run']) middleware.push(dryRunMiddleware)
 
     const client = new Norbix(
@@ -382,6 +432,8 @@ export abstract class BaseCommand extends Command {
         baseUrl: {api: ctx.apiUrl, hub: ctx.hubUrl},
         // A dry run stops in the middleware; the SDK must not retry it.
         ...(flags['dry-run'] ? {retry: {maxRetries: 0}} : {}),
+        // A 401 on a browser sign-in: refresh once and retry the call.
+        ...(refresher && !flags['dry-run'] ? {refreshBearerToken: () => refresher.afterUnauthorized()} : {}),
       },
       // The CLI already resolved env vars itself — don't let the SDK re-read them.
       {envSource: {}},
@@ -456,7 +508,10 @@ export abstract class BaseCommand extends Command {
     // `this.exit(n)` — already decided, nothing to print.
     if ((error as {code?: string}).code === 'EEXIT') throw error
 
-    const envelope = toEnvelope(error, {command: this.commandName})
+    // A CLI error raised inside the SDK's middleware (an ended sign-in)
+    // arrives wrapped as a network error: report the CLI error itself.
+    const raw = (error as {raw?: unknown}).raw
+    const envelope = toEnvelope(raw instanceof CliError ? raw : error, {command: this.commandName})
     if (this.jsonEnabled()) {
       this.logJson({error: envelope})
     } else {
@@ -476,6 +531,19 @@ export abstract class BaseCommand extends Command {
 function dryRunStopOf(error: unknown): DryRunStop | undefined {
   const raw = (error as {raw?: unknown} | undefined)?.raw
   return raw instanceof DryRunStop ? raw : undefined
+}
+
+/** Sends the session's current token, refreshed first when it is about to expire. */
+function sessionMiddleware(refresher: SessionRefresher): NorbixMiddleware {
+  return async (ctx) => {
+    const headers = new Headers(ctx.init.headers)
+    if (headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${await refresher.ensureFresh()}`)
+      ctx.init.headers = headers
+    }
+
+    return ctx.next()
+  }
 }
 
 /** Stops the SDK just before `fetch` and hands the request back to `catch`. */
