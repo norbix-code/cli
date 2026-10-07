@@ -271,11 +271,10 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [],
     "destructive": false,
     "flags": [
-      "env:string",
       "dry-run:boolean",
       "name:string",
-      "reach:option",
-      "rights:option",
+      "account-role:string",
+      "project-role:string",
     ],
     "id": "ai service-user create",
     "supportsDryRun": true,
@@ -683,6 +682,15 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [],
     "id": "db schema draft",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db schema index-status",
     "supportsDryRun": false,
   },
   {

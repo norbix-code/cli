@@ -171,7 +171,7 @@ const routes: Array<[string[], Route[]]> = [
 
   // AI service users (account-level)
   [['ai', 'service-users'], [['GET', SU]]],
-  [['ai', 'service-user', 'create', '--name', 'ci-bot'], [['POST', SU]]],
+  [['ai', 'service-user', 'create', '--name', 'ci-bot', '--project-role', 'rl_reader'], [['POST', SU]]],
   [['ai', 'service-user', 'delete', ID, '--yes'], [['DELETE', `${SU}/${ID}`]]],
   [['ai', 'service-user', 'rotate-key', ID], [['POST', `${SU}/${ID}/keys`]]],
   [['ai', 'service-user', 'revoke-key', ID, KEY, '--yes'], [['DELETE', `${SU}/${ID}/keys/${KEY}`]]],
@@ -416,17 +416,23 @@ describe('ai integration bodies', () => {
 })
 
 describe('ai service-user bodies', () => {
-  it('create with --reach project scopes it to the configured project, TEST by default', async () => {
-    expect(await bodyOf(['ai', 'service-user', 'create', '--name', 'ci-bot'])).toEqual({
+  it('create with --project-role scopes the roles to the configured project', async () => {
+    expect(await bodyOf(['ai', 'service-user', 'create', '--name', 'ci-bot', '--project-role', 'rl_reader'])).toEqual({
       name: 'ci-bot',
-      scope: {reach: 'project', projectId: PROJECT, rights: 'read', envs: ['TEST']},
+      projectRoles: [{projectId: PROJECT, roleIds: ['rl_reader']}],
     })
   })
 
-  it('create with --reach account has no project', async () => {
-    expect(await bodyOf(['ai', 'service-user', 'create', '--name', 'ci-bot', '--reach', 'account', '--rights', 'admin', '--env', 'TEST', '--env', 'PROD'])).toEqual({
+  it('create with --account-role only has no project roles; both flags together send both', async () => {
+    expect(await bodyOf(['ai', 'service-user', 'create', '--name', 'ci-bot', '--account-role', 'rl_admin'])).toEqual({
       name: 'ci-bot',
-      scope: {reach: 'account', rights: 'admin', envs: ['TEST', 'PROD']},
+      accountRoleIds: ['rl_admin'],
+    })
+    calls.length = 0
+    expect(await bodyOf(['ai', 'service-user', 'create', '--name', 'ci-bot', '--account-role', 'rl_admin', '--project-role', 'rl_writer', '--project-role', 'rl_reader'])).toEqual({
+      name: 'ci-bot',
+      accountRoleIds: ['rl_admin'],
+      projectRoles: [{projectId: PROJECT, roleIds: ['rl_writer', 'rl_reader']}],
     })
   })
 
