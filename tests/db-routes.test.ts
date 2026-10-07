@@ -453,3 +453,20 @@ describe('db seed / change-owner', () => {
     expect(await bodyOf(['change-owner', COL, ID, '--user', USER])).toEqual({newResponsibleUserId: USER})
   })
 })
+
+describe('JSON flags read @file like db seed does', () => {
+  it('db insert-many --docs @orders.json sends the file as the documents', async () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'norbix-docs-')), 'orders.json')
+    writeFileSync(file, '[{"status":"new"},{"status":"paid"}]\n')
+    const inline = await bodyOf(['insert-many', COL, '--docs', '[{"status":"new"},{"status":"paid"}]'])
+    calls.length = 0
+    const fromFile = await bodyOf(['insert-many', COL, '--docs', `@${file}`])
+    expect(fromFile).toEqual(inline)
+  })
+
+  it('a missing @file is a usage error, sent nowhere', async () => {
+    const {error} = await runCommand(['db', 'insert-many', COL, '--docs', '@/nope/orders.json', ...globalArgs])
+    expect(error?.message).toMatch(/cannot read the file "\/nope\/orders.json"/)
+    expect(calls).toHaveLength(0)
+  })
+})

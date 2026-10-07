@@ -21,7 +21,7 @@ Pass --parent to list only the children of one term.`
 
   static flags = {
     ...databaseIntegrationFlag,
-    filter: Flags.string({char: 'f', description: 'JSON filter (or `-` for stdin)'}),
+    filter: Flags.string({char: 'f', description: 'JSON filter (inline, @file or `-` for stdin)'}),
     parent: Flags.string({description: 'List only the children of this term ID'}),
     'page-size': Flags.integer({description: 'Terms per page'}),
     after: Flags.string({description: 'Cursor: fetch the page after this item'}),

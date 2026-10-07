@@ -16,7 +16,7 @@ export default class DbCount extends BaseCommand {
   }
 
   static flags = {
-    filter: Flags.string({char: 'f', description: 'JSON filter (or `-` for stdin)'}),
+    filter: Flags.string({char: 'f', description: 'JSON filter (inline, @file or `-` for stdin)'}),
   }
 
   async run(): Promise<unknown> {

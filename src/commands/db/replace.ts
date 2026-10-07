@@ -18,7 +18,7 @@ export default class DbReplace extends BaseCommand {
   static flags = {
     ...BaseCommand.dryRunFlags,
     id: Flags.string({required: true, description: 'Record ID'}),
-    doc: Flags.string({char: 'd', required: true, description: 'JSON replacement document (or `-` for stdin)'}),
+    doc: Flags.string({char: 'd', required: true, description: 'JSON replacement document (inline, @file or `-` for stdin)'}),
   }
 
   async run(): Promise<unknown> {

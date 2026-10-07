@@ -32,11 +32,11 @@ name in --array-filters, e.g. --update '{"lines.$[line].qty":3}'
   static flags = {
     id: Flags.string({description: 'Record ID (single update)', exclusive: ['many', 'filter', 'all']}),
     filter: Flags.string({char: 'f', description: 'JSON filter (with --many); must not be empty', dependsOn: ['many'], exclusive: ['all']}),
-    update: Flags.string({char: 'u', required: true, description: 'JSON object of the fields to change (e.g. {"status":"paid"}) or `-` for stdin'}),
+    update: Flags.string({char: 'u', required: true, description: 'JSON object of the fields to change (e.g. {"status":"paid"}), @file or `-` for stdin'}),
     many: Flags.boolean({description: 'Update every record matching --filter', default: false}),
     all: Flags.boolean({description: 'Update EVERY record of the collection (sends allRecords: true)', default: false}),
     'array-filters': Flags.string({
-      description: 'JSON array of MongoDB array filters, one per $[name] used in --update (e.g. [{"line.sku":"A-1"}]) or `-` for stdin',
+      description: 'JSON array of MongoDB array filters, one per $[name] used in --update (e.g. [{"line.sku":"A-1"}]), @file or `-` for stdin',
     }),
     ...BaseCommand.mutatingFlags,
   }

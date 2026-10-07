@@ -18,7 +18,7 @@ export default class DbFind extends BaseCommand {
   }
 
   static flags = {
-    filter: Flags.string({char: 'f', description: 'JSON filter (or `-` for stdin)'}),
+    filter: Flags.string({char: 'f', description: 'JSON filter (inline, @file or `-` for stdin)'}),
     'page-size': Flags.integer({description: 'Records per page'}),
     after: Flags.string({description: 'Cursor: fetch the page after this item'}),
     before: Flags.string({description: 'Cursor: fetch the page before this item'}),

@@ -18,7 +18,7 @@ export default class DbInsert extends BaseCommand {
 
   static flags = {
     ...BaseCommand.dryRunFlags,
-    doc: Flags.string({char: 'd', required: true, description: 'JSON document (or `-` for stdin)'}),
+    doc: Flags.string({char: 'd', required: true, description: 'JSON document (inline, @file or `-` for stdin)'}),
   }
 
   async run(): Promise<unknown> {
