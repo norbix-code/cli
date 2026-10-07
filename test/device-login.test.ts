@@ -1,10 +1,14 @@
-import {describe, expect, it} from 'vitest'
+import {EventEmitter} from 'node:events'
+
+import {describe, expect, it, vi} from 'vitest'
 
 import {CliError} from '../src/lib/cli-error.js'
 import {
   DeviceFlowUnsupportedError,
   browserCommand,
+  canOpenBrowser,
   deviceName,
+  openBrowser,
   pollDeviceToken,
   startDeviceFlow,
   toHttpUrl,
@@ -12,6 +16,17 @@ import {
 } from '../src/lib/device-login.js'
 import {EXIT} from '../src/lib/exit-codes.js'
 import {FALLBACK_HUB_VERSION, resolveHubEndpoint} from '../src/lib/hub-version.js'
+
+/** A spawn whose opener is missing, like xdg-open on a server: an 'error' event, not a throw. */
+const spawned: string[] = []
+vi.mock('node:child_process', () => ({
+  spawn: (cmd: string) => {
+    spawned.push(cmd)
+    const child = Object.assign(new EventEmitter(), {unref: () => {}})
+    process.nextTick(() => child.emit('error', Object.assign(new Error(`spawn ${cmd} ENOENT`), {code: 'ENOENT'})))
+    return child
+  },
+}))
 
 /**
  * Opening the login page. The URL comes from the hub's response, so it must
@@ -36,6 +51,21 @@ describe('openBrowser', () => {
     const [cmd, args] = browserCommand(href, 'win32')
     expect(cmd).toBe('rundll32')
     expect(args).toEqual(['url.dll,FileProtocolHandler', href])
+  })
+
+  it('a missing opener (spawn ENOENT) does not crash the login', async () => {
+    openBrowser('https://hub.norbix.ai/device?code=AB-CD')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(spawned).toHaveLength(1) // the error event came and went without an uncaught exception
+  })
+
+  it('Linux needs a desktop session (X11 or Wayland) to open a browser; macOS and Windows always can', () => {
+    expect(canOpenBrowser('linux', {})).toBe(false)
+    expect(canOpenBrowser('linux', {DISPLAY: ':0'})).toBe(true)
+    expect(canOpenBrowser('linux', {WAYLAND_DISPLAY: 'wayland-0'})).toBe(true)
+    expect(canOpenBrowser('freebsd', {})).toBe(false)
+    expect(canOpenBrowser('darwin', {})).toBe(true)
+    expect(canOpenBrowser('win32', {})).toBe(true)
   })
 
   it('uses open on macOS and xdg-open elsewhere', () => {

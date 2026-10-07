@@ -247,10 +247,27 @@ export function openBrowser(url: string): void {
   if (!href) return
   const [cmd, args] = browserCommand(href, process.platform)
   try {
-    spawn(cmd, args, {detached: true, stdio: 'ignore'}).unref()
+    const child = spawn(cmd, args, {detached: true, stdio: 'ignore'})
+    // A missing opener (no xdg-open on a server) is reported as an 'error'
+    // event, not thrown: without a listener Node crashes the whole login.
+    child.on('error', () => {})
+    child.unref()
   } catch {
     // Browser could not be opened — the URL is printed anyway.
   }
+}
+
+/**
+ * True when this machine can show a browser. Linux and the BSDs need a
+ * desktop session (X11 or Wayland); an SSH session or a container has none,
+ * so the CLI only prints the link and waits.
+ */
+export function canOpenBrowser(
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (platform === 'darwin' || platform === 'win32') return true
+  return Boolean(env.DISPLAY || env.WAYLAND_DISPLAY)
 }
 
 /** The URL normalised, or undefined when it is not an http(s) URL. */
