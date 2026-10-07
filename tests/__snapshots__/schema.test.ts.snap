@@ -486,6 +486,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "page-size:string",
       "after:string",
       "before:string",
+      "expand:boolean",
     ],
     "id": "db find",
     "supportsDryRun": false,
@@ -496,7 +497,9 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "id",
     ],
     "destructive": false,
-    "flags": [],
+    "flags": [
+      "expand:boolean",
+    ],
     "id": "db get",
     "supportsDryRun": false,
   },
@@ -899,6 +902,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "update:string",
       "many:boolean",
       "all:boolean",
+      "array-filters:string",
       "yes:boolean",
       "dry-run:boolean",
     ],
@@ -1513,6 +1517,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "integration:string",
     ],
     "id": "files download",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+    ],
+    "id": "files get-by-id",
     "supportsDryRun": false,
   },
   {

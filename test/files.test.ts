@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 /**
- * The six `norbix files` commands.
+ * The `norbix files` commands.
  *
  * Each test runs the real command through oclif and replaces `fetch`, so the
  * request the command would send is captured instead of leaving the machine.
@@ -127,6 +127,28 @@ describe('norbix files info', () => {
     expect(error).toBeUndefined()
     expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}/info`)
     expect(calls[0].url).toContain('invoice.pdf')
+  })
+})
+
+describe('norbix files get-by-id', () => {
+  it('calls the by-id endpoint with the file id in the path', async () => {
+    fakeFetch([[`/files/${INTEGRATION}/by-id/`, {id: 'nbfl_7hK2abc', path: 'invoices/invoice.pdf', isPublic: false}]])
+
+    const {error} = await runCommand(['files', 'get-by-id', 'nbfl_7hK2abc', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0].method).toBe('GET')
+    expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}/by-id/nbfl_7hK2abc`)
+  })
+
+  it('fails with a clear message when no integration is given', async () => {
+    fakeFetch()
+
+    const {error} = await runCommand(['files', 'get-by-id', 'nbfl_7hK2abc', '--project', PROJECT, '--api-key', API_KEY, '--region', REGION])
+
+    expect(error?.message).toContain('No files integration ID')
+    expect(calls).toHaveLength(0)
   })
 })
 
