@@ -184,6 +184,42 @@ describe('email integration save', () => {
     expect(body.integration).toMatchObject({provider: 'Smtp', emailAddress: 'a@example.com', port: 587})
   })
 
+  it('a viewId in --config (the output of `get`, wrapped in integration) updates that integration', async () => {
+    const fromGet = {
+      integration: {
+        viewId: ID,
+        integrationName: 'Main',
+        isEnabled: false,
+        env: 'PROD',
+        lastIntegrationTestSucceeded: true,
+        requiresHumanDeliveryConfirmation: false,
+        provider: 'SendGrid',
+        emailAddress: 'a@example.com',
+        apiKey: 'SG.1',
+      },
+    }
+    const body = await bodyOf(['integration', 'save', '--provider', 'SendGrid', '--config', JSON.stringify(fromGet)])
+    expect(body).toEqual({
+      integration: {
+        provider: 'SendGrid',
+        apiKey: 'SG.1',
+        integrationId: ID,
+        integrationName: 'Main',
+        emailAddress: 'a@example.com',
+        isEnabled: false,
+      },
+    })
+  })
+
+  it('a bare viewId in --config is the integrationId too; --id still wins', async () => {
+    const bare = await bodyOf(['integration', 'save', '--provider', 'Smtp', '--config', `{"viewId":"${ID}"}`])
+    expect(bare.integration).toMatchObject({integrationId: ID})
+    expect(bare.integration).not.toHaveProperty('viewId')
+    calls.length = 0
+    const flag = await bodyOf(['integration', 'save', '--provider', 'Smtp', '--id', 'int_other', '--config', `{"viewId":"${ID}"}`])
+    expect(flag.integration).toMatchObject({integrationId: 'int_other'})
+  })
+
   it('rejects a provider the server does not know', async () => {
     const {error} = await runCommand(['email', 'integration', 'save', '--provider', 'Nope', ...globalArgs])
     expect(error?.message).toMatch(/Expected --provider=Nope to be one of/)
