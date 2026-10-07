@@ -7,7 +7,7 @@ export default class AccountStatus extends BaseCommand {
 
   async run(): Promise<unknown> {
     const {flags} = await this.parse(AccountStatus)
-    const client = this.client(flags)
+    const client = this.client(flags, {requireProject: false})
 
     const res = await client.hub.account.getAccountStatus({
     })
