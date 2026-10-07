@@ -40,7 +40,7 @@ export interface PublicFilesResult {
 }
 
 /** The Hub version the SDK talks by default. Kept in one place. */
-const HUB_VERSION = 'v2'
+const HUB_VERSION = 'v3'
 
 /** The exact request `callPublicFiles` sends — for `--dry-run`. */
 export function publicFilesRequest(

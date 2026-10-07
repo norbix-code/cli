@@ -39,16 +39,16 @@ const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '-
 
 /** module name → route prefix on the Hub. */
 const MODULES: Record<string, string> = {
-  code: '/v2/code',
-  database: '/v2/database',
-  email: '/v2/notifications/email',
-  files: '/v2/files',
-  logs: '/v2/logs',
-  membership: '/v2/membership',
-  payments: '/v2/payments',
-  push: '/v2/notifications/push',
-  scheduler: '/v2/scheduler',
-  sms: '/v2/notifications/sms',
+  code: '/v3/code',
+  database: '/v3/database',
+  email: '/v3/notifications/email',
+  files: '/v3/files',
+  logs: '/v3/logs',
+  membership: '/v3/membership',
+  payments: '/v3/payments',
+  push: '/v3/notifications/push',
+  scheduler: '/v3/scheduler',
+  sms: '/v3/notifications/sms',
 }
 
 describe('every module enable / disable sends PUT', () => {

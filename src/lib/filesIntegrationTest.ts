@@ -52,7 +52,7 @@ export interface TestFilesIntegrationResult {
 }
 
 /** The API version the SDK talks by default. Kept in one place. */
-const API_VERSION = 'v2'
+const API_VERSION = 'v3'
 
 export async function callTestFilesIntegration(
   ctx: ResolvedContext,

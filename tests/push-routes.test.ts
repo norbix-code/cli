@@ -53,7 +53,7 @@ afterEach(() => {
 
 const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '--region', 'nb-eu-germany']
 
-const P = '/v2/notifications/push'
+const P = '/v3/notifications/push'
 
 /** [argv, verb, path] — argv without the leading `push`. */
 const routes: Array<[string[], string, string]> = [

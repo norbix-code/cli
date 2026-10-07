@@ -50,7 +50,7 @@ afterEach(() => {
 
 const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '--region', 'nb-eu-germany']
 
-const P = '/v2/notifications/email'
+const P = '/v3/notifications/email'
 
 /** [argv, verb, path] — argv without the leading `email`. */
 const routes: Array<[string[], string, string]> = [
@@ -112,7 +112,7 @@ const routes: Array<[string[], string, string]> = [
   [['campaign', 'batch', ID, BATCH], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}`],
   [['campaign', 'batch', ID, BATCH, MESSAGE], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}/${MESSAGE}`],
   // The gateway spells this one route `emails` (plural).
-  [['campaign', 'messages', ID, '--batch', BATCH], 'GET', `/v2/notifications/emails/campaigns/${ID}/messages`],
+  [['campaign', 'messages', ID, '--batch', BATCH], 'GET', `/v3/notifications/emails/campaigns/${ID}/messages`],
   [['preview', '8f2a91c4'], 'GET', `${P}/preview`],
   [['preview', '--notification', MESSAGE], 'GET', `${P}/preview`],
 ]

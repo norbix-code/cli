@@ -44,11 +44,11 @@ const PHONE = '+37060000000'
 
 /** [argv, verb, path] — argv without the leading `account`. */
 const routes: Array<[string[], string, string]> = [
-  [['team'], 'GET', '/v2/account/collaborators'],
-  [['me'], 'GET', '/v2/account/me'],
-  [['me', 'set-phone', PHONE], 'PUT', '/v2/account/me/phone'],
-  [['me', 'set-phone', '--clear'], 'PUT', '/v2/account/me/phone'],
-  [['regions'], 'GET', '/v2/account/regions'],
+  [['team'], 'GET', '/v3/account/collaborators'],
+  [['me'], 'GET', '/v3/account/me'],
+  [['me', 'set-phone', PHONE], 'PUT', '/v3/account/me/phone'],
+  [['me', 'set-phone', '--clear'], 'PUT', '/v3/account/me/phone'],
+  [['regions'], 'GET', '/v3/account/regions'],
 ]
 
 describe('every account command of this round reaches its route', () => {
@@ -128,7 +128,7 @@ describe('account regions — no login, no project', () => {
     expect(error).toBeUndefined()
     expect(calls).toHaveLength(1)
     expect(calls[0]?.method).toBe('GET')
-    expect(calls[0]?.path).toBe('/v2/account/regions')
+    expect(calls[0]?.path).toBe('/v3/account/regions')
     expect(calls[0]?.headers.get('Authorization')).toBeNull()
     expect(calls[0]?.headers.get('norbix-project-id')).toBeNull()
   })
@@ -141,8 +141,8 @@ describe('account regions — no login, no project', () => {
  */
 describe('account projects / status — no project needed', () => {
   for (const [argv, path] of [
-    [['projects'], '/v2/account/projects'],
-    [['status'], '/v2/account/status'],
+    [['projects'], '/v3/account/projects'],
+    [['status'], '/v3/account/status'],
   ] as const) {
     it(`account ${argv.join(' ')} runs with only an API key and sends no project header`, async () => {
       const {error} = await runCommand(['account', ...argv, '--api-key', 'nbsu_k', '--region', 'nb-eu-germany'])
