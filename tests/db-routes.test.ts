@@ -106,6 +106,7 @@ const routes: Array<[string[], string, string]> = [
   [['schema', 'create', '--name', COL, '--file', SCHEMA_FILE], 'POST', `${P}/schemas`],
   [['schema', 'update', ID, '--file', SCHEMA_FILE], 'PUT', `${P}/schemas/${ID}/draft`],
   [['schema', 'draft', ID], 'GET', `${P}/schemas/${ID}/draft`],
+  [['schema', 'index-status', ID], 'GET', `${P}/schemas/${ID}/index-status`],
   [['schema', 'discard', ID, '--yes'], 'DELETE', `${P}/schemas/${ID}/draft`],
   [['schema', 'publish', ID, '--yes'], 'POST', `${P}/schemas/${ID}/publish`],
   [['schema', 'delete', ID, '--yes'], 'DELETE', `${P}/schemas/${ID}`],
@@ -152,10 +153,10 @@ describe('every db command reaches its route', () => {
   }
 })
 
-it('covers 47 distinct db routes', () => {
+it('covers 48 distinct db routes', () => {
   // `db distinct`/`db delete`/`db update`/`db aggregate` each have two shapes;
   // count distinct verb + path pairs so a duplicated row is caught.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(47)
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(48)
 })
 
 /** Run a command and return the one request it sent. */

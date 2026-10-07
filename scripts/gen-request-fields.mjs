@@ -41,7 +41,7 @@ export function classBlocks(source) {
   return blocks
 }
 
-const SIGNATURE_RE = /^[ \t]+(\w+) = \(request = \{\}, options = \{\}\) => \{[ \t]*$/gm
+const SIGNATURE_RE = /^[ \t]+(\w+) = \(request(?: = \{\})?, options = \{\}\) => \{[ \t]*$/gm
 const SEND = 'this.transport.send({'
 
 /** `key: "value"` inside the object passed to `transport.send`. */

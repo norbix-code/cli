@@ -160,6 +160,7 @@ counts, the new ids, and any errors.
 | `norbix db schema publish <id> [--yes]` | publish the draft | `POST /schemas/{Id}/publish` |
 | `norbix db schema versions <id>` | list the published versions | `GET /schemas/{Id}/versions` |
 | `norbix db schema diff <id> --from <n> --to <n>` | what changed between two versions | `GET /schemas/{Id}/versions/diff` |
+| `norbix db schema index-status <id>` | the last schema-index run: the indexes Norbix made (`idx_<field>` per reference, `uniq_<field>` per unique field, `idx_<field>__id` for the default sort, at most 8), state `building` / `ready` / `refused` / `partial` per database | `GET /schemas/{Id}/index-status` |
 | `norbix db schema delete <id> [--yes]` | delete the schema **and its records**: the collection (records and indexes) in the environment is dropped, and removed from the AI knowledge when AI embed is on; no undo. Refused while a schema trigger uses it (`CM-ERRORS-SCHEMA-017`) or a saved aggregate starts on / joins it (`CM-ERRORS-SCHEMA-018`, the aggregates are in `BlockerAggregateNames`); then nothing is dropped | `DELETE /schemas/{Id}` |
 
 `--file` is the data schema (the JSON Schema of one record); `--ui-file` is the

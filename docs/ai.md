@@ -64,16 +64,19 @@ project. All paths are under `/{version}/account/ai/service-users`.
 | command | what it does | endpoint |
 |---|---|---|
 | `norbix ai service-users` | list them (keys as id + hint, never the key) | `GET /` |
-| `norbix ai service-user create --name <n> [--reach account\|project] [--rights read\|admin] [--env <e>]...` | create one and print its first key (shown once) | `POST /` |
+| `norbix ai service-user create --name <n> [--account-role <roleId>]... [--project-role <roleId>]...` | create one with its roles and print its first key (shown once) | `POST /` |
 | `norbix ai service-user delete <id> [--yes]` | delete it; its keys stop working | `DELETE /{Id}` |
 | `norbix ai service-user rotate-key <id> [--revoke <keyId>]` | issue a new key (shown once), optionally revoke an old one | `POST /{Id}/keys` |
 | `norbix ai service-user revoke-key <id> <keyId> [--yes]` | revoke one key | `DELETE /{Id}/keys/{KeyId}` |
 
-`--reach project` (the default) limits the user to the configured project (or
-`--project`); `--rights` defaults to `read`; `--env` defaults to `TEST`.
+What the user may do comes from roles: `--account-role` gives it an account
+team role, `--project-role` a role of the configured project (or `--project`).
+Repeat either flag for several roles; at least one is needed. (Until
+`@norbix.ai/ts` 4.17 the command took `--reach` / `--rights` / `--env`; the
+gateway replaced that scope with roles.)
 
 ```bash
-norbix ai service-user create --name "Claude Code on my laptop" --reach project --rights read --env TEST
+norbix ai service-user create --name "Claude Code on my laptop" --project-role rl_reader
 norbix ai service-user rotate-key su_123 --revoke key_old
 ```
 
