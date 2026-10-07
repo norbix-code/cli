@@ -76,12 +76,15 @@ const P = '/v2/database'
 const routes: Array<[string[], string, string]> = [
   // Records (data-plane API)
   [['find', COL], 'GET', `${P}/collections/${COL}`],
+  [['find', COL, '--expand'], 'GET', `${P}/collections/${COL}`],
   [['get', COL, ID], 'GET', `${P}/collections/${COL}/${ID}`],
+  [['get', COL, ID, '--expand'], 'GET', `${P}/collections/${COL}/${ID}`],
   [['count', COL], 'GET', `${P}/collections/${COL}/count`],
   [['distinct', COL, 'status'], 'GET', `${P}/collections/${COL}/distinct`],
   [['insert', COL, '--doc', '{"status":"new"}'], 'POST', `${P}/collections/${COL}`],
   [['insert-many', COL, '--docs', '[{"status":"new"}]'], 'POST', `${P}/collections/${COL}/many`],
   [['update', COL, '--id', ID, '--update', '{"status":"paid"}'], 'PUT', `${P}/collections/${COL}/${ID}`],
+  [['update', COL, '--id', ID, '--update', '{"lines.$[line].qty":3}', '--array-filters', '[{"line.sku":"A-1"}]'], 'PUT', `${P}/collections/${COL}/${ID}`],
   [['update', COL, '--many', '--filter', '{"status":"new"}', '--update', '{"status":"paid"}', '--yes'], 'PUT', `${P}/collections/${COL}/many`],
   [['update', COL, '--all', '--update', '{"status":"paid"}', '--yes'], 'PUT', `${P}/collections/${COL}/many`],
   [['replace', COL, '--id', ID, '--doc', '{"status":"new"}'], 'PUT', `${P}/collections/${COL}/${ID}/replace`],
@@ -230,6 +233,73 @@ describe('db update / delete of many records', () => {
   it('update with a JSON array is refused', async () => {
     const {error} = await runCommand(['db', 'update', COL, '--id', ID, '--update', '[1]', ...globalArgs])
     expect(error?.message).toMatch(/must be a JSON object/)
+    expect(calls).toHaveLength(0)
+  })
+})
+
+describe('db find / get --expand (expanded references)', () => {
+  it('find without --expand sends expandReferences false, so the stored ids come back unchanged', async () => {
+    expect(await sentOf(['find', COL])).toMatchObject({expandReferences: 'false'})
+  })
+
+  it('find --expand asks for every reference as {id, display}', async () => {
+    expect(await sentOf(['find', COL, '--expand', '--filter', '{"status":"new"}'])).toMatchObject({
+      expandReferences: 'true',
+      filter: '{"status":"new"}',
+    })
+  })
+
+  it('get --expand asks for the one record with its references expanded', async () => {
+    expect(await sentOf(['get', COL, ID, '--expand'])).toMatchObject({expandReferences: 'true'})
+  })
+})
+
+describe('db update --array-filters (nested lists)', () => {
+  const update = '{"lines.$[line].qty":3}'
+  const filters = '[{"line.sku":"A-1"}]'
+
+  it('update --id sends the $[name] path and its array filters', async () => {
+    expect(await bodyOf(['update', COL, '--id', ID, '--update', update, '--array-filters', filters])).toEqual({
+      update,
+      arrayFilters: filters,
+    })
+  })
+
+  it('update --many sends the array filters next to the filter', async () => {
+    expect(await bodyOf(['update', COL, '--many', '--filter', '{"status":"new"}', '--update', update, '--array-filters', filters, '--yes'])).toEqual({
+      filter: '{"status":"new"}',
+      update,
+      arrayFilters: filters,
+    })
+  })
+
+  it('update --all sends the array filters with allRecords: true', async () => {
+    expect(await bodyOf(['update', COL, '--all', '--update', update, '--array-filters', filters, '--yes'])).toEqual({
+      filter: '{}',
+      allRecords: true,
+      update,
+      arrayFilters: filters,
+    })
+  })
+
+  it('update without --array-filters sends no arrayFilters key', async () => {
+    expect(await bodyOf(['update', COL, '--id', ID, '--update', '{"status":"paid"}'])).not.toHaveProperty('arrayFilters')
+  })
+
+  for (const [label, bad] of [
+    ['a JSON object', '{"line.sku":"A-1"}'],
+    ['an array of strings', '["line.sku"]'],
+  ] as const) {
+    it(`--array-filters with ${label} is refused before anything is sent`, async () => {
+      const {error} = await runCommand(['db', 'update', COL, '--id', ID, '--update', update, '--array-filters', bad, ...globalArgs])
+      expect(error?.message).toMatch(/must be a JSON array of filter objects/)
+      expect(calls).toHaveLength(0)
+    })
+  }
+
+  it('--array-filters that is not JSON is refused before anything is sent', async () => {
+    const {error} = await runCommand(['db', 'update', COL, '--id', ID, '--update', update, '--array-filters', '[oops', ...globalArgs])
+    expect(error?.message).toMatch(/--array-filters is not valid JSON/)
     expect(calls).toHaveLength(0)
   })
 })
