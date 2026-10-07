@@ -39,7 +39,7 @@ norbix scheduler list
 | `norbix login` / `logout` / `whoami` | Authenticate and inspect the current context |
 | `norbix config list/get/set/unset` | Manage the local config file |
 | `norbix db ...` | Database records (find/get/count/insert/update/replace/delete/aggregate/change-owner), schemas (create/update/publish/delete/versions/diff), schema triggers, integrations, taxonomies and terms, indexes, test-data seed — see [docs/database.md](docs/database.md) |
-| `norbix files list/info/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
+| `norbix files list/info/get-by-id/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
 | `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
 | `norbix env list/use/delete` | Manage project environments |
@@ -301,6 +301,7 @@ Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 | --- | --- |
 | `norbix files list [path]` | List the files and folders under a path. No path lists the root. |
 | `norbix files info <path>` | Show one file's details: size, type, when it changed. |
+| `norbix files get-by-id <id>` | Show one file by its stable id — the value a file field of a record stores (`db find --expand` returns it as the reference's `id`). |
 | `norbix files sign <path> [--expires <seconds>]` | Get a temporary web address for the file that anyone with the link can open. |
 | `norbix files upload <local> [remote]` | Upload a file. Without `remote` it keeps its own name in the root folder. |
 | `norbix files download <remote> [local]` | Download a file. Without `local` it keeps its own name in the current folder. |

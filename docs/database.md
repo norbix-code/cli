@@ -32,15 +32,15 @@ refactoringV2 (2026-10) has only the GET routes, so this CLI needs a current gat
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix db find <collection> [--filter <json>] [--page-size <n>] [--after <cursor>] [--before <cursor>]` | find records | `GET /collections/{collectionName}` |
-| `norbix db get <collection> <id>` | one record | `GET /collections/{collectionName}/{id}` |
+| `norbix db find <collection> [--filter <json>] [--page-size <n>] [--after <cursor>] [--before <cursor>] [--expand]` | find records | `GET /collections/{collectionName}` |
+| `norbix db get <collection> <id> [--expand]` | one record | `GET /collections/{collectionName}/{id}` |
 | `norbix db count <collection> [--filter <json>]` | count records | `GET /collections/{collectionName}/count` |
 | `norbix db distinct <collection> <field>` | distinct values of one field | `GET /collections/{collectionName}/distinct` |
 | `norbix db insert <collection> --doc <json>` | insert one record | `POST /collections/{collectionName}` |
 | `norbix db insert-many <collection> --docs <json-array>` | insert many | `POST /collections/{collectionName}/many` |
-| `norbix db update <collection> --id <id> --update <json>` | update one | `PUT /collections/{collectionName}/{id}` |
-| `norbix db update <collection> --many --filter <json> --update <json> [--yes]` | update many | `PUT /collections/{collectionName}/many` |
-| `norbix db update <collection> --all --update <json> [--yes]` | update every record | `PUT /collections/{collectionName}/many` (`allRecords: true`) |
+| `norbix db update <collection> --id <id> --update <json> [--array-filters <json-array>]` | update one | `PUT /collections/{collectionName}/{id}` |
+| `norbix db update <collection> --many --filter <json> --update <json> [--array-filters <json-array>] [--yes]` | update many | `PUT /collections/{collectionName}/many` |
+| `norbix db update <collection> --all --update <json> [--array-filters <json-array>] [--yes]` | update every record | `PUT /collections/{collectionName}/many` (`allRecords: true`) |
 | `norbix db replace <collection> --id <id> --doc <json>` | replace one record fully | `PUT /collections/{collectionName}/{id}/replace` |
 | `norbix db delete <collection> --id <id> [--yes]` | delete one | `DELETE /collections/{collectionName}/{id}` |
 | `norbix db delete <collection> --many --filter <json> [--yes]` | delete many | `DELETE /collections/{collectionName}/many` |
@@ -73,6 +73,50 @@ Rules for record writes:
   `insert-many`).
 - A soft-deleted record is "not found" for `update`, `replace` and
   `change-owner`; `update --many` skips it.
+
+### Reading references: `--expand`
+
+A reference field (user, role, taxonomy term, record of another collection,
+file) stores an id. `db find --expand` and `db get --expand` send
+`expandReferences: true`: every reference then reads as `{id, display}` —
+`display` is the value of the field the schema names as `displayField` on the
+target (a role shows its name, a file its name), `null` when the target is
+gone; a list of them on a field that holds several ids. Without `--expand` the
+stored ids come back unchanged.
+
+The caller needs read rights on the collection **and** on every source the
+published schema links to; a missing one refuses the whole read with
+`CM-ERRORS-DATABASE-056`, naming the source — a permission gap never looks
+like missing data. A file id from an expanded reference opens with
+`norbix files get-by-id <id>`.
+
+```bash
+norbix db find articles --expand --json | jq '.list.items[] | {title, author: .author.display}'
+norbix db get articles 66b2f0a1c3d4e5f6a7b8c9d0 --expand
+```
+
+### Nested documents and lists: `--array-filters`
+
+A record is stored as the JSON you send: objects and lists of objects stay
+nested at any depth, and the schema is checked at every level (a broken value
+names the full path, e.g. `lines[1].qty`). An `--update` key may be a nested
+path:
+
+| key | changes |
+|---|---|
+| `"address.city"` | one field inside an object |
+| `"lines.0.qty"` | one list element by position |
+| `"lines.$[line].qty"` | the list elements `--array-filters` picks — a JSON array with one filter object per `$[name]` |
+
+`--array-filters` works with `--id`, `--many` and `--all`. The CLI refuses a
+value that is not a JSON array of objects before sending; the gateway refuses
+a `$[name]` without its filter, or a filter without its `$[name]`.
+
+```bash
+norbix db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 \
+  --update '{"lines.$[line].qty":3,"meta.words":130}' \
+  --array-filters '[{"line.sku":"A-1"}]'
+```
 
 ## Collections: indexes and test data
 
