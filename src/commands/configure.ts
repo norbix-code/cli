@@ -22,7 +22,7 @@ environment. Use --profile to create or edit a named profile; without it the
   static examples = [
     '<%= config.bin %> configure',
     '<%= config.bin %> configure --profile fitskin-prod',
-    '<%= config.bin %> configure --profile localhost --api-url http://localhost:5001 --hub-url http://localhost:5002',
+    '<%= config.bin %> configure --profile localhost --api-url http://localhost:5002 --hub-url http://localhost:5001',
   ]
 
   static flags = {
