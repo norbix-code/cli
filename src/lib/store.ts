@@ -2,13 +2,11 @@ import {mkdirSync, readFileSync, writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 
 /**
- * Local CLI configuration, stored as JSON in the per-user config directory
- * (oclif picks the right place per OS: ~/.config/norbix on Linux,
- * ~/Library/Application Support/norbix... actually ~/.config/norbix on macOS
- * too for oclif, %LOCALAPPDATA%\norbix on Windows).
- *
- * Secrets (apiKey, bearerToken, refreshToken) live in the same file, which is
- * written with mode 0600 (owner read/write only) on POSIX systems.
+ * The OLD local configuration: JSON in the per-user config directory
+ * (~/.config/norbix/config.json on Linux and macOS, %LOCALAPPDATA%\norbix on
+ * Windows). It is only read, as the last fallback after the profiles in
+ * ~/.norbix/config; `norbix logout` still clears tokens from it. Every
+ * command that saves settings writes a profile (see profiles.ts).
  */
 export interface StoredConfig {
   projectId?: string
@@ -23,24 +21,6 @@ export interface StoredConfig {
   refreshToken?: string
   userId?: string
   userName?: string
-}
-
-/** Keys a user may change via `norbix config set`. Tokens are managed by login/logout. */
-export const SETTABLE_KEYS = [
-  'projectId',
-  'accountId',
-  'region',
-  'env',
-  'apiUrl',
-  'hubUrl',
-  'apiKey',
-  'filesIntegrationId',
-] as const
-
-export type SettableKey = (typeof SETTABLE_KEYS)[number]
-
-export function isSettableKey(key: string): key is SettableKey {
-  return (SETTABLE_KEYS as readonly string[]).includes(key)
 }
 
 export function configFilePath(configDir: string): string {

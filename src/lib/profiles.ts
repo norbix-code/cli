@@ -19,6 +19,10 @@ import {join} from 'node:path'
  *   api_url = https://api.norbix.ai
  *   hub_url = https://hub.norbix.ai
  *
+ * This is the only config file the CLI writes. The old
+ * ~/.config/norbix/config.json (camelCase keys) is still read as a last
+ * fallback, never written.
+ *
  * Browser sign-in sessions live in ~/.norbix/session.json —
  * separate on purpose: sessions rotate and are machine-managed, the
  * config file is edited by people.
@@ -55,6 +59,27 @@ export const PROFILE_KEYS: Array<keyof Profile> = [
   'hub_version',
   'files_integration_id',
 ]
+
+/**
+ * The one spelling in the file is snake_case (`project_id`). Commands also
+ * take the camelCase name (`projectId`) — the spelling of the old
+ * ~/.config/norbix/config.json and of the environment variables' docs.
+ */
+const KEY_ALIASES: Record<string, keyof Profile> = {
+  apiKey: 'api_key',
+  projectId: 'project_id',
+  accountId: 'account_id',
+  apiUrl: 'api_url',
+  hubUrl: 'hub_url',
+  hubVersion: 'hub_version',
+  filesIntegrationId: 'files_integration_id',
+}
+
+/** The profile key for `name` in either spelling, or undefined when unknown. */
+export function profileKey(name: string): keyof Profile | undefined {
+  if ((PROFILE_KEYS as string[]).includes(name)) return name as keyof Profile
+  return KEY_ALIASES[name]
+}
 
 // ---------- tiny INI reader/writer (no dependency) ----------
 

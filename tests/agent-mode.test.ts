@@ -349,7 +349,7 @@ describe('--dry-run on non-destructive mutating commands', () => {
     const doc = parseSingleJson(r.stdout) as {dryRun: boolean; method: string; request: {key: string; value: string; file: string}}
     expect(doc).toMatchObject({dryRun: true, method: 'config.set', request: {key: 'region', value: 'nb-eu-germany'}})
     const after = await cli(home, ['config', 'get', 'region', '--json'])
-    expect(parseSingleJson(after.stdout)).toEqual({key: 'region'})
+    expect(parseSingleJson(after.stdout)).toEqual({profile: 'default', key: 'region'})
   })
 
   it('hub: a boolean field never swallows the id, a string field keeps its zeros', async () => {
