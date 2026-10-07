@@ -133,3 +133,25 @@ describe('account regions — no login, no project', () => {
     expect(calls[0]?.headers.get('norbix-project-id')).toBeNull()
   })
 })
+
+/**
+ * `account projects` and `account status` are about the account, not one
+ * project: a service-user key with no project configured must reach them,
+ * and no project header goes out.
+ */
+describe('account projects / status — no project needed', () => {
+  for (const [argv, path] of [
+    [['projects'], '/v2/account/projects'],
+    [['status'], '/v2/account/status'],
+  ] as const) {
+    it(`account ${argv.join(' ')} runs with only an API key and sends no project header`, async () => {
+      const {error} = await runCommand(['account', ...argv, '--api-key', 'nbsu_k', '--region', 'nb-eu-germany'])
+
+      expect(error).toBeUndefined()
+      expect(calls).toHaveLength(1)
+      expect(calls[0]?.path).toBe(path)
+      expect(calls[0]?.headers.get('norbix-project-id')).toBeNull()
+      expect(calls[0]?.headers.get('Authorization')).toBe('Bearer nbsu_k')
+    })
+  }
+})
