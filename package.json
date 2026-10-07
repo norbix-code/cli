@@ -100,7 +100,7 @@
         }
       },
       "apikeys": {
-        "description": "Show or regenerate project API keys"
+        "description": "Service-user API keys for scripts, CI, SDKs and agents: list, create, regenerate, revoke"
       },
       "email": {
         "description": "Email module, integrations, footers, signatures, templates and campaigns",
