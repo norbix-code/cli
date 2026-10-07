@@ -10,6 +10,7 @@ export default class DbFind extends BaseCommand {
     '<%= config.bin %> db find orders',
     `<%= config.bin %> db find orders --filter '{"status":"paid"}' --page-size 20`,
     `<%= config.bin %> db find orders --json | jq '.list.items'`,
+    '<%= config.bin %> db find articles --expand',
   ]
 
   static args = {
@@ -21,6 +22,10 @@ export default class DbFind extends BaseCommand {
     'page-size': Flags.integer({description: 'Records per page'}),
     after: Flags.string({description: 'Cursor: fetch the page after this item'}),
     before: Flags.string({description: 'Cursor: fetch the page before this item'}),
+    expand: Flags.boolean({
+      description: 'Read every reference field (user, role, term, record, file) as {id, display} instead of the bare id',
+      default: false,
+    }),
   }
 
   async run(): Promise<unknown> {
@@ -33,6 +38,7 @@ export default class DbFind extends BaseCommand {
       pageSize: flags['page-size'],
       startingAfter: flags.after,
       endingBefore: flags.before,
+      expandReferences: flags.expand,
     })
 
     this.print(res)
