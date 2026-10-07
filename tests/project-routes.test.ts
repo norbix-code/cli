@@ -175,6 +175,12 @@ const routes: Array<[string[], Route[]]> = [
   [['ai', 'service-user', 'delete', ID, '--yes'], [['DELETE', `${SU}/${ID}`]]],
   [['ai', 'service-user', 'rotate-key', ID], [['POST', `${SU}/${ID}/keys`]]],
   [['ai', 'service-user', 'revoke-key', ID, KEY, '--yes'], [['DELETE', `${SU}/${ID}/keys/${KEY}`]]],
+
+  // apikeys — the same service-user keys (the old /apikeys route answered 405)
+  [['apikeys', 'list'], [['GET', SU]]],
+  [['apikeys', 'create', ID], [['POST', `${SU}/${ID}/keys`]]],
+  [['apikeys', 'regenerate', ID, KEY, '--yes'], [['POST', `${SU}/${ID}/keys`]]],
+  [['apikeys', 'revoke', ID, KEY, '--yes'], [['DELETE', `${SU}/${ID}/keys/${KEY}`]]],
 ]
 
 describe('every project and ai command reaches its route', () => {
@@ -426,5 +432,30 @@ describe('ai service-user bodies', () => {
 
   it('rotate-key --revoke sends the key to revoke', async () => {
     expect(await bodyOf(['ai', 'service-user', 'rotate-key', ID, '--revoke', KEY])).toEqual({revokeKeyId: KEY})
+  })
+
+  it('apikeys create issues a key and revokes nothing; regenerate revokes the replaced key in the same call', async () => {
+    expect(await bodyOf(['apikeys', 'create', ID])).toBeUndefined() // no revokeKeyId: nothing is revoked
+    calls.length = 0
+    expect(await bodyOf(['apikeys', 'regenerate', ID, KEY, '--yes'])).toEqual({revokeKeyId: KEY})
+  })
+
+  it('apikeys list gives one row per key, with its service user', async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          items: [
+            {id: 'aisu_1', name: 'ci-bot', keys: [{id: 'aisk_1', hint: 'nbsu_…a1', issuedAt: '2026-10-01T00:00:00Z'}, {id: 'aisk_2', hint: 'nbsu_…b2', issuedAt: '2026-10-02T00:00:00Z'}]},
+            {id: 'aisu_2', name: 'no-keys', keys: []},
+          ],
+        }),
+        {status: 200, headers: {'Content-Type': 'application/json'}},
+      )) as typeof globalThis.fetch
+    const {result, error} = await runCommand<{keys: unknown[]}>(['apikeys', 'list', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(result?.keys).toEqual([
+      {serviceUserId: 'aisu_1', serviceUser: 'ci-bot', keyId: 'aisk_1', hint: 'nbsu_…a1', issuedAt: '2026-10-01T00:00:00Z'},
+      {serviceUserId: 'aisu_1', serviceUser: 'ci-bot', keyId: 'aisk_2', hint: 'nbsu_…b2', issuedAt: '2026-10-02T00:00:00Z'},
+    ])
   })
 })

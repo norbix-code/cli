@@ -336,6 +336,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [
+      "serviceUserId",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "apikeys create",
+    "supportsDryRun": true,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [],
@@ -343,13 +354,29 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
-    "args": [],
+    "args": [
+      "serviceUserId",
+      "keyId",
+    ],
     "destructive": true,
     "flags": [
       "yes:boolean",
       "dry-run:boolean",
     ],
     "id": "apikeys regenerate",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "serviceUserId",
+      "keyId",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "apikeys revoke",
     "supportsDryRun": true,
   },
   {
