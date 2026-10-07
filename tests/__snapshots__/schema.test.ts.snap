@@ -1637,8 +1637,8 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [],
     "destructive": false,
     "flags": [
-      "user:string",
-      "password:string",
+      "api-url:string",
+      "hub-url:string",
     ],
     "id": "login",
     "supportsDryRun": false,
