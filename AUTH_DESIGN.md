@@ -88,14 +88,15 @@ an SDK bug; the CLI always passes URLs explicitly, so it is not affected.
 
 ## Phase 2 — browser sign-in (done)
 
-`norbix login` (with no --user/--password) runs the OAuth 2.0 Device
+`norbix login` (without --api-key) runs the OAuth 2.0 Device
 Authorization Grant (RFC 8628): it prints a one-time code, opens the
 dashboard on ENTER, polls until approved, and writes the session. The person
 picks the roles on the dashboard page; the tokens belong to an **AI service
 user** "Norbix CLI (<computer name>)" with exactly those roles, listed and
 removed under Account → AI service users. When the Hub answers 404/405/501
-the CLI prints a note that the Hub is older than the browser sign-in and
-falls back to password login.
+the CLI stops with a usage error that points at `--api-key`. The old
+`--user` / `--password` flags were removed (CLI 1.18): they posted to the
+Api `/auth`, which knows no account users, so they always got 401.
 
 ### Hub contract
 

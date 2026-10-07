@@ -19,7 +19,7 @@ import {join} from 'node:path'
  *   api_url = https://api.norbix.ai
  *   hub_url = https://hub.norbix.ai
  *
- * Browser/password login sessions live in ~/.norbix/session.json —
+ * Browser sign-in sessions live in ~/.norbix/session.json —
  * separate on purpose: sessions rotate and are machine-managed, the
  * config file is edited by people.
  */

@@ -21,9 +21,10 @@ vi.mock('@inquirer/prompts', () => ({
 }))
 
 const opened: string[] = []
+const machine = {desktop: true}
 vi.mock('../src/lib/device-login.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../src/lib/device-login.js')>()
-  return {...original, openBrowser: (url: string) => opened.push(url)}
+  return {...original, canOpenBrowser: () => machine.desktop, openBrowser: (url: string) => opened.push(url)}
 })
 
 interface Hit {
@@ -87,6 +88,7 @@ async function runLogin(argv: string[] = []): Promise<unknown> {
 beforeEach(() => {
   output = []
   opened.length = 0
+  machine.desktop = true
   mkdirSync(NORBIX_DIR, {recursive: true})
   writeFileSync(PROFILES_PATH, '[default]\nproject_id = p1\nhub_url = http://hub.test\napi_url = http://api.test\n')
   rmSync(SESSION_PATH, {force: true})
@@ -197,21 +199,61 @@ describe('norbix login (browser sign-in)', () => {
     expect(existsSync(SESSION_PATH)).toBe(false)
   })
 
-  it('a Hub without device sign-in: one note, then user + password as before', async () => {
-    const hits = stubNetwork({
+  it('a machine without a desktop: no ENTER prompt, no browser, the link is printed and the CLI keeps waiting', async () => {
+    machine.desktop = false
+    const prompts = await import('@inquirer/prompts')
+    vi.mocked(prompts.input).mockClear()
+    stubNetwork({
       '/v3/echo': [{body: {hubVersion: 'v3'}}],
-      '/v3/auth/device/start': [{status: 404, body: {}}],
-      '/auth': [{body: {bearerToken: 'pw-token', userId: 'u-person', userName: 'alice@example.com', displayName: 'Alice'}}],
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: {error: 'authorization_pending'}}, {body: SUCCESS}],
     })
     await runLogin()
 
-    expect(output).toContain('Note: this Hub is older than the browser sign-in, so the CLI signs in with user + password.\n')
-    expect(hits.map((h) => `${h.method} ${new URL(h.url).host}${new URL(h.url).pathname}`)).toEqual([
-      'GET hub.test/v3/echo',
-      'POST hub.test/v3/auth/device/start',
-      'POST api.test/auth',
-    ])
-    const session = JSON.parse(readFileSync(SESSION_PATH, 'utf8')) as Record<string, string>
-    expect([session.method, session.userName, session.clientId]).toEqual(['password', 'alice@example.com', undefined])
+    expect(opened).toEqual([])
+    expect(prompts.input).not.toHaveBeenCalled()
+    expect(output).toContain('Approve this sign-in on the Norbix dashboard: http://cloud.test/device?code=BCDF-GHJK')
+    expect(output).toContain('No desktop here to open a browser: open the link on any other device.')
+    expect(JSON.parse(readFileSync(SESSION_PATH, 'utf8')).bearerToken).toBe('access-1')
   })
+
+  it('a Hub without device sign-in: a usage error that points at --api-key, no password fallback', async () => {
+    const hits = stubNetwork({
+      '/v3/echo': [{body: {hubVersion: 'v3'}}],
+      '/v3/auth/device/start': [{status: 404, body: {}}],
+    })
+    const error = (await runLogin().catch((e: unknown) => e)) as CliError
+    expect(error).toBeInstanceOf(CliError)
+    expect([error.exit, error.code]).toEqual([2, 'USAGE_ERROR'])
+    expect(error.hint).toMatch(/--api-key/)
+    expect(hits.map((h) => new URL(h.url).pathname)).toEqual(['/v3/echo', '/v3/auth/device/start'])
+    expect(existsSync(SESSION_PATH)).toBe(false)
+  })
+
+  it('--user and --password are gone', async () => {
+    const error = (await runLogin(['--user', 'alice@example.com']).catch((e: unknown) => e)) as Error
+    expect(error.message).toMatch(/Nonexistent flag: --user/)
+  })
+})
+
+describe('norbix login --api-key', () => {
+  it('saves the key, the project and the self-hosted hosts into the named profile', async () => {
+    await runLogin(['--api-key', 'nbsu_k1', '--project', 'p9', '--profile', 'ci', '--api-url', 'http://localhost:5002', '--hub-url', 'http://localhost:5001'])
+    const ini = readFileSync(PROFILES_PATH, 'utf8')
+    expect(ini).toContain('[ci]\napi_key = nbsu_k1\nproject_id = p9\napi_url = http://localhost:5002\nhub_url = http://localhost:5001\n')
+  })
+
+  it('takes the hosts from NORBIX_API_URL / NORBIX_HUB_URL when no flag is given', async () => {
+    process.env.NORBIX_API_URL = 'https://api.example.com'
+    process.env.NORBIX_HUB_URL = 'https://hub.example.com'
+    await runLogin(['--api-key', 'nbsu_k1', '--project', 'p9', '--profile', 'ci'])
+    const ini = readFileSync(PROFILES_PATH, 'utf8')
+    expect(ini).toContain('api_url = https://api.example.com\nhub_url = https://hub.example.com')
+  })
+
+  it('--api-url without --api-key is a usage error', async () => {
+    const error = (await runLogin(['--api-url', 'http://localhost:5002']).catch((e: unknown) => e)) as CliError
+    expect([error.exit, error.code]).toEqual([2, 'USAGE_ERROR'])
+  })
+
 })
