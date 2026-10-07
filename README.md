@@ -120,8 +120,9 @@ While it is valid, every command (in every terminal window) uses it.
 `norbix login` signs in through the browser (the OAuth device flow):
 
 1. The CLI prints a one-time code (`BCDF-GHJK`) and, after ENTER, opens the
-   Norbix dashboard on the sign-in page. Over SSH, open the printed link on
-   any device.
+   Norbix dashboard on the sign-in page. On a machine without a desktop (SSH,
+   a container) it does not try to open a browser: open the printed link on
+   any device, and the CLI picks the sign-in up by itself.
 2. In the dashboard you check the code, pick the roles the CLI gets — account
    roles and project roles, the same pickers as when an AI tool connects over
    OAuth — and press **Allow**. You can never give more than you have.
@@ -141,12 +142,15 @@ asks you to run `norbix login` again.
 | Nobody approves within 10 minutes | `The sign-in code expired before it was approved.` (`EXPIRED_TOKEN`) | 4 |
 | The Hub refuses the code (already used, unknown, the AI service user deleted) | The Hub's reason is shown (`INVALID_GRANT` / `INVALID_REQUEST`) | 4 |
 | The sign-in was removed or ran out | The stored tokens are cleared (`SESSION_EXPIRED`) | 4 |
-| The Hub is older than the browser sign-in | A one-line note, then user + password as before | — |
+| The Hub is older than the browser sign-in | Usage error: sign in with `--api-key` | 2 |
 
-`norbix login --user <email>` forces the user + password sign-in (you, with
-all your rights). **CI and scripts** use an API key instead, never a browser
-sign-in: `norbix login --api-key nbk_... --project <id> --profile ci`, or the
-`NORBIX_API_KEY` / `NORBIX_PROJECT_ID` / `NORBIX_REGION` variables.
+There is no user + password sign-in: accounts live on the Hub, and the CLI
+signs people in through the browser only. **CI and scripts** use a
+service-user API key, never a browser sign-in:
+`norbix login --api-key nbsu_... --project <id> --profile ci` (add
+`--api-url` / `--hub-url` for a self-hosted install; they are saved in the
+profile), or the `NORBIX_API_KEY` / `NORBIX_PROJECT_ID` / `NORBIX_REGION`
+variables.
 
 The Hub version in the sign-in paths (`/v3/auth/device/...`, `/v3/oauth/token`)
 is read from the Hub's `/echo`; set `NORBIX_HUB_VERSION` or `hub_version` in a

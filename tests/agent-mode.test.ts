@@ -265,7 +265,7 @@ const CASES: Case[] = [
   },
   {
     name: 'login without a terminal',
-    argv: ['login', '--user', 'alice@example.com'],
+    argv: ['login', '--project', 'p1'],
     exit: 2,
     code: 'USAGE_ERROR',
     check: (e) => expect(e.hint).toMatch(/--api-key/),
