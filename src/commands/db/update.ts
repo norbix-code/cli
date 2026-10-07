@@ -2,7 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 import {readJsonInput} from '../../lib/json.js'
-import {refuseEmptyFilter, refuseUpdateOperators} from '../../lib/records.js'
+import {refuseEmptyFilter, refuseUpdateOperators, requireJsonArray} from '../../lib/records.js'
 
 export default class DbUpdate extends BaseCommand {
   static description = `Update records: one by --id, many by --filter with --many, or every record with --all
@@ -10,13 +10,19 @@ export default class DbUpdate extends BaseCommand {
 --update is the plain fields to change, e.g. {"status":"paid"}; the gateway
 applies them with $set. Operators ($set, $inc, …) are refused. An empty filter
 ('{}') is refused: it would change the whole collection. Use --all to do that
-on purpose. Soft-deleted records are not changed.`
+on purpose. Soft-deleted records are not changed.
+
+A key may be a nested path ("address.city", "lines.0.qty"). To change the list
+elements that match a condition, use a $[name] path and give one filter per
+name in --array-filters, e.g. --update '{"lines.$[line].qty":3}'
+--array-filters '[{"line.sku":"A-1"}]'.`
 
   static examples = [
     `<%= config.bin %> db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update '{"status":"shipped"}'`,
     `<%= config.bin %> db update orders --filter '{"status":"new"}' --update '{"status":"queued"}' --many --dry-run`,
     `<%= config.bin %> db update orders --filter '{"status":"new"}' --update '{"status":"queued"}' --many --yes`,
     `<%= config.bin %> db update orders --all --update '{"archived":true}' --dry-run`,
+    `<%= config.bin %> db update orders --id 66b2f0a1c3d4e5f6a7b8c9d0 --update '{"lines.$[line].qty":3}' --array-filters '[{"line.sku":"A-1"}]'`,
   ]
 
   static args = {
@@ -29,6 +35,9 @@ on purpose. Soft-deleted records are not changed.`
     update: Flags.string({char: 'u', required: true, description: 'JSON object of the fields to change (e.g. {"status":"paid"}) or `-` for stdin'}),
     many: Flags.boolean({description: 'Update every record matching --filter', default: false}),
     all: Flags.boolean({description: 'Update EVERY record of the collection (sends allRecords: true)', default: false}),
+    'array-filters': Flags.string({
+      description: 'JSON array of MongoDB array filters, one per $[name] used in --update (e.g. [{"line.sku":"A-1"}]) or `-` for stdin',
+    }),
     ...BaseCommand.mutatingFlags,
   }
 
@@ -37,6 +46,8 @@ on purpose. Soft-deleted records are not changed.`
     const client = this.client(flags)
     const update = await readJsonInput(flags.update, 'update')
     refuseUpdateOperators(update)
+    const arrayFilters = flags['array-filters'] ? await readJsonInput(flags['array-filters'], 'array-filters') : undefined
+    if (arrayFilters !== undefined) requireJsonArray(arrayFilters, 'array-filters')
 
     if (flags.all) {
       await this.confirmOrFail(`Update EVERY record in "${args.collection}" with ${update}?`, flags)
@@ -45,6 +56,7 @@ on purpose. Soft-deleted records are not changed.`
         filter: '{}',
         allRecords: true,
         update,
+        arrayFilters,
       })
       this.print(res)
       return res
@@ -59,6 +71,7 @@ on purpose. Soft-deleted records are not changed.`
         collectionName: args.collection,
         filter,
         update,
+        arrayFilters,
       })
       this.print(res)
       return res
@@ -69,6 +82,7 @@ on purpose. Soft-deleted records are not changed.`
       collectionName: args.collection,
       id: flags.id,
       update,
+      arrayFilters,
     })
     this.print(res)
     return res
