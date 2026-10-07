@@ -41,3 +41,17 @@ export function refuseUpdateOperators(update: string): void {
     `Send the fields themselves, e.g. --update '{"status":"paid"}' — the gateway applies them with $set.`,
   )
 }
+
+/**
+ * `--array-filters` is a JSON array of filter documents, one per `$[name]`
+ * in the update paths. The gateway refuses any other shape, and a filter
+ * without its `$[name]` (or the other way round).
+ */
+export function requireJsonArray(value: string, flagName: string): void {
+  const parsed: unknown = JSON.parse(value)
+  if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'object' && item !== null && !Array.isArray(item))) return
+  throw usageError(
+    `--${flagName} must be a JSON array of filter objects.`,
+    `For example --${flagName} '[{"line.sku":"A-1"}]' with --update '{"lines.$[line].qty":3}'.`,
+  )
+}
