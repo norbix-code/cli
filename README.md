@@ -37,7 +37,7 @@ norbix scheduler list
 | Command | What it does |
 | --- | --- |
 | `norbix login` / `logout` / `whoami` | Authenticate and inspect the current context |
-| `norbix config list/get/set/unset` | Manage the local config file |
+| `norbix config list/get/set/unset` | Read and change one profile in `~/.norbix/config` (`--profile`, default `[default]`) |
 | `norbix db ...` | Database records (find/get/count/insert/update/replace/delete/aggregate/change-owner), schemas (create/update/publish/delete/versions/diff), schema triggers, integrations, taxonomies and terms, indexes, test-data seed — see [docs/database.md](docs/database.md) |
 | `norbix files list/info/get-by-id/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
 | `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
@@ -110,6 +110,20 @@ environment (empty = PROD). A profile can also override the endpoints
 (`api_url` / `hub_url`) for localhost or self-hosted installations.
 `--profile` (or `NORBIX_PROFILE`) always uses exactly that profile and
 ignores any login session — predictable for scripts.
+
+This is the only file the CLI writes settings to. Keys are spelled
+`snake_case` in the file (`project_id`, `hub_url`); `norbix config set` /
+`get` / `unset` take that spelling or the camelCase one (`projectId`) and
+write the `[default]` profile, or the one named with `--profile`:
+
+```sh
+norbix config set region nb-eu-germany --profile ci
+norbix config get project_id
+```
+
+The old `~/.config/norbix/config.json` (CLI 1.17 and older wrote it with
+`norbix config set`) is still read as a last fallback, never written;
+`norbix config list` shows what is left in it.
 
 **Sessions** — `norbix login` stores a session in `~/.norbix/session.json`.
 While it is valid, every command (in every terminal window) uses it.
@@ -292,7 +306,7 @@ Commands live in `src/commands/<topic>/<name>.ts` — one file per command
 File commands need a files integration ID. Set it once:
 
 ```sh
-norbix config set filesIntegrationId <id>
+norbix config set files_integration_id <id>
 norbix files upload ./invoice.pdf invoices/2026/invoice.pdf
 norbix files download invoices/2026/invoice.pdf
 ```
