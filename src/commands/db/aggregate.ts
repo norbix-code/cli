@@ -16,7 +16,7 @@ export default class DbAggregate extends BaseCommand {
   }
 
   static flags = {
-    pipeline: Flags.string({description: 'JSON aggregation pipeline (or `-` for stdin)', exclusive: ['id']}),
+    pipeline: Flags.string({description: 'JSON aggregation pipeline (inline, @file or `-` for stdin)', exclusive: ['id']}),
     id: Flags.string({description: 'Saved aggregate ID (runs executeAggregate)'}),
     tokens: Flags.string({description: 'JSON object of tokens for a saved aggregate', dependsOn: ['id']}),
   }

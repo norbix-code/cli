@@ -30,7 +30,7 @@ path and it becomes v2.`
     ...BaseCommand.dryRunFlags,
     api: Flags.boolean({description: 'Call the data-plane API service instead of the hub (hub is the default)', default: false}),
     method: Flags.string({char: 'X', description: 'HTTP method', default: 'GET', options: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']}),
-    body: Flags.string({char: 'b', description: 'JSON request body (or `-` for stdin)'}),
+    body: Flags.string({char: 'b', description: 'JSON request body (inline, @file or `-` for stdin)'}),
     query: Flags.string({char: 'q', description: 'Query parameter key=value (repeatable)', multiple: true}),
   }
 
