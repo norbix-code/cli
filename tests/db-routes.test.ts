@@ -70,7 +70,7 @@ writeFileSync(SCHEMA_FILE, JSON.stringify(dataSchema))
 writeFileSync(UI_FILE, JSON.stringify(uiSchema))
 writeFileSync(SEED_FILE, JSON.stringify(seed))
 
-const P = '/v2/database'
+const P = '/v3/database'
 
 /** [argv, verb, path] — argv without the leading `db`. */
 const routes: Array<[string[], string, string]> = [

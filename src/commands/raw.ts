@@ -14,16 +14,16 @@ export default class Raw extends BaseCommand {
 Prefer \`norbix hub ...\` / \`norbix api ...\` — they take plain words.
 Use this only for endpoints the SDK does not know yet. Sends your auth token
 plus project/account/env/region headers automatically. Use {version} in the
-path and it becomes v2.`
+path and it becomes v3.`
 
   static examples = [
-    '<%= config.bin %> raw /v2/logs/settings',
+    '<%= config.bin %> raw /v3/logs/settings',
     `<%= config.bin %> raw '/{version}/database/collections/orders/count' --api --query filter='{"status":"paid"}'`,
-    `<%= config.bin %> raw /v2/scheduler/tasks --method POST --body '{"name":"nightly","cronExpression":"0 2 * * *"}' --dry-run`,
+    `<%= config.bin %> raw /v3/scheduler/tasks --method POST --body '{"name":"nightly","cronExpression":"0 2 * * *"}' --dry-run`,
   ]
 
   static args = {
-    path: Args.string({required: true, description: 'Endpoint path, e.g. /v2/logs or /{version}/logs'}),
+    path: Args.string({required: true, description: 'Endpoint path, e.g. /v3/logs or /{version}/logs'}),
   }
 
   static flags = {
@@ -47,7 +47,7 @@ path and it becomes v2.`
     // the region subdomain.
     const base = flags.api ? ctx.apiUrl : ctx.hubUrl
 
-    const path = args.path.replace('{version}', 'v2')
+    const path = args.path.replace('{version}', 'v3')
     const url = new URL(base.replace(/\/$/, '') + (path.startsWith('/') ? path : `/${path}`))
     for (const pair of flags.query ?? []) {
       const eq = pair.indexOf('=')

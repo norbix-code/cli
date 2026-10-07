@@ -94,11 +94,11 @@ const globalArgs = ['--project', PROJECT, '--api-key', 'test-api-key', '--region
 
 const HUB = 'nb-eu-germany.hub.norbix.ai'
 const API = 'nb-eu-germany.api.norbix.ai'
-const P = `/v2/account/projects/${PROJECT}`
+const P = `/v3/account/projects/${PROJECT}`
 const S = `${P}/settings`
-const LLM = '/v2/ai/integrations/llms'
-const MCP = '/v2/ai/integrations/mcp'
-const SU = '/v2/account/ai/service-users'
+const LLM = '/v3/ai/integrations/llms'
+const MCP = '/v3/ai/integrations/mcp'
+const SU = '/v3/account/ai/service-users'
 
 type Route = [verb: string, path: string, host?: string]
 
@@ -106,7 +106,7 @@ type Route = [verb: string, path: string, host?: string]
 const routes: Array<[string[], Route[]]> = [
   // Project
   [['project'], [['GET', P]]],
-  [['project', 'other-project'], [['GET', '/v2/account/projects/other-project']]],
+  [['project', 'other-project'], [['GET', '/v3/account/projects/other-project']]],
   [['project', 'set-name', 'Shop'], [['PATCH', `${S}/name`]]],
   [['project', 'set-description', 'Orders'], [['PATCH', `${S}/description`]]],
   [['project', 'set-url', 'https://shop.example.com'], [['PATCH', `${S}/url`]]],
@@ -139,8 +139,8 @@ const routes: Array<[string[], Route[]]> = [
   [['project', 'legal', 'set', '--clear-terms', '--clear-privacy'], [['PATCH', `${S}/legal`]]],
   [['project', 'legal', 'expose'], [['PATCH', `${S}/legal/expose`]]],
   [['project', 'legal', 'hide'], [['PATCH', `${S}/legal/expose`]]],
-  [['project', 'legal', 'show', 'terms'], [['GET', `/v2/public/projects/${PROJECT}/legal/terms`, API]]],
-  [['project', 'public-config'], [['GET', `/v2/public/projects/${PROJECT}/config`, API]]],
+  [['project', 'legal', 'show', 'terms'], [['GET', `/v3/public/projects/${PROJECT}/legal/terms`, API]]],
+  [['project', 'public-config'], [['GET', `/v3/public/projects/${PROJECT}/config`, API]]],
 
   // Project AI
   [['project', 'ai', 'settings'], [['GET', `${P}/ai/settings`]]],
@@ -202,7 +202,7 @@ it('covers all 50 project and ai routes', () => {
   // @norbix.ai/ts 4.4.0. Rows that read before they write share the GET with
   // `project` / `project ai settings`, so count distinct verb + path pairs.
   const distinct = new Set(routes.flatMap(([, reqs]) => reqs.map(([verb, path]) => `${verb} ${path}`)))
-  distinct.delete('GET /v2/account/projects/other-project')
+  distinct.delete('GET /v3/account/projects/other-project')
   expect(distinct.size).toBe(50)
 })
 

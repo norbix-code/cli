@@ -114,7 +114,7 @@ describe('sms preview — signed link, no login, no project', () => {
 
     expect(error).toBeUndefined()
     expect(sent).toHaveLength(1)
-    expect(sent[0]!.url.pathname).toBe('/v2/notifications/sms/preview')
+    expect(sent[0]!.url.pathname).toBe('/v3/notifications/sms/preview')
     expect(sent[0]!.url.searchParams.get('hash')).toBe('abc.def')
     expect(sent[0]!.headers.get('norbix-project-id')).toBeNull()
     expect(sent[0]!.headers.get('X-CM-ProjectId')).toBeNull()

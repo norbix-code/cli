@@ -43,7 +43,7 @@ afterEach(() => {
 
 const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '--region', 'nb-eu-germany']
 
-const P = '/v2/scheduler'
+const P = '/v3/scheduler'
 
 /** Module enable / disable are PUT on the gateway and in `@norbix.ai/ts` 4.10+ (the floor in package.json). */
 const MODULE_VERB = 'PUT'

@@ -224,7 +224,7 @@ $ norbix files info a/b.txt
 Error: File not found: "a/b.txt" does not exist in Local (nbin_1).
   code: CM-ERRORS-FILES-016
   status: 404
-  url: https://nb-eu-germany.api.norbix.ai/v2/files/...
+  url: https://nb-eu-germany.api.norbix.ai/v3/files/...
 Hint: Check the id, the --env and the --project. List items first (e.g. `norbix files list --json`).
 Docs: norbix files info --help
 ```

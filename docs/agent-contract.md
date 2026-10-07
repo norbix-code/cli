@@ -67,7 +67,7 @@ One document on stdout, nothing on stderr:
     "status": 404,
     "exit": 5,
     "fieldErrors": {"email": ["is required"]},
-    "url": "https://nb-eu-germany.api.norbix.ai/v2/membership/auth/66b2f0a1c3d4e5f6a7b8c9d0",
+    "url": "https://nb-eu-germany.api.norbix.ai/v3/membership/auth/66b2f0a1c3d4e5f6a7b8c9d0",
     "traceId": "7f3c…",
     "hint": "Check the id, the --env and the --project. List items first (e.g. `norbix users list --json`).",
     "docs": "norbix users get --help"
@@ -93,7 +93,7 @@ Without `--json` the same information goes to **stderr** as text:
 Error: User not found
   code: USER_NOT_FOUND
   status: 404
-  url: https://…/v2/membership/auth/66b2f0a1c3d4e5f6a7b8c9d0
+  url: https://…/v3/membership/auth/66b2f0a1c3d4e5f6a7b8c9d0
   traceId: 7f3c…
 Hint: Check the id, the --env and the --project. …
 Docs: norbix users get --help
@@ -108,7 +108,7 @@ Docs: norbix users get --help
   "request": {"id": "66b2f0a1c3d4e5f6a7b8c9d0"},
   "http": {
     "method": "DELETE",
-    "url": "https://nb-eu-germany.api.norbix.ai/v2/membership/auth?id=66b2f0a1c3d4e5f6a7b8c9d0",
+    "url": "https://nb-eu-germany.api.norbix.ai/v3/membership/auth?id=66b2f0a1c3d4e5f6a7b8c9d0",
     "headers": {"accept": "application/json", "authorization": "Bearer ***", "norbix-project-id": "…"},
     "body": null
   }

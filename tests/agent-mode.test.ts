@@ -125,7 +125,7 @@ describe('--dry-run', () => {
     expect(doc.method).toBe('api.membership.deleteUser')
     expect(doc.request).toEqual({id: 'abc123'})
     expect(doc.http.method).toBe('DELETE')
-    expect(doc.http.url).toMatch(/\/v2\/membership\/auth\?id=abc123$/)
+    expect(doc.http.url).toMatch(/\/v3\/membership\/auth\?id=abc123$/)
     expect(doc.http.headers.authorization).toBe('Bearer ***')
     expect(gateway.hits).toEqual([])
   })
@@ -139,7 +139,7 @@ describe('--dry-run', () => {
     const doc = parseSingleJson(r.stdout) as {method: string; http: {method: string; url: string; body: unknown}}
     expect(doc.method).toBe('hub.scheduler.saveSchedulerTask')
     expect(doc.http.method).toBe('POST')
-    expect(doc.http.url).toMatch(/\/v2\/scheduler\/tasks$/)
+    expect(doc.http.url).toMatch(/\/v3\/scheduler\/tasks$/)
     expect(doc.http.body).toEqual({
       name: 'Weekly',
       cron: '0 9 * * 1',
@@ -201,7 +201,7 @@ const CASES: Case[] = [
     check: (e) => {
       expect(e.status).toBe(404)
       expect(e.traceId).toBe('t-1')
-      expect(e.url).toMatch(/\/v2\/membership\/auth\/missing$/)
+      expect(e.url).toMatch(/\/v3\/membership\/auth\/missing$/)
     },
   },
   {
@@ -338,7 +338,7 @@ describe('--dry-run on non-destructive mutating commands', () => {
     const doc = parseSingleJson(r.stdout) as {method: string; http: {method: string; url: string; headers: Record<string, string>; body: unknown}}
     expect(doc.method).toBe('hub.files.makeFilePublic')
     expect(doc.http.method).toBe('POST')
-    expect(doc.http.url).toMatch(/\/v2\/files\/item\/public$/)
+    expect(doc.http.url).toMatch(/\/v3\/files\/item\/public$/)
     expect(doc.http.headers.Authorization).toBe('Bearer ***')
     expect(doc.http.body).toEqual({filesIntegrationId: 'fi_1', path: 'invoices/2026/invoice.pdf'})
     expect(gateway.hits).toEqual([])

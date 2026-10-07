@@ -95,7 +95,7 @@ describe('norbix files list', () => {
     expect(error).toBeUndefined()
     expect(calls).toHaveLength(1)
     expect(calls[0].method).toBe('GET')
-    expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}`)
+    expect(new URL(calls[0].url).pathname).toBe(`/v3/files/${INTEGRATION}`)
     expect(calls[0].url).toContain('path=invoices')
   })
 
@@ -125,7 +125,7 @@ describe('norbix files info', () => {
     const {error} = await runCommand(['files', 'info', 'invoices/invoice.pdf', ...globalArgs])
 
     expect(error).toBeUndefined()
-    expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}/info`)
+    expect(new URL(calls[0].url).pathname).toBe(`/v3/files/${INTEGRATION}/info`)
     expect(calls[0].url).toContain('invoice.pdf')
   })
 })
@@ -139,7 +139,7 @@ describe('norbix files get-by-id', () => {
     expect(error).toBeUndefined()
     expect(calls).toHaveLength(1)
     expect(calls[0].method).toBe('GET')
-    expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}/by-id/nbfl_7hK2abc`)
+    expect(new URL(calls[0].url).pathname).toBe(`/v3/files/${INTEGRATION}/by-id/nbfl_7hK2abc`)
   })
 
   it('fails with a clear message when no integration is given', async () => {
@@ -166,7 +166,7 @@ describe('norbix files sign', () => {
     ])
 
     expect(error).toBeUndefined()
-    expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}/sign`)
+    expect(new URL(calls[0].url).pathname).toBe(`/v3/files/${INTEGRATION}/sign`)
     expect(calls[0].url).toContain('expirationSeconds=3600')
   })
 })
@@ -184,7 +184,7 @@ describe('norbix files upload', () => {
 
     // 1. ask for the upload address
     expect(calls[0].method).toBe('POST')
-    expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}/upload-url`)
+    expect(new URL(calls[0].url).pathname).toBe(`/v3/files/${INTEGRATION}/upload-url`)
     expect(calls[0].body).toMatchObject({
       path: 'invoices/invoice.pdf',
       contentType: 'application/pdf',
@@ -196,7 +196,7 @@ describe('norbix files upload', () => {
 
     // 3. tell Norbix the upload finished
     expect(calls[2].method).toBe('POST')
-    expect(new URL(calls[2].url).pathname).toBe(`/v2/files/${INTEGRATION}/commit`)
+    expect(new URL(calls[2].url).pathname).toBe(`/v3/files/${INTEGRATION}/commit`)
     expect(calls[2].body).toMatchObject({
       path: 'invoices/invoice.pdf',
       sizeBytes: 9,
@@ -235,7 +235,7 @@ describe('norbix files download', () => {
 
     expect(error).toBeUndefined()
     expect(calls).toHaveLength(2)
-    expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}/sign`)
+    expect(new URL(calls[0].url).pathname).toBe(`/v3/files/${INTEGRATION}/sign`)
     expect(calls[1].url).toBe('https://storage.example/signed')
     expect(readFileSync(target, 'utf8')).toBe('%PDF-fake')
   })
@@ -255,7 +255,7 @@ describe('norbix files delete', () => {
 
     expect(error).toBeUndefined()
     expect(calls[0].method).toBe('DELETE')
-    expect(new URL(calls[0].url).pathname).toBe(`/v2/files/${INTEGRATION}`)
+    expect(new URL(calls[0].url).pathname).toBe(`/v3/files/${INTEGRATION}`)
     expect(calls[0].url).toContain('invoice.pdf')
   })
 })
@@ -274,7 +274,7 @@ describe('norbix files publish / unpublish', () => {
     expect(error).toBeUndefined()
     expect(calls).toHaveLength(1)
     expect(calls[0].method).toBe('POST')
-    expect(new URL(calls[0].url).pathname).toBe('/v2/files/item/public')
+    expect(new URL(calls[0].url).pathname).toBe('/v3/files/item/public')
     expect(calls[0].body).toEqual({
       filesIntegrationId: INTEGRATION,
       path: 'invoices/2026/invoice.pdf',
@@ -292,7 +292,7 @@ describe('norbix files publish / unpublish', () => {
     const {error, result} = await runCommand(['files', 'publish', 'invoices', '--folder', ...globalArgs])
 
     expect(error).toBeUndefined()
-    expect(new URL(calls[0].url).pathname).toBe('/v2/files/folder/public')
+    expect(new URL(calls[0].url).pathname).toBe('/v3/files/folder/public')
     expect(calls[0].body).toEqual({filesIntegrationId: INTEGRATION, path: 'invoices'})
     expect((result as {publicUrl: string}).publicUrl).toMatch(
       /\/v3\/files\/public\/nbpf_folder1\/$/,
@@ -311,7 +311,7 @@ describe('norbix files publish / unpublish', () => {
 
     expect(error).toBeUndefined()
     expect(calls[0].method).toBe('POST')
-    expect(new URL(calls[0].url).pathname).toBe('/v2/files/item/private')
+    expect(new URL(calls[0].url).pathname).toBe('/v3/files/item/private')
     expect(calls[0].body).toEqual({
       filesIntegrationId: INTEGRATION,
       path: 'invoices/2026/invoice.pdf',
@@ -324,7 +324,7 @@ describe('norbix files publish / unpublish', () => {
     const {error} = await runCommand(['files', 'unpublish', 'invoices', '--folder', ...globalArgs])
 
     expect(error).toBeUndefined()
-    expect(new URL(calls[0].url).pathname).toBe('/v2/files/folder/private')
+    expect(new URL(calls[0].url).pathname).toBe('/v3/files/folder/private')
   })
 
   it('sends the session as a bearer token, as every other command does', async () => {
@@ -433,7 +433,7 @@ describe('norbix files integrations test', () => {
     responseStatus: {isSuccess: true, errors: []},
   }
 
-  it('sends POST /v2/files/<id>/test on the API host, with the id in the path and the usual headers', async () => {
+  it('sends POST /v3/files/<id>/test on the API host, with the id in the path and the usual headers', async () => {
     const seen = answer(allOk)
 
     const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
@@ -443,7 +443,7 @@ describe('norbix files integrations test', () => {
     expect(calls[0].method).toBe('POST')
     const url = new URL(calls[0].url)
     expect(url.host).toBe(`${REGION}.api.norbix.ai`)
-    expect(url.pathname).toBe(`/v2/files/${INTEGRATION}/test`)
+    expect(url.pathname).toBe(`/v3/files/${INTEGRATION}/test`)
     // The only field is the path token, so — like the SDK — no body is sent.
     expect(calls[0].body).toBeUndefined()
     expect(seen[0].authorization).toBe(`Bearer ${API_KEY}`)
@@ -457,7 +457,7 @@ describe('norbix files integrations test', () => {
 
     await runCommand(['files', 'integrations', 'test', 'a/b?c', ...auth])
 
-    expect(calls[0].url).toContain('/v2/files/a%2Fb%3Fc/test')
+    expect(calls[0].url).toContain('/v3/files/a%2Fb%3Fc/test')
   })
 
   it('prints one line per step and succeeds when every step is OK', async () => {
