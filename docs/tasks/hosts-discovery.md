@@ -19,41 +19,41 @@ Not in scope: changing the device sign-in itself on the Hub (kept as it is); the
 11. [done] docs(cli): README, AUTH_DESIGN.md, docs/AGENTS.md, agent-contract, login / logout / configure help, ai init agent rules; schema snapshot
 12. [done] decision(hub:auth): the refresh token lifetime slides — every refresh gives a fresh 30 days; nothing to change
 13. [done] feat(cli:region): the Hub tells a project's primary region, so --region is optional on norbix.ai when the caller may read the project
-14. [doing] release(cli): pull request merged, minor release
+14. [done] release(cli): one host finds the Hub, one sign-in per Hub, agent sign-in — merged and released as 1.21.0 — https://github.com/norbix-code/cli/pull/55 (tag v1.21.0)
 
 ## Changes
 | file (absolute, branch feat/hosts-discovery) | what changed | step |
 |------|--------------|------|
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/lib/hosts.ts | new: normalizeHost, discover (well-known → echo), resolveHost with cache / stale / built-in, regional endpoints, project region lookup + cache | 3, 13 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/lib/profiles.ts | `host` key; sessions per Hub; migration of session.json; pending sign-in files | 3, 5, 8 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/base.ts | global `--host`; discovery in `init`; `resolveContext` on hosts; credential order; deprecation warning; region from project; cache dropped on exit 7 | 3, 4, 6, 13 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/lib/session-auth.ts | refresher reads / writes the session file of its Hub | 5 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/lib/device-login.ts | SSH → no browser on every system; `pollDeviceTokenUntil` (90 s slices) | 8 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/commands/login.ts | host sign-in, `--no-browser`, `--wait`, `--api-key --host`; `--api-url` / `--hub-url` removed | 4, 7, 8 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/commands/logout.ts | all hosts, or one with `--host` / `--profile` | 9 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/commands/whoami.ts | host, Hub, Api lines | 10 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/commands/profiles.ts | signed-in hosts | 10 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/commands/configure.ts | asks for host; `--api-url` / `--hub-url` removed | 4, 10 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/commands/config/set.ts | `host` validated and normalized, removes api_url / hub_url (get / list / unset: no discovery) | 10 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/commands/env/use.ts | writes the session of the host's Hub | 5 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/lib/agent-files.ts | agent rules: two-step sign-in, `--host`, CI variables | 11 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/commands/ai/init.ts | closing text; no discovery (also schema.ts) | 11 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/lib/cli-error.ts | network hint names the host (also exit-codes.ts) | 11 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/test/hosts.test.ts | new: 30 tests — discovery, cache, credential order, region, migration, logout, refresh write-back | 3–9, 13 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/test/login.test.ts | rewritten: 21 tests — host sign-in, `--no-browser`, start / wait split | 7, 8 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/test/endpoints.test.ts | removed — replaced by test/hosts.test.ts | 3 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/test/device-login.test.ts | SSH on darwin, linux, win32 | 8 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/test/seed.ts | new: the default host is "already discovered" in test homes | 3 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/tests/_cli.ts | test profiles use `host`; the fake gateway answers discovery | 3 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/tests/session-refresh.test.ts | sessions per Hub; NORBIX_HOST; deprecated variables warn | 4, 5 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/tests/config.test.ts | `config set host`, whoami host lines | 10 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/tests/ai-init.test.ts | agent rules carry the two steps | 11 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/tests/__snapshots__/schema.test.ts.snap | login: `no-browser`, `wait`; login / configure: no `api-url`, `hub-url` | 11 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/README.md | hosts, profiles, sessions, credential order, CI, agents | 11 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/AUTH_DESIGN.md | rewritten: Hosts and discovery, Profiles vs sessions, Credential order, Login, Logout, Agents, CI | 11 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/docs/AGENTS.md | sign-in section: the agent starts, the human approves (also docs/agent-contract.md) | 11 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/lib/hosts.ts | new: normalizeHost, discover (well-known → echo), resolveHost with cache / stale / built-in, regional endpoints, project region lookup + cache | 3, 13 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/lib/profiles.ts | `host` key; sessions per Hub; migration of session.json; pending sign-in files | 3, 5, 8 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/base.ts | global `--host`; discovery in `init`; `resolveContext` on hosts; credential order; deprecation warning; region from project; cache dropped on exit 7 | 3, 4, 6, 13 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/lib/session-auth.ts | refresher reads / writes the session file of its Hub | 5 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/lib/device-login.ts | SSH → no browser on every system; `pollDeviceTokenUntil` (90 s slices) | 8 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/commands/login.ts | host sign-in, `--no-browser`, `--wait`, `--api-key --host`; `--api-url` / `--hub-url` removed | 4, 7, 8 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/commands/logout.ts | all hosts, or one with `--host` / `--profile` | 9 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/commands/whoami.ts | host, Hub, Api lines | 10 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/commands/profiles.ts | signed-in hosts | 10 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/commands/configure.ts | asks for host; `--api-url` / `--hub-url` removed | 4, 10 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/commands/config/set.ts | `host` validated and normalized, removes api_url / hub_url (get / list / unset: no discovery) | 10 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/commands/env/use.ts | writes the session of the host's Hub | 5 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/lib/agent-files.ts | agent rules: two-step sign-in, `--host`, CI variables | 11 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/commands/ai/init.ts | closing text; no discovery (also schema.ts) | 11 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/src/lib/cli-error.ts | network hint names the host (also exit-codes.ts) | 11 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/test/hosts.test.ts | new: 30 tests — discovery, cache, credential order, region, migration, logout, refresh write-back | 3–9, 13 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/test/login.test.ts | rewritten: 21 tests — host sign-in, `--no-browser`, start / wait split | 7, 8 |
+| test/endpoints.test.ts (deleted) | removed — replaced by test/hosts.test.ts | 3 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/test/device-login.test.ts | SSH on darwin, linux, win32 | 8 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/test/seed.ts | new: the default host is "already discovered" in test homes | 3 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/tests/_cli.ts | test profiles use `host`; the fake gateway answers discovery | 3 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/tests/session-refresh.test.ts | sessions per Hub; NORBIX_HOST; deprecated variables warn | 4, 5 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/tests/config.test.ts | `config set host`, whoami host lines | 10 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/tests/ai-init.test.ts | agent rules carry the two steps | 11 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/tests/__snapshots__/schema.test.ts.snap | login: `no-browser`, `wait`; login / configure: no `api-url`, `hub-url` | 11 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/README.md | hosts, profiles, sessions, credential order, CI, agents | 11 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/AUTH_DESIGN.md | rewritten: Hosts and discovery, Profiles vs sessions, Credential order, Login, Logout, Agents, CI | 11 |
+| /Users/djovaisas/Projects/norbix/sdks/cli/docs/AGENTS.md | sign-in section: the agent starts, the human approves (also docs/agent-contract.md) | 11 |
 
-Tests: 807 before, 847 after (`npm test` = build + vitest, 29 files) — all pass.
+Tests: 807 before, 847 after (`npm test` = build + vitest, 29 files) — all pass; CI green on Linux, macOS and Windows (Node 22 and 24) after the Windows fix (no file modes there; per-worker %LOCALAPPDATA%).
 Live check (read-only, empty HOME): `whoami --host hub.finlo.space --region nb-eu-germany` → Hub `https://nb-eu-germany.hub.finlo.space/v3`, Api `https://nb-eu-germany.api.finlo.space/v3`.
 
 ## Findings
@@ -68,9 +68,9 @@ decision(hub:auth): the refresh token lifetime slides — each rotation sets now
 ```
 
 feat(cli:region): the Hub tells a project's primary region, so --region is optional on norbix.ai — done
-    where: /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/lib/hosts.ts (fetchProjectRegion)   ref: step 2 of the prompt
+    where: /Users/djovaisas/Projects/norbix/sdks/cli/src/lib/hosts.ts (fetchProjectRegion)   ref: step 2 of the prompt
 ```ts
-// src/lib/hosts.ts — fetchProjectRegion (feat/hosts-discovery)
+// src/lib/hosts.ts — fetchProjectRegion (main)
     const res = await fetchFn(`${hub.base}/${hub.version}/account/projects/${encodeURIComponent(projectId)}`, {
       headers,
       signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
@@ -82,7 +82,7 @@ feat(cli:region): the Hub tells a project's primary region, so --region is optio
 It needs `project:read` on the project settings; a service user without it still passes `--region`.
 
 fix(cli:hosts): regional addresses from /echo have no version, the top-level ones do — handled — done
-    where: /Users/djovaisas/Projects/norbix/worktrees/cli/feat/hosts-discovery/src/base.ts (resolveContext)
+    where: /Users/djovaisas/Projects/norbix/sdks/cli/src/base.ts (resolveContext)
 ```jsonc
 // live https://hub.finlo.space/v3/echo
 "hubUrl": "https://hub.finlo.space/v3",                              // <-- with /v3
