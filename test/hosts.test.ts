@@ -183,11 +183,37 @@ describe('discover', () => {
     expect([info.hubUrl, info.apiUrl]).toEqual(['http://dcli.norbix.test:5001/v3', 'http://dcli.norbix.test:5002/v3'])
   })
 
+  it('a dashboard that answers /.well-known/norbix.json with its web page (2xx HTML) and has no Hub at /v3: says so and names the Hub', async () => {
+    const page = '<!doctype html><html><head><title>Norbix</title></head><body><div id="root"></div></body></html>'
+    const {fetch, urls} = fakeFetch({'cloud.finlo.space/.well-known/norbix.json': {status: 200, body: page}})
+    const error = (await discover('https://cloud.finlo.space', {fetch}).catch((e: unknown) => e)) as CliError
+    expect([error.exit, error.code]).toEqual([2, 'NOT_A_HUB'])
+    expect(error.hint).toBe(
+      'cloud.finlo.space answered its web page for /.well-known/norbix.json, so discovery is not routed to the Hub ' +
+        '(ingress rule missing or installation predates discovery). Use --host hub.finlo.space.',
+    )
+    expect(error.url).toBe('https://cloud.finlo.space/.well-known/norbix.json')
+    // /echo is still asked: one origin may serve the dashboard at / and the Hub at /v3 (test above).
+    expect(urls).toEqual(['GET https://cloud.finlo.space/.well-known/norbix.json', 'GET https://cloud.finlo.space/v3/echo'])
+
+    // Same by content type alone, and for a host with no hub.<domain> guess.
+    const typed = vi.fn(async () => new Response('page', {status: 200, headers: {'content-type': 'text/html; charset=utf-8'}})) as unknown as typeof fetch
+    const other = (await discover('https://portal.example.com', {fetch: typed}).catch((e: unknown) => e)) as CliError
+    expect(other.message).toBe('portal.example.com is not a Norbix Hub (/.well-known/norbix.json answered a web page, text/html).')
+    expect(other.hint).toMatch(/Pass the Hub address with --host, e\.g\. --host hub\.example\.com\.$/)
+  })
+
   it('a host that is no Hub: exit 2 NOT_A_HUB; a host that cannot be reached: exit 7', async () => {
     const notHub = (await discover('https://example.com', fakeFetch({})).catch((e: unknown) => e)) as CliError
     expect([notHub.exit, notHub.code]).toEqual([2, 'NOT_A_HUB'])
     const oldDashboard = (await discover('https://cloud.finlo.space', fakeFetch({})).catch((e: unknown) => e)) as CliError
     expect(oldDashboard.hint).toBe('If cloud.finlo.space is your Norbix dashboard, its installation may be older than discovery: pass the Hub instead, e.g. --host hub.finlo.space.')
+    // A 404 HTML page for the well-known file is no proof of a dashboard: the old hint stays.
+    const html404 = (await discover(
+      'https://cloud.finlo.space',
+      fakeFetch({'cloud.finlo.space/.well-known/norbix.json': {status: 404, body: '<!doctype html><html><body>Not found</body></html>'}}),
+    ).catch((e: unknown) => e)) as CliError
+    expect(html404.hint).toBe(oldDashboard.hint)
     const offline = (await discover('https://down.example.com', fakeFetch({'down.example.com/.well-known/norbix.json': {status: 0, body: ''}})).catch(
       (e: unknown) => e,
     )) as CliError
