@@ -17,6 +17,11 @@ export interface ErrorEnvelope {
   exit: ExitCode
   /** Field → messages, only when the server named fields. */
   fieldErrors?: Record<string, string[]>
+  /**
+   * Extra values the gateway attached to the error (`context` on the wire),
+   * e.g. `{missingPermissions: "files:create"}`. Only when there are some.
+   */
+  context?: Record<string, unknown>
   /** The URL that was called, when known. */
   url?: string
   /** Server trace / correlation id, when the server returned one. */
@@ -126,12 +131,20 @@ export function fieldErrorsOf(raw: unknown, items?: Array<{fieldName?: string; m
   return Object.keys(out).length > 0 ? out : undefined
 }
 
+interface NorbixErrorItemLike {
+  fieldName?: string
+  message?: string
+  errorCode?: string
+  /** The SDK's name for the wire `context`. */
+  meta?: Record<string, unknown>
+}
+
 interface NorbixErrorLike {
   name: string
   message: string
   status?: number
   code?: string
-  fieldErrors?: Array<{fieldName?: string; message?: string; errorCode?: string}>
+  fieldErrors?: NorbixErrorItemLike[]
   raw?: unknown
   url?: string
 }
@@ -139,6 +152,16 @@ interface NorbixErrorLike {
 /** Duck-typed: the SDK's NorbixError family, without importing the SDK here. */
 function isNorbixError(err: unknown): err is NorbixErrorLike {
   return err instanceof Error && typeof (err as {status?: unknown}).status === 'number' && err.name.startsWith('Norbix')
+}
+
+/**
+ * The `context` of the error the envelope reports: the item carrying the same
+ * code, else the first item that has one. Absent when no item has any.
+ */
+export function contextOf(items: NorbixErrorItemLike[] | undefined, code?: string): Record<string, unknown> | undefined {
+  const withMeta = (items ?? []).filter((item) => isRecord(item.meta) && Object.keys(item.meta).length > 0)
+  const item = withMeta.find((i) => code !== undefined && i.errorCode === code) ?? withMeta[0]
+  return item?.meta
 }
 
 const SDK_LOCAL_CODES: Record<string, ExitCode> = {
@@ -201,6 +224,7 @@ export function toEnvelope(err: unknown, ctx: {command?: string} = {}): ErrorEnv
       status: err.status && err.status > 0 ? err.status : undefined,
       exit,
       fieldErrors: fieldErrorsOf(err.raw, err.fieldErrors),
+      context: contextOf(err.fieldErrors, code),
       url: err.url,
       traceId: traceIdOf(err.raw),
       hint: hintForExit(exit, {status: err.status, url: err.url}, ctx.command),
@@ -264,6 +288,7 @@ export function formatErrorText(env: ErrorEnvelope): string {
   if (env.status !== undefined) details.push(`status: ${env.status}`)
   if (env.url) details.push(`url: ${env.url}`)
   if (env.traceId) details.push(`traceId: ${env.traceId}`)
+  for (const [key, value] of Object.entries(env.context ?? {})) details.push(`context.${key}: ${contextText(value)}`)
   if (env.fieldErrors) {
     for (const [field, messages] of Object.entries(env.fieldErrors)) details.push(`${field}: ${messages.join('; ')}`)
   }
@@ -272,6 +297,12 @@ export function formatErrorText(env: ErrorEnvelope): string {
   if (env.hint) lines.push(`Hint: ${env.hint}`)
   if (env.docs) lines.push(`Docs: ${env.docs}`)
   return lines.join('\n')
+}
+
+function contextText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(String).join(', ')
+  if (typeof value === 'string') return value
+  return JSON.stringify(value) ?? String(value)
 }
 
 function compact(env: ErrorEnvelope): ErrorEnvelope {

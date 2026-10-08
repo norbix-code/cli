@@ -17,7 +17,7 @@ prints points back here through its `hint` and `docs` fields.
    JSON mode, ever. Progress and warnings go to stderr. The exit code is the
    same with and without `--json`.
 3. **Errors carry everything the SDK knows** — `status`, `code`,
-   `fieldErrors`, `url`, `traceId` — plus a `hint` (what to do next) and
+   `fieldErrors`, `context`, `url`, `traceId` — plus a `hint` (what to do next) and
    `docs` (`norbix <command> --help` or a URL).
 4. **Documented exit codes** (section 2). Branch on them.
 5. **`--dry-run` on every mutating command.** It resolves auth, region and
@@ -82,6 +82,10 @@ One document on stdout, nothing on stderr:
 - `status` — HTTP status, only when the server answered.
 - `exit` — the process exit code (section 2).
 - `fieldErrors` — only when the server named fields: `{field: [messages]}`.
+- `context` — only when the gateway attached extra values to the error
+  (`context` on the error item), e.g. `{"missingPermissions": "files:public"}`
+  with `CM-ERRORS-MEMBERSHIP-039`. In text mode each value is a
+  `context.<key>: <value>` line.
 - `url` — the URL that was called, when known (network errors always have it).
 - `traceId` — when the server returned one (`traceId`, `correlationId`,
   or `responseStatus.meta.correlationId`).
