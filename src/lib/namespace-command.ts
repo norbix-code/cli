@@ -1,6 +1,6 @@
 import {Norbix} from '@norbix.ai/ts'
 
-import {BaseCommand, type GlobalFlags} from '../base.js'
+import {BaseCommand, type DryRunValidation, type GlobalFlags} from '../base.js'
 import {usageError} from './cli-error.js'
 import {MODULE_ALIASES, camelSplit, isDestructive, matchMethods, parseArgv, typeFields} from './dispatch.js'
 import {readJsonInput} from './json.js'
@@ -209,10 +209,42 @@ export abstract class NamespaceCommand extends BaseCommand {
       await this.confirmOrFail(`Run ${method}(${JSON.stringify(request)})?`, flags)
     }
 
+    if (flags['dry-run'] && this.target === 'hub' && method === 'applyDatabaseSchemaBundle') {
+      this.dryRunValidation = await this.validateBundle(flags, request)
+    }
+
     const liveModule = (client[this.target] as unknown as Record<string, SdkModule>)[moduleName]
     const res = await liveModule[method](request)
     this.print(res)
     return res
+  }
+
+  /**
+   * A dry run of a schema bundle asks the Hub to check the bundle JSON
+   * (`account.validateSchema` writes nothing): a plain dry run only shows the
+   * request and would say nothing about a bundle the real call rejects.
+   */
+  private async validateBundle(flags: NamespaceFlags, request: Record<string, unknown>): Promise<DryRunValidation> {
+    const raw = request.bundleJson
+    if (raw === undefined || raw === null || raw === '') {
+      return {checked: false, note: 'no bundleJson — catalog entities (--entities) are checked by the real call only'}
+    }
+
+    const schemaJson = typeof raw === 'string' ? raw : JSON.stringify(raw)
+    const checkedWith = 'hub.account.validateSchema'
+    try {
+      const live = this.client({...flags, 'dry-run': false} as NamespaceFlags, {requireProject: false})
+      const res = await live.hub.account.validateSchema({schemaJson})
+      return {
+        checkedWith,
+        checked: true,
+        valid: Boolean(res.valid),
+        issues: (res.issues ?? []).map((i) => ({where: i.where, code: i.code, message: i.message})),
+        collections: res.collections ?? [],
+      }
+    } catch (error) {
+      return {checkedWith, checked: false, note: `the check failed: ${error instanceof Error ? error.message : String(error)}`}
+    }
   }
 
   /** The request object: `--body` as a whole, or the typed `--field` flags plus the positional id. */

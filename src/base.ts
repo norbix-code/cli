@@ -151,6 +151,20 @@ export interface DryRunReport {
   method: string
   request: unknown
   http?: DryRunRequest
+  /** Only for commands whose input the Hub can check without writing (schema bundles). */
+  validation?: DryRunValidation
+}
+
+/** The Hub's read-only check of a dry run's input (`validateSchema`). */
+export interface DryRunValidation {
+  /** `hub.account.validateSchema` — or why nothing was checked. */
+  checkedWith?: string
+  checked: boolean
+  valid?: boolean
+  issues?: Array<{where?: string; code?: string; message?: string}>
+  collections?: string[]
+  /** Why the input was not checked (no bundleJson, the check failed). */
+  note?: string
 }
 
 /** Thrown by the dry-run middleware instead of sending; caught in `catch`. */
@@ -223,7 +237,7 @@ export abstract class BaseCommand extends Command {
   /** Flags of a command that changes something but needs no confirmation (create, update, archive). */
   static dryRunFlags = {
     'dry-run': Flags.boolean({
-      description: 'Resolve context and print the request that would be sent; send nothing',
+      description: 'Resolve auth, region and project and print the request that would be sent; send nothing. The server does not check the values',
       default: false,
     }),
   }
@@ -240,6 +254,8 @@ export abstract class BaseCommand extends Command {
 
   /** The SDK call captured by a dry run, filled by the client proxy. */
   private dryRunCall?: {method: string; request: unknown}
+  /** A dry run's input check, set by the command before the stopped call. */
+  protected dryRunValidation?: DryRunValidation
 
   protected readStore(): StoredConfig {
     return readStore(this.config.configDir)
@@ -302,6 +318,16 @@ export abstract class BaseCommand extends Command {
     }
 
     lines.push(`Request: ${JSON.stringify(report.request, null, 2)}`)
+    const v = report.validation
+    if (v) {
+      if (!v.checked) lines.push(`Not checked by the Hub: ${v.note ?? 'no input to check'}`)
+      else if (v.valid) lines.push(`Checked by the Hub (${v.checkedWith}): valid${v.collections?.length ? ` — collections: ${v.collections.join(', ')}` : ''}.`)
+      else {
+        lines.push(`Checked by the Hub (${v.checkedWith}): NOT valid — the real call would fail:`)
+        for (const i of v.issues ?? []) lines.push(`  - ${[i.where, i.code].filter(Boolean).join(' ')}${i.where || i.code ? ': ' : ''}${i.message ?? ''}`)
+      }
+    }
+
     this.log(lines.join('\n'))
   }
 
@@ -790,9 +816,18 @@ export abstract class BaseCommand extends Command {
         method: this.dryRunCall?.method ?? 'unknown',
         request: this.dryRunCall?.request ?? {},
         http: stop.http,
+        ...(this.dryRunValidation ? {validation: this.dryRunValidation} : {}),
       }
       if (this.jsonEnabled()) this.logJson(report)
       else this.printDryRun(report)
+      // The Hub said the input is wrong: the report is printed, the exit code says "would fail" (6).
+      if (this.dryRunValidation?.valid === false) {
+        const invalid = new Error('dry run: the Hub rejected the input') as Error & {oclif?: {exit?: number}; skipOclifErrorHandling?: boolean}
+        invalid.oclif = {exit: EXIT.VALIDATION}
+        invalid.skipOclifErrorHandling = true
+        throw invalid
+      }
+
       return report
     }
 
