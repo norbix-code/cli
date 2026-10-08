@@ -277,7 +277,11 @@ norbix db term tree countries --depth 2
 
 - `--json` prints the server's answer (or the dry-run report) as JSON on stdout.
 - `--dry-run` on every write prints the SDK call and the HTTP request, and
-  sends nothing.
+  sends nothing — the server does not check the values. `db schema create
+  --dry-run` does not validate the JSON Schema file. A schema bundle can be
+  checked: `norbix hub database schema bundle apply --bundleJson '<IF json>'
+  --dry-run` asks the Hub's read-only `account.validateSchema` and exits 6
+  with the issues when the bundle is invalid.
 - `delete`, `discard`, `publish`, `seed`, `trigger disable`, `trigger delete`,
   `term delete` and the `--many` / `--all` record writes ask first; `--yes` skips the
   question, and without a terminal they exit 3 unless `--yes` is given.

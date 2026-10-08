@@ -74,6 +74,8 @@ norbix hub                                     # list modules
 norbix hub database                            # list database methods
 norbix hub database aggregates get             # plural  = list
 norbix hub database aggregate get maggr_123    # singular = one item
+norbix hub membership role 66b2f0a1c3d4e5f6    # no verb + an id = get one (getRole)
+norbix hub membership role                     # no verb, no id = the list (getRoles)
 norbix hub database aggregates delete maggr_123 --schemaId sch_456
 norbix hub scheduler tasks get --pageSize 100
 norbix hub email templates get                 # email/sms/push route into notifications
@@ -87,6 +89,20 @@ the whole request with `--body '<json>'`. Destructive verbs (delete, remove,
 stop, disable, block, regenerate, rotate) ask for confirmation unless
 `--yes` — and exit 3 without a terminal. Add `--dry-run` to preview the exact
 HTTP request.
+
+Words without a verb that fit several methods (`membership role` fits
+createRole, deleteRole and getRole) read: with an id the get of one item,
+without one the list. A write or destructive verb is never picked unless you
+type it; when no single read method fits, the CLI still stops and lists the
+candidates.
+
+`--dry-run` resolves auth, region and project and prints the request; it
+sends nothing, so the server does not check the values. One exception:
+`norbix hub database schema bundle apply --bundleJson '<IF json>' --dry-run`
+also sends the bundle to the Hub's read-only schema check
+(`account.validateSchema`, it writes nothing), prints the issues, and exits 6
+when the bundle is invalid. A bundle given only as catalog `--entities` is
+not checked.
 
 `norbix schema --json` describes every command (args, flags, examples,
 destructive, dry-run) for scripts and coding agents; `norbix autocomplete`
@@ -200,6 +216,16 @@ command then exits 4 and asks you to run `norbix login` again.
 | The sign-in was removed or ran out | The stored tokens are cleared (`SESSION_EXPIRED`) | 4 |
 | No terminal, and no `--api-key` / `--no-browser` / `--wait` | Usage error that names `--no-browser` | 2 |
 | The Hub is older than the browser sign-in | Usage error: sign in with `--api-key` | 2 |
+| `--host cloud.example.com` serves its web page for `/.well-known/norbix.json` and has no Hub at `/v3` | `NOT_A_HUB`: discovery is not routed to the Hub (ingress rule missing, or the installation predates discovery) — use `--host hub.example.com` | 2 |
+
+**Project after sign-in.** When the sign-in carries no project, the CLI reads
+the account's projects: exactly one is saved into the sign-in and named;
+with several, they are listed with how to choose one (`norbix config set
+project_id <id>`, `--project <id>` or `NORBIX_PROJECT_ID`). A command that
+needs a project and has none stops with `No project ID configured.` and the
+account's projects in the hint; with one project and a browser sign-in, that
+project is saved into the sign-in and the next run uses it (the failed run
+is not repeated by itself, so nothing is sent twice).
 
 There is no user + password sign-in. **CI and scripts** use a service-user
 API key, never a browser sign-in:
@@ -268,7 +294,8 @@ Destructive commands (`delete`, `stop`, `regenerate`, `block`, `disable`,
 under a coding agent there is nobody to ask, so they **exit 3 and send
 nothing** unless you pass `--yes`. Preview any of them with `--dry-run`:
 the request is built with your real auth, region and project, printed, and
-not sent.
+not sent — so the values are not checked by the server (except a schema
+bundle, see `norbix hub` above).
 
 ## Use with Claude Code / AI agents
 

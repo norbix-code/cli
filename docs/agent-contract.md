@@ -23,7 +23,11 @@ prints points back here through its `hint` and `docs` fields.
 5. **`--dry-run` on every mutating command.** It resolves auth, region and
    project exactly as a real call would (so a dry run that would fail for
    real fails here too), prints the request that would be sent, sends
-   nothing, exits 0.
+   nothing, exits 0. The server does not see the values, so it does not
+   check them. One exception: `hub database schema bundle apply --dry-run`
+   sends `bundleJson` to the Hub's read-only `account.validateSchema`, adds
+   `validation` (`checked`, `valid`, `issues`, `collections`) to the report,
+   and exits 6 when the bundle is invalid.
 6. **Discoverable without reading source.** `norbix schema --json` returns
    the whole command surface (args, flags, types, required, env var,
    default, examples, `destructive`, `supportsDryRun`); `norbix schema
