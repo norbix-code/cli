@@ -13,28 +13,38 @@ npm install -g @norbix.ai/cli      # or: npx @norbix.ai/cli …
 norbix --version
 ```
 
-## 1. Sign in — the human does it, once
+## 1. Sign in — the agent starts it, the human approves
 
 First call of a session: `norbix whoami --json`. Exit 4 means no usable
-credentials — stop and ask the user to sign in. The agent never runs
-`norbix login` or `norbix configure` itself (they need a terminal), and never
-asks for a password, key or token in the chat.
+credentials. The agent starts a browser sign-in and the human approves it in
+the dashboard. The agent never runs `norbix configure` or a plain
+`norbix login` (they need a terminal), and never asks for a password, key or
+token in the chat.
 
-- **On a developer's machine:** the user runs `norbix login` in their own
-  terminal. It opens the Norbix dashboard, where they pick the roles the
-  agent gets; the CLI then works as an AI service user `Norbix CLI (<computer>)`
-  with exactly those roles, refreshes its token by itself, and can be removed
-  any time under Account → AI service users. `norbix whoami --json` shows it
-  under `session` (`aiServiceUser: true`, `expiresAt`).
-- **In CI:** a **profile** created once by a human
-  (`norbix login --api-key nbk_… --project <id> --region nb-eu-germany --profile ci`,
-  then every call takes `--profile ci`) or **environment variables**
-  (`NORBIX_API_KEY`, `NORBIX_PROJECT_ID`, `NORBIX_REGION`, and `NORBIX_ENV`,
-  `NORBIX_ACCOUNT_ID` when needed).
+- **On a developer's machine:** the agent signs in itself, in two steps
+  (its shell commands time out; the code lives 10 minutes):
+  1. `norbix login --no-browser --json` → `{status: "pending", userCode,
+     verificationUriComplete, expiresIn, next}`. Show the user the link and
+     the code. They open it, check the code, pick the roles the agent gets
+     and press Allow. Never open the link yourself.
+  2. `norbix login --wait --json` — waits up to 90 s. Exit 0: signed in as
+     the AI service user `Norbix CLI (<computer>)` (removable under
+     Account → AI service users; `norbix whoami --json` shows it under
+     `session`). Exit 4 `AUTHORIZATION_PENDING`: not approved yet, run it
+     again. `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over with step 1.
+
+  Not on norbix.ai? Add `--host <their dashboard or Hub address>` (or
+  `--profile <name>`) to both steps. The user can also sign in themselves
+  with `norbix login` in their own terminal.
+- **In CI:** never a browser sign-in. **Environment variables**
+  (`NORBIX_HOST` — omit for norbix.ai —, `NORBIX_API_KEY`,
+  `NORBIX_PROJECT_ID`, and `NORBIX_REGION`, `NORBIX_ENV`,
+  `NORBIX_ACCOUNT_ID` when needed), or a **profile** created once by a human
+  (`norbix login --api-key nbsu_… --project <id> --host <host> --profile ci`,
+  then every call takes `--profile ci`).
 
 When a sign-in has ended (removed in the dashboard, or 30 days unused), a
-command exits 4 with `error.code` `SESSION_EXPIRED`: ask the user to run
-`norbix login` again.
+command exits 4 with `error.code` `SESSION_EXPIRED`: sign in again as above.
 
 Never print, echo or paste a key or token, and never read `~/.norbix`.
 

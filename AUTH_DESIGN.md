@@ -1,111 +1,171 @@
-# Auth & profiles design
+# Auth, hosts & profiles design
 
-Decided 2026-07-21. Implemented in v0.2.0 (profiles, sessions, configure).
+Decided 2026-07-21 (profiles, sessions). Hosts, discovery and one sign-in
+per Hub: 2026-10-08 (CLI 1.19). Task file: `docs/tasks/hosts-discovery.md`.
 
 ## The model in one paragraph
 
-A **profile** is a saved identity in one INI file, `~/.norbix/config`
-(AWS-style, but one file instead of two — simpler, and the file is 0600
-anyway). A **session** is what `norbix login` creates (user login today,
-browser login later) and lives in `~/.norbix/session.json`. Without
-`--profile`, a valid session wins and the `[default]` profile fills the gaps.
-With `--profile <name>`, the CLI uses exactly that profile and ignores the
-session — profiles are for scripts and precise identities.
+The CLI needs exactly one address: a **host** (your Norbix dashboard or Hub,
+default `hub.norbix.ai`). The Hub decides every other address (Api, Hub,
+regions, sign-in URLs). A **profile** is a saved identity in one INI file,
+`~/.norbix/config` (AWS-style). A **session** is what a browser sign-in
+creates, one per Hub, in `~/.norbix/sessions/<hub-host>.json`. A profile
+with an `api_key` uses it; a profile without one uses the browser sign-in
+of its host.
 
-## Files
+## Hosts and discovery
+
+Where the host comes from (first wins): `--host` → `NORBIX_HOST` → the
+profile's `host` → (deprecated, one release) `hub_url` / `api_url` in the
+profile, `NORBIX_HUB_URL` / `NORBIX_API_URL` → `hub.norbix.ai`.
+
+A host is written bare (`cloud.example.com`) or as a URL. It is https by
+default; plain http is accepted only for `localhost`, `127.0.0.1`, `::1`
+and `*.localhost`, so `--host localhost:5001` works for local development.
+
+```
+host                     GET https://<host>/.well-known/norbix.json
+  │                        → {"hubUrl": "https://hub.example.com/v3"}
+  │                        404, not JSON, no hubUrl, or plain http to a server
+  │                        → <host> itself is the Hub
+  ▼
+Hub                      GET <hubUrl>/echo
+                           → hubUrl, apiUrl (both with /vN), hubVersion,
+                             apiVersion, regions[] {code, apiUrl, hubUrl}
+                             (regional URLs have no version), agent.device*Url
+```
+
+`/.well-known/norbix.json` is served by the Hub (anonymous, `Cache-Control:
+public, max-age=300`, license-gate exempt — gateway
+`Heartbeat/NorbixDiscovery.cs`). On a cloud host the ingress sends that one
+path to the Hub, next to `/.well-known/norbix-proof` (devops
+`terraform/hostinger/scripts/ingress.yaml.tftpl`, `k8s/ingress/*`).
+
+The answer is cached per Hub in `~/.norbix/hosts/<hub-host>.json` (mode 600)
+for 24 hours; `~/.norbix/hosts/aliases.json` remembers which Hub a host led
+to, so `cloud.example.com` and `hub.example.com` share one cache file and one
+sign-in. When a command fails with a network error (exit 7), the cached
+answer is dropped and the next command discovers again. When a host cannot
+be reached, an old cached answer is used; for `hub.norbix.ai` with nothing
+cached, the built-in `https://api.norbix.ai` / `https://hub.norbix.ai`.
+
+Discovery runs before a command (`BaseCommand.init`). Commands that never
+reach a server (`config`, `configure`, `profiles`, `schema`, `ai init`, a
+`login --api-key`, a `logout` of everything) do not discover.
+
+**Region.** When a region is set and the Hub lists it, the region's own
+addresses are used. On norbix.ai a region is required; when none is set and
+the CLI is authenticated, it asks the Hub for the project's primary region
+once (`GET /{v}/account/projects/{id}` → `item.primaryRegion.id`, needs
+`project:read` on the project settings) and caches it for 7 days in
+`~/.norbix/hosts/<hub-host>.regions.json`. If the Hub refuses, the old rule
+applies: pass `--region`.
+
+## Profiles vs sessions
 
 ```ini
-# ~/.norbix/config  (mode 600 — secrets and settings together, on purpose)
-[default]
-api_key = nbk_live_...
-project_id = 5f1a...
+# ~/.norbix/config (mode 600, written by people and `norbix configure`)
+[default]                 # no host = hub.norbix.ai
+project_id = ...
 
-[fitskin-prod]
-api_key = nbk_live_...
-project_id = 64ff...
-account_id = ...          # optional — for account-level commands
-env = TEST                # optional — empty means PROD
-region = nb-eu-germany    # optional
-api_url = https://api.norbix.ai   # optional — override for self-hosted
-hub_url = https://hub.norbix.ai   # optional
-files_integration_id = ...        # optional
+[finlo]
+host = cloud.finlo.space
+project_id = ...
+
+[finlo-ci]
+host = hub.finlo.space
+api_key = nbsu_...
+project_id = ...
 ```
+
+Other keys: `account_id`, `env` (empty = PROD), `region`, `hub_version`
+(override), `files_integration_id`. `api_url` / `hub_url` still work for one
+release and print a deprecation warning on stderr; `config set host` and
+`login --api-key --host` remove them.
 
 ```jsonc
-// ~/.norbix/session.json  (mode 600, machine-managed — do not edit)
+// ~/.norbix/sessions/hub.finlo.space.json  (mode 600, machine-managed)
 { "bearerToken": "...", "refreshToken": "...", "expiresAt": "...", "clientId": "norbix-cli",
-  "method": "browser", "hubVersion": "v3", "projectId": "...", "userName": "...", "displayName": "..." }
+  "method": "browser", "hubUrl": "https://hub.finlo.space", "hubVersion": "v3",
+  "host": "cloud.finlo.space", "projectId": "...", "userName": "...", "displayName": "..." }
 ```
 
-Why sessions are a separate file even though config is merged: the config
-file is edited by people and by `norbix configure`; sessions rotate on every
-login and will be rewritten automatically by token refresh. Mixing them means
-the tool constantly rewrites a hand-edited file.
+Sessions are separate files because they rotate on every refresh; the
+config file is edited by people. The session stores the Hub that issued the
+token, so refresh and revoke reach it without discovery. The one file of
+CLI 1.18 and older, `~/.norbix/session.json`, is moved to
+`sessions/<its hub>.json` on first read (its `hubUrl`, else `hub.norbix.ai`);
+it never overwrites a newer sign-in.
 
-## Resolution order
+## Credential order
 
-1. Command flags (`--project`, `--env`, `--api-key`, ...)
-2. Environment variables (`NORBIX_PROFILE`, `NORBIX_API_KEY`, ...)
-3. `--profile <name>` / `NORBIX_PROFILE` set → **that profile only**
-   (session intentionally ignored)
-4. Otherwise: valid session → `[default]` profile → legacy config.json
-   (pre-profiles CLI versions)
+1. `--api-key` / `NORBIX_API_KEY`
+2. the profile's `api_key` (`--profile` / `NORBIX_PROFILE`, else `[default]`)
+3. the browser session of the profile's host's Hub
+4. the old per-OS `config.json` (CLI 0.1; not with an explicit `--profile`)
 
-Endpoints (`hub_url` / `api_url`) follow their own order: an explicit
-profile's URL → `NORBIX_HUB_URL` / `NORBIX_API_URL` → (no profile) the URL
-stored by a browser sign-in → `[default]` profile → legacy config →
-norbix.ai. A trailing `/vN` is split off and used as the version.
+A profile is only used for its own host: with `--host` for another Hub the
+`[default]` profile is left out (its key is never sent to another host), and
+an explicit `--profile` for another host is a usage error.
 
-`norbix whoami` always prints which profile and auth source won.
+Other values (`project_id`, `account_id`, `env`, `region`): flags /
+`NORBIX_*` → profile → session → old config.json. `norbix whoami` prints the
+host, Hub, Api, profile and auth source that won.
 
-## Endpoints and the region rule
+## Login
 
-Defaults are `https://api.norbix.ai` and `https://hub.norbix.ai`. A region
-turns them into `https://<region>.api.norbix.ai`.
+- `norbix login [--profile p | --host h]` — browser sign-in (RFC 8628) to
+  that host's Hub. The person approves on `<cloud>/device` and picks the
+  roles; the CLI becomes the AI service user "Norbix CLI (<computer>)".
+- `norbix login --api-key ... [--host h] --profile p` — saves key and host
+  in the profile. No network.
+- Over SSH (`SSH_CONNECTION`, `SSH_CLIENT` or `SSH_TTY` set — on every
+  system: `open` on a Mac reached by SSH opens the browser on that Mac),
+  without a desktop, or with `--no-browser`, the CLI never opens a browser:
+  it prints the link and waits.
+- No terminal and none of `--api-key`, `--no-browser`, `--wait` → exit 2;
+  the hint names `--no-browser`.
 
-**Rule:** `region`, `env` and `account_id` are optional in general — but when
-a profile uses the DEFAULT endpoints, **region is required** (there is no
-region-less norbix.ai endpoint). With custom `api_url`/`hub_url` (localhost,
-self-hosted, custom domain) region is optional and URLs are never rewritten.
-`norbix configure` enforces this (region prompt becomes required), and every
-command checks it before making a request.
+## Logout
 
-**Note:** the SDK's own built-in defaults still point at `.dev` — logged as
-an SDK bug; the CLI always passes URLs explicitly, so it is not affected.
+`norbix logout` revokes (RFC 7009) and removes every host's sign-in, and any
+pending agent sign-in. `logout --host h` / `logout --profile p` does it for
+that host's Hub only. Logout never touches profiles.
 
-## Commands
+## Agents
 
-- `norbix configure [--profile x]` — interactive, like `aws configure`:
-  service-user API key (masked; ENTER keeps existing), project ID, optional
-  account ID, optional environment (empty = PROD), optional region. Flags
-  `--api-url` / `--hub-url` for self-hosted setups.
-- `norbix profiles` — list profiles (keys redacted) + session state.
-- `norbix login` — browser sign-in (an AI service user with the roles picked in the dashboard), or user+password with `--user`; writes the session.
-  `norbix login --api-key ... --profile ci` writes a profile instead.
-- `norbix logout` — revokes the refresh token on the Hub, removes the session; never touches profiles.
-- `norbix env use X` — writes to the session when logged in, else to the
-  profile.
+A coding agent's shell commands time out after about 2 minutes; the device
+code lives 10 minutes. So the agent signs in in two steps:
 
-## Phase 2 — browser sign-in (done)
+1. `norbix login --no-browser --json` starts the device flow, saves the
+   pending code in `~/.norbix/sessions/<hub-host>.pending.json` (mode 600)
+   and prints `{status: "pending", userCode, verificationUri,
+   verificationUriComplete, expiresIn, next}` — then exits 0 at once.
+   The agent shows the link and the code to the person.
+2. `norbix login --wait` polls the saved code for at most 90 s. Approved →
+   the session is saved, the pending file removed, exit 0. Still pending →
+   exit 4 `AUTHORIZATION_PENDING` (run it again). Denied / expired /
+   refused → exit 4 `ACCESS_DENIED` / `EXPIRED_TOKEN` / `INVALID_GRANT`, the
+   pending file removed (start over). A `slow_down` is saved for the next run.
 
-`norbix login` (without --api-key) runs the OAuth 2.0 Device
-Authorization Grant (RFC 8628): it prints a one-time code, opens the
-dashboard on ENTER, polls until approved, and writes the session. The person
-picks the roles on the dashboard page; the tokens belong to an **AI service
-user** "Norbix CLI (<computer name>)" with exactly those roles, listed and
-removed under Account → AI service users. When the Hub answers 404/405/501
-the CLI stops with a usage error that points at `--api-key`. The old
-`--user` / `--password` flags were removed (CLI 1.18): they posted to the
-Api `/auth`, which knows no account users, so they always got 401.
+`norbix ai init` writes these rules into the agent files.
 
-### Hub contract
+## CI
 
+CI never signs in through a browser: `NORBIX_HOST` + `NORBIX_API_KEY` +
+`NORBIX_PROJECT_ID` (plus `NORBIX_REGION` on norbix.ai when the key cannot
+read the project's region), or a profile written by `login --api-key`.
+
+## Hub contract
+
+`{v}` is the Hub version from `/echo` (`hubVersion`), never a fixed `v2`.
 The binding version is in the gateway: `docs/tasks/cli-browser-sign-in.md`
-("Contract") and `docs/architecture/AI.OAuthConsent.md`. `{v}` is the Hub
-version from `/echo` (`hubVersion`), never a fixed `v2`
-(`src/lib/hub-version.ts`).
+and `docs/architecture/AI.OAuthConsent.md`.
 
 ```
+GET  /.well-known/norbix.json          (anonymous) → { hubUrl }
+GET  /{v}/echo                         (anonymous) → addresses, versions, regions
+
 POST /{v}/auth/device/start            (anonymous)
   body:     { clientName: "norbix-cli", deviceName?, projectId? }
   response: { deviceCode, userCode, verificationUri,
@@ -118,7 +178,6 @@ POST /{v}/auth/device/token            (anonymous, always HTTP 200)
   denied:   { error: "access_denied" }           → exit 4 ACCESS_DENIED
   expired:  { error: "expired_token" }           → exit 4 EXPIRED_TOKEN
   refused:  { error: "invalid_grant" | "invalid_request", errorDescription? }
-                                                 → exit 4 INVALID_GRANT / INVALID_REQUEST, the description shown
   success:  { bearerToken, refreshToken, expiresIn, clientId, userId,
               userName, displayName, accountId, projectId? }
 
@@ -133,18 +192,18 @@ POST /{v}/oauth/revoke                 (form, RFC 7009; `norbix logout`)
 
 ### Refresh
 
-The access token lasts one hour, the refresh token 30 days and rotates on
-every use. Before a call, when the access token has less than 60 s left, the
-CLI refreshes it; a 401 triggers one refresh and one retry. The new pair and
-its expiry are written in one step (a temporary file, then a rename). Before
-refreshing, the CLI re-reads the session file: another terminal may already
-have rotated the token. A dry run never refreshes. `src/lib/session-auth.ts`.
+The access token lasts one hour. The refresh token lasts 30 days and rotates
+on every use; each rotation gets a fresh 30 days (sliding — gateway
+`AiOAuthCommands.cs`, `RotateRefreshTokenAsync(..., DateTime.UtcNow.Add(RefreshTokenLifetime))`),
+so a CLI used at least once a month stays signed in. Reusing an old refresh
+token ends the whole grant. Before a call, when the access token has less
+than 60 s left, the CLI refreshes it; a 401 triggers one refresh and one
+retry. The new pair is written to that Hub's session file in one step (a
+temporary file, then a rename), after re-reading it: another terminal may
+already have rotated the token. A dry run never refreshes.
+`src/lib/session-auth.ts`.
 
-Why device-code over a Cursor-style localhost redirect: it works over SSH
-(open the URL on any device), and it is one standard flow the backend
-implements once.
-
-## Phase 3
+## Later
 
 OS keychain (macOS Keychain / libsecret / Windows Credential Manager) as an
 opt-in storage backend for `api_key` and tokens.
