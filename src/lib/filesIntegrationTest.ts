@@ -1,6 +1,6 @@
-import type {ResolvedContext} from '../base.js'
+import {errorFromBody} from '@norbix.ai/ts'
 
-import {gatewayError} from './gatewayError.js'
+import type {ResolvedContext} from '../base.js'
 
 /**
  * `POST /{version}/files/{filesIntegrationId}/test` — the API-surface probe of
@@ -86,7 +86,7 @@ export async function callTestFilesIntegration(
     }
   }
 
-  if (!response.ok) throw gatewayError(response.status, raw, url)
+  if (!response.ok) throw errorFromBody({raw, status: response.status, url})
 
   return (raw && typeof raw === 'object' ? raw : {}) as TestFilesIntegrationResult
 }
