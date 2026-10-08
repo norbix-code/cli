@@ -343,8 +343,18 @@ describe('norbix files publish / unpublish', () => {
     await runCommand(['files', 'publish', 'invoices/invoice.pdf', ...globalArgs])
 
     expect(seen[0].authorization).toBe(`Bearer ${API_KEY}`)
+    // norbix-project-id is the header the gateway reads; with only X-CM-ProjectId
+    // it answered "Property ProjectId is required" (CLI 1.21.4 and older).
+    expect(seen[0]['norbix-project-id']).toBe(PROJECT)
     expect(seen[0]['x-cm-projectid']).toBe(PROJECT)
     expect(seen[0]['nb-region']).toBe(REGION)
+  })
+
+  it('--dry-run shows the same project header the real call sends', async () => {
+    fakeFetch()
+    const {result} = await runCommand<{http: {headers: Record<string, string>}}>(['files', 'publish', 'invoices/invoice.pdf', '--dry-run', '--json', ...globalArgs])
+    expect(result?.http.headers['norbix-project-id']).toBe(PROJECT)
+    expect(calls).toHaveLength(0)
   })
 
   it('fails with a clear message when no integration is given', async () => {
