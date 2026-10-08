@@ -1,6 +1,6 @@
-import type {ResolvedContext} from '../base.js'
+import {errorFromBody, isFailedBody} from '@norbix.ai/ts'
 
-import {gatewayError, saysItFailed} from './gatewayError.js'
+import type {ResolvedContext} from '../base.js'
 
 /**
  * The four "make it public / make it private" Hub endpoints (gateway slice
@@ -88,12 +88,14 @@ export async function callPublicFiles(
     }
   }
 
-  if (!response.ok) throw gatewayError(response.status, raw, url)
+  // The SDK's own reader: the message and the gateway code come from
+  // `responseStatus.errors[]`, the error class from the status.
+  if (!response.ok) throw errorFromBody({raw, status: response.status, url})
 
   // A 2xx does not mean the call worked: the gateway answers a business
   // refusal with HTTP 200 and responseStatus.isSuccess = false, and the
   // command must exit non-zero for it (10b-files, issue #67).
-  if (saysItFailed(raw)) throw gatewayError(response.status, raw, url)
+  if (isFailedBody(raw)) throw errorFromBody({raw, status: response.status, url})
 
   return (raw && typeof raw === 'object' ? raw : {}) as PublicFilesResult
 }
