@@ -49,7 +49,6 @@ export const dropProjectHeaders = async (ctx: {
 }): Promise<Response> => {
   const headers = new Headers(ctx.init.headers)
   headers.delete('norbix-project-id')
-  headers.delete('X-CM-ProjectId')
   ctx.init.headers = headers
   return ctx.next()
 }
