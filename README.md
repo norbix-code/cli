@@ -19,9 +19,10 @@ npx @norbix.ai/cli --help
 
 ```sh
 # 1. Sign in through the browser (the Norbix dashboard asks which roles the CLI gets)
-norbix login
+norbix login                              # norbix.ai
+norbix login --host cloud.example.com     # your own Norbix: just the dashboard address
 # or, for CI and scripts, with an API key:
-norbix login --api-key nbk_... --project <projectId> --profile ci
+norbix login --api-key nbsu_... --project <projectId> --profile ci
 
 # 2. Check everything is wired up
 norbix whoami
@@ -93,50 +94,86 @@ sets up shell tab-completion (bash/zsh).
 
 Run `norbix <topic> --help` for flags and examples.
 
-## Configuration: profiles + sessions
+## Configuration: hosts, profiles and sessions
 
-Two ways to authenticate, and they work together:
+The CLI needs one address: the **host** — your Norbix dashboard or Hub
+(`cloud.example.com`, `hub.example.com`), default `hub.norbix.ai`. It asks
+the host where its Hub is (`/.well-known/norbix.json`) and the Hub for
+everything else (`/echo`: the Api address, versions, regions, sign-in
+URLs), and caches the answer for 24 hours in `~/.norbix/hosts`. Give it with
+`--host`, `NORBIX_HOST`, or `host` in a profile. https is the default; plain
+http only for localhost — local development is `--host localhost:5001`.
 
-**Profiles (AWS-style)** — one INI file at `~/.norbix/config`, set up with:
+**Profiles (AWS-style)** — one INI file at `~/.norbix/config`:
+
+```ini
+[default]                 # no host = hub.norbix.ai
+project_id = ...
+
+[finlo]
+host = cloud.finlo.space
+project_id = ...
+
+[finlo-ci]
+host = hub.finlo.space
+api_key = nbsu_...
+project_id = ...
+```
 
 ```sh
 norbix configure                      # writes the [default] profile
-norbix configure --profile fitskin    # a named profile
-norbix db find orders --profile fitskin
+norbix configure --profile finlo      # a named profile
+norbix db find orders --profile finlo
 ```
 
-It asks for a service-user API key, project ID, optional account ID and
-environment (empty = PROD). A profile can also override the endpoints
-(`api_url` / `hub_url`) for localhost or self-hosted installations.
-`--profile` (or `NORBIX_PROFILE`) always uses exactly that profile and
-ignores any login session — predictable for scripts.
-
-This is the only file the CLI writes settings to. Keys are spelled
-`snake_case` in the file (`project_id`, `hub_url`); `norbix config set` /
-`get` / `unset` take that spelling or the camelCase one (`projectId`) and
-write the `[default]` profile, or the one named with `--profile`:
+`configure` asks for the host (empty = hub.norbix.ai), a service-user API
+key (empty = use the browser sign-in of that host), project ID, and optional
+account ID, environment (empty = PROD) and region. Keys are spelled
+`snake_case` in the file (`project_id`); `norbix config set` / `get` /
+`unset` take that spelling or the camelCase one (`projectId`) and write the
+`[default]` profile, or the one named with `--profile`:
 
 ```sh
+norbix config set host cloud.example.com --profile example
 norbix config set region nb-eu-germany --profile ci
 norbix config get project_id
 ```
 
-The old `~/.config/norbix/config.json` (CLI 1.17 and older wrote it with
-`norbix config set`) is still read as a last fallback, never written;
-`norbix config list` shows what is left in it.
+`api_url` / `hub_url` in a profile and `NORBIX_API_URL` / `NORBIX_HUB_URL`
+still work in this release, with a warning on stderr; replace them with
+`host` (`norbix config set host …` removes them). The old
+`~/.config/norbix/config.json` is still read as a last fallback, never
+written; `norbix config list` shows what is left in it.
 
-**Sessions** — `norbix login` stores a session in `~/.norbix/session.json`.
-While it is valid, every command (in every terminal window) uses it.
-`norbix logout` removes it. Profiles are untouched by login/logout.
+**Sessions** — one browser sign-in per Hub, in
+`~/.norbix/sessions/<hub>.json`. `cloud.example.com` and `hub.example.com`
+lead to the same Hub, so they share one sign-in. Every terminal window, and
+every profile of that host without an `api_key`, uses it. `norbix logout`
+removes all of them; `norbix logout --host h` or `--profile p` only that
+host's. Profiles are never touched by login or logout.
+
+**Which credential wins:** `--api-key` / `NORBIX_API_KEY` → the profile's
+`api_key` → the browser sign-in of the profile's host. A profile is used
+only for its own host: `--host` for another Hub leaves `[default]` out, so a
+key is never sent to another host. `norbix whoami` shows the host, Hub, Api,
+profile and auth source that won, and checks them against the server.
+
+**Region** — on norbix.ai calls go to `<region>.api.norbix.ai`. With no
+region set, the CLI asks the Hub for the project's primary region once and
+caches it; if the key or sign-in may not read the project, pass `--region`
+(or `region` in the profile). On your own Norbix the Hub lists its regions,
+and the region is optional.
 
 ### Signing in: `norbix login`
 
-`norbix login` signs in through the browser (the OAuth device flow):
+`norbix login` signs in through the browser (the OAuth device flow) to the
+host's Hub — `--host`, `--profile`, or hub.norbix.ai:
 
 1. The CLI prints a one-time code (`BCDF-GHJK`) and, after ENTER, opens the
-   Norbix dashboard on the sign-in page. On a machine without a desktop (SSH,
-   a container) it does not try to open a browser: open the printed link on
-   any device, and the CLI picks the sign-in up by itself.
+   Norbix dashboard on the sign-in page. Over SSH (on any system), on a
+   machine without a desktop (a container), or with `--no-browser`, it does
+   not open a browser: open the printed link on any device, and the CLI
+   picks the sign-in up by itself.
 2. In the dashboard you check the code, pick the roles the CLI gets — account
    roles and project roles, the same pickers as when an AI tool connects over
    OAuth — and press **Allow**. You can never give more than you have.
@@ -144,65 +181,39 @@ While it is valid, every command (in every terminal window) uses it.
    name>)` with exactly those roles. `norbix whoami` shows it. Signing in
    again from the same computer with the same roles reuses the same user.
 
-The access token lasts one hour and is refreshed by itself (the refresh
-token lasts 30 days). To end the sign-in, run `norbix logout` (it also
-revokes the refresh token on the Hub) or remove the user in the dashboard
-under **Account → AI service users**; the next command then exits 4 and
-asks you to run `norbix login` again.
+The access token lasts one hour and is refreshed by itself; the refresh
+token lasts 30 days from its last use. To end the sign-in, run
+`norbix logout` (it also revokes the refresh token on the Hub) or remove the
+user in the dashboard under **Account → AI service users**; the next
+command then exits 4 and asks you to run `norbix login` again.
 
 | Situation | What happens | Exit |
 | --- | --- | --- |
 | You press **Deny** | `Sign-in was denied in the browser.` (`ACCESS_DENIED`) | 4 |
 | Nobody approves within 10 minutes | `The sign-in code expired before it was approved.` (`EXPIRED_TOKEN`) | 4 |
 | The Hub refuses the code (already used, unknown, the AI service user deleted) | The Hub's reason is shown (`INVALID_GRANT` / `INVALID_REQUEST`) | 4 |
+| `login --wait` and nobody approved yet | `Not approved yet.` — run it again (`AUTHORIZATION_PENDING`) | 4 |
 | The sign-in was removed or ran out | The stored tokens are cleared (`SESSION_EXPIRED`) | 4 |
+| No terminal, and no `--api-key` / `--no-browser` / `--wait` | Usage error that names `--no-browser` | 2 |
 | The Hub is older than the browser sign-in | Usage error: sign in with `--api-key` | 2 |
 
-There is no user + password sign-in: accounts live on the Hub, and the CLI
-signs people in through the browser only. **CI and scripts** use a
-service-user API key, never a browser sign-in:
-`norbix login --api-key nbsu_... --project <id> --profile ci` (add
-`--api-url` / `--hub-url` for a self-hosted install; they are saved in the
-profile), or the `NORBIX_API_KEY` / `NORBIX_PROJECT_ID` / `NORBIX_REGION`
-variables.
-
-The Hub version in the sign-in paths (`/v3/auth/device/...`, `/v3/oauth/token`)
-is read from the Hub's `/echo`; set `NORBIX_HUB_VERSION` or `hub_version` in a
-profile only to override it.
-
-Resolution order (most specific wins): flags → `NORBIX_*` env vars →
-`--profile` (profile only) → session → `[default]` profile.
-`norbix whoami` shows exactly what was resolved and verifies it against the
-server. Defaults endpoints are `https://api.norbix.ai` and
-`https://hub.norbix.ai`. See `AUTH_DESIGN.md` for the full design.
-
-**Endpoints (self-hosted / enterprise)** — the Hub and API URLs are resolved
-on their own, first match wins:
-
-1. `--profile <name>` (or `NORBIX_PROFILE`) whose profile sets `hub_url` / `api_url`;
-2. `NORBIX_HUB_URL` / `NORBIX_API_URL`;
-3. without `--profile`: the Hub and API a browser sign-in was made against
-   (kept in the session, so the token refresh reaches the Hub that issued it);
-4. the `[default]` profile, then the legacy config;
-5. `https://hub.norbix.ai` / `https://api.norbix.ai` (with the region).
-
-A URL may be written with or without its version: `https://hub.example.com`
-or `https://hub.example.com/v3`. With a version, the CLI uses it for every
-call; without one, the sign-in paths read it from the Hub's `/echo`.
+There is no user + password sign-in. **CI and scripts** use a service-user
+API key, never a browser sign-in:
 
 ```sh
-export NORBIX_HUB_URL=https://hub.example.com/v3
-export NORBIX_API_URL=https://api.example.com/v3
-norbix login          # signs in on hub.example.com, no ~/.norbix/config edit
-```
-
-For CI/CD, use environment variables only:
-
-```sh
-export NORBIX_API_KEY=nbk_...
+# environment only
+export NORBIX_HOST=hub.example.com     # omit for norbix.ai
+export NORBIX_API_KEY=nbsu_...
 export NORBIX_PROJECT_ID=...
 norbix db count orders
+
+# or a profile
+norbix login --api-key nbsu_... --project <id> --host hub.example.com --profile ci
 ```
+
+The Hub version in every path (`/v3/...`) comes from the Hub's `/echo`; set
+`NORBIX_HUB_VERSION` or `hub_version` in a profile only to override it. The
+full design is in `AUTH_DESIGN.md`.
 
 ## JSON output
 
@@ -267,15 +278,23 @@ norbix ai init                 # writes .claude/skills/norbix/SKILL.md + a CLAUD
 norbix ai init --target all    # also AGENTS.md (Codex, OpenCode) and a Cursor rule
 ```
 
-Then sign in once with `norbix login` in your own terminal: the dashboard
-asks which roles the agent gets, and the agent works as an AI service user
-you can remove any time (Account → AI service users). The written rules tell
-the agent to start with `norbix whoami --json`, to ask you to run
-`norbix login` when that exits 4 (never to run it itself), to pass `--json`
-to everything it parses, to run every change with `--dry-run` first and show
-it to you, and never to print or ask for keys or tokens. In CI, give the
-agent a profile (`norbix login --api-key … --profile ci`) or
-`NORBIX_API_KEY` / `NORBIX_PROJECT_ID` / `NORBIX_REGION` instead.
+The agent signs in by itself, in two steps (its shell commands time out
+after ~2 minutes; the code lives 10 minutes):
+
+```sh
+norbix login --no-browser --json   # → {"status":"pending","userCode":"BCDF-GHJK","verificationUriComplete":"https://…/device?code=…","expiresIn":600,…}
+norbix login --wait --json         # waits up to 90 s; exit 4 AUTHORIZATION_PENDING → run it again
+```
+
+It shows you the link and the code; you open it, check the code, pick the
+roles it gets, and press Allow. It then works as an AI service user you can
+remove any time (Account → AI service users). Not on norbix.ai? It adds
+`--host <your dashboard>` to both steps. You can also sign in yourself with
+`norbix login`. The written rules also tell the agent to start with
+`norbix whoami --json`, to pass `--json` to everything it parses, to run
+every change with `--dry-run` first and show it to you, and never to print
+or ask for keys or tokens. In CI, give the agent `NORBIX_HOST` +
+`NORBIX_API_KEY` + `NORBIX_PROJECT_ID` instead.
 
 The recipe the agent follows is in [docs/AGENTS.md](docs/AGENTS.md); the
 guarantees it relies on are in [docs/agent-contract.md](docs/agent-contract.md).

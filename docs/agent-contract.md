@@ -44,10 +44,10 @@ prints points back here through its `hint` and `docs` fields.
 | 1 | unexpected / internal error | file an issue, include `traceId` |
 | 2 | usage: bad flags or args, invalid JSON input, unknown command, missing config | `norbix <command> --help` / `norbix schema <command> --json` |
 | 3 | confirmation required (non-interactive shell, no `--yes`) | re-run with `--yes` after a `--dry-run` |
-| 4 | not authenticated / auth rejected (401, 403, no key); a browser sign-in denied (`ACCESS_DENIED`), not approved in time (`EXPIRED_TOKEN`), refused by the Hub (`INVALID_GRANT`, `INVALID_REQUEST`) or ended (`SESSION_EXPIRED`) | `norbix login`, `--api-key`, `--profile`, `NORBIX_API_KEY` |
+| 4 | not authenticated / auth rejected (401, 403, no key); a browser sign-in denied (`ACCESS_DENIED`), not approved in time (`EXPIRED_TOKEN`), refused by the Hub (`INVALID_GRANT`, `INVALID_REQUEST`) or ended (`SESSION_EXPIRED`); `login --wait` not approved yet (`AUTHORIZATION_PENDING` — run it again) | `norbix login` (agents: `--no-browser --json`, then `--wait`), `--api-key`, `--profile`, `NORBIX_API_KEY` |
 | 5 | not found (404) | check the id, `--env`, `--project` |
 | 6 | validation rejected by the server (400 / 422, or a 200 with `isSuccess: false`) | `fieldErrors` lists the fields |
-| 7 | network / timeout / endpoint unreachable | the error shows the URL; check `--region`, `api_url` / `hub_url`, connectivity |
+| 7 | network / timeout / endpoint unreachable | the error shows the URL; check `--host`, `--region`, connectivity |
 | 8 | rate limited / server error (429, 5xx) | retry with backoff; include `traceId` |
 | 9 | cancelled by the user at a prompt | |
 
