@@ -5,6 +5,7 @@ import {join} from 'node:path'
 import {beforeEach, describe, expect, it} from 'vitest'
 
 import {claudeSkill, recipeBlock} from '../src/lib/agent-files.js'
+import {seedDefaultHost} from '../test/seed.js'
 import {cli, makeHome, parseSingleJson} from './_cli.js'
 
 const home = makeHome(1)
@@ -97,7 +98,7 @@ describe('norbix ai init', () => {
     const block = readFileSync(join(project, 'AGENTS.md'), 'utf8')
     const bullets = block.split('\n').filter((l) => l.startsWith('- '))
     expect(bullets.map((l) => l.slice(0, 40))).toEqual([
-      '- Start with `norbix whoami --json`. Exi',
+      '- Start with `norbix whoami --json`. `"a',
       '- Pass `--json` to every command whose o',
       '- Discover, do not guess: `norbix schema',
       '- Before any change, run it with `--dry-',
@@ -114,7 +115,7 @@ describe('norbix ai init', () => {
 
     const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
     expect(skill).toContain('## Secrets\n\nNever print, echo, paste or ask for API keys, passwords or tokens')
-    expect(skill).toContain('Exit 4: sign in in two steps (your shell commands time out; the code lives 10 minutes):')
+    expect(skill).toContain('`"auth": "none"` (or exit 4 from any other command) means not signed in: sign in in two steps (your shell commands time out; the code lives 10 minutes):')
     expect(skill).toContain('Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.')
     expect(skill).toContain('`norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user.')
     expect(skill).not.toMatch(/--api-key|nbk_/)
@@ -146,6 +147,21 @@ describe('the agent rules: sign in in two steps, CI with a key', () => {
     expect(skill).toContain('Exit 4 `AUTHORIZATION_PENDING`: not approved yet, run it again.')
     expect(skill).toContain('`ACCESS_DENIED` or `EXPIRED_TOKEN`: start over with step one.')
     expect(skill).toContain('Context flags on every command: `--host`, `--profile`')
+  })
+})
+
+describe('the signed-out signal the agent rules name', () => {
+  it('whoami --json says "auth": "none" and exits 0 when signed out; a real command exits 4', async () => {
+    const empty = mkdtempSync(join(tmpdir(), 'norbix-signed-out-'))
+    seedDefaultHost(empty)
+    const who = await cli(empty, ['whoami', '--json'])
+    expect(who.code).toBe(0)
+    expect((parseSingleJson(who.stdout) as {auth: string}).auth).toBe('none')
+    expect(recipeBlock()).toContain('`"auth": "none"` there (or exit code 4 from any other command) means not signed in.')
+
+    const find = await cli(empty, ['db', 'find', 'books', '--project', 'p1', '--region', 'nb-eu-germany', '--json'])
+    expect(find.code).toBe(4)
+    expect((parseSingleJson(find.stdout) as {error: {code: string}}).error.code).toBe('UNAUTHENTICATED')
   })
 })
 

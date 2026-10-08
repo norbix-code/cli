@@ -15,7 +15,8 @@ norbix --version
 
 ## 1. Sign in — the agent starts it, the human approves
 
-First call of a session: `norbix whoami --json`. Exit 4 means no usable
+First call of a session: `norbix whoami --json`. `"auth": "none"` there
+(or exit code 4 from any other command) means no usable
 credentials. The agent starts a browser sign-in and the human approves it in
 the dashboard. The agent never runs `norbix configure` or a plain
 `norbix login` (they need a terminal), and never asks for a password, key or
