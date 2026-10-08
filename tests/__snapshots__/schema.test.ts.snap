@@ -869,6 +869,8 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "file:string",
       "schema:string",
       "id:string",
+      "order:string",
+      "break-on-error:boolean",
     ],
     "id": "db trigger create",
     "supportsDryRun": true,
