@@ -5,6 +5,8 @@ import {PROFILE_KEYS, profileKey, readProfiles} from '../../lib/profiles.js'
 import {redact} from '../../lib/store.js'
 
 export default class ConfigGet extends BaseCommand {
+  static discoversHost = false
+
   static description = `Print one value of a profile in ~/.norbix/config ([default] without --profile)`
 
   static examples = ['<%= config.bin %> config get project_id', '<%= config.bin %> config get region --profile ci']

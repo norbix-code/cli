@@ -4,9 +4,11 @@ import {BaseCommand} from '../../base.js'
 import {PROFILES_PATH, PROFILE_KEYS, profileKey, readProfiles, writeProfile} from '../../lib/profiles.js'
 
 export default class ConfigUnset extends BaseCommand {
+  static discoversHost = false
+
   static description = `Remove one value from a profile in ~/.norbix/config ([default] without --profile)`
 
-  static examples = ['<%= config.bin %> config unset region', '<%= config.bin %> config unset hub_url --profile local --dry-run']
+  static examples = ['<%= config.bin %> config unset region', '<%= config.bin %> config unset host --profile local --dry-run']
 
   static args = {
     key: Args.string({required: true, description: `One of: ${PROFILE_KEYS.join(', ')}`}),

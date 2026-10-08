@@ -3,6 +3,20 @@ import {Command, Flags, ux} from '@oclif/core'
 
 import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
 import {EXIT} from './lib/exit-codes.js'
+import {
+  DEFAULT_HOST,
+  cachedHost,
+  cachedProjectRegion,
+  fetchProjectRegion,
+  saveProjectRegion,
+  forgetHost,
+  hostKey,
+  isDefaultHost,
+  normalizeHost,
+  regionalEndpoints,
+  resolveHost,
+  type HostInfo,
+} from './lib/hosts.js'
 import {cleanVersion, resolveHubEndpoint, splitVersionedUrl, type HubEndpoint} from './lib/hub-version.js'
 import {
   DEFAULT_API_URL,
@@ -41,6 +55,7 @@ export const dropProjectHeaders = async (ctx: {
 }
 
 export interface GlobalFlags {
+  host?: string
   project?: string
   env?: string
   region?: string
@@ -58,8 +73,21 @@ export interface ResolvedContext {
   region?: string
   apiKey?: string
   bearerToken?: string
+  /** Api / Hub base URLs for the calls (regional when a region is set), no version. */
   apiUrl: string
   hubUrl: string
+  /** The host the CLI was pointed at, as an origin: `https://cloud.finlo.space`. */
+  host: string
+  /** Where the host came from. */
+  hostSource: 'flag/env' | `profile [${string}]` | 'deprecated url' | 'default'
+  /** The Hub's key — the name of its session file: `hub.finlo.space`. */
+  hubKey: string
+  /** What discovery learned about the Hub; undefined when nothing is known yet. */
+  hostInfo?: HostInfo
+  /** The Hub that signs in, refreshes and revokes (not regional), no version. */
+  authHubUrl: string
+  /** Deprecated settings in use (profile api_url / hub_url, NORBIX_API_URL / NORBIX_HUB_URL). */
+  deprecations: string[]
   /** True when api/hub use the default *.norbix.ai domains (then region is required). */
   usesDefaultEndpoints: boolean
   filesIntegrationId?: string
@@ -79,8 +107,6 @@ export interface ResolvedContext {
   hubVersion?: string
   /** API version from an API URL that ends in `/vN`; else undefined (the SDK default). */
   apiVersion?: string
-  /** The Hub / API base URL when it is not the default norbix.ai one (no region, no version). */
-  customEndpoints: {api?: string; hub?: string}
   stored: StoredConfig
 }
 
@@ -112,18 +138,17 @@ class DryRunStop extends Error {
 /**
  * Base class for every Norbix CLI command.
  *
- * Resolution order (most specific wins):
- *   1. command-line flags
- *   2. environment variables (NORBIX_*)
- *   3a. --profile / NORBIX_PROFILE set  → that profile from ~/.norbix/config
- *       ONLY. The login session is intentionally ignored: --profile means
- *       "act as exactly this identity", good for scripts.
- *   3b. no profile chosen → active login session (~/.norbix/session.json)
- *       wins; the [default] profile fills anything the session doesn't have;
- *       the legacy per-OS config.json is the last fallback.
- *
- * Default endpoints are https://api.norbix.ai and https://hub.norbix.ai;
- * a profile can override them (self-hosted, localhost, custom domain).
+ * Resolution (AUTH_DESIGN.md):
+ *   profile  --profile / NORBIX_PROFILE, else [default] (when it is for the
+ *            same host).
+ *   host     --host / NORBIX_HOST → profile `host` → deprecated api_url /
+ *            hub_url → hub.norbix.ai. Discovery (lib/hosts.ts) turns it into
+ *            the Hub and Api addresses; it runs in `init`, so `resolveContext`
+ *            stays synchronous.
+ *   auth     --api-key / NORBIX_API_KEY → profile api_key → the browser
+ *            session of that host's Hub (~/.norbix/sessions/<hub>.json) →
+ *            the old per-OS config.json.
+ *   values   flags / NORBIX_* → profile → session → old config.json.
  *
  * Agent contract (docs/agent-contract.md): never hang, never act silently,
  * one JSON document on stdout with --json, documented exit codes.
@@ -132,6 +157,11 @@ export abstract class BaseCommand extends Command {
   static enableJsonFlag = true
 
   static baseFlags = {
+    host: Flags.string({
+      description: 'Norbix host: your dashboard or Hub address (default hub.norbix.ai)',
+      env: 'NORBIX_HOST',
+      helpGroup: 'GLOBAL',
+    }),
     project: Flags.string({
       description: 'Project ID',
       env: 'NORBIX_PROJECT_ID',
@@ -158,7 +188,7 @@ export abstract class BaseCommand extends Command {
       helpGroup: 'GLOBAL',
     }),
     profile: Flags.string({
-      description: 'Use this profile from ~/.norbix/config (ignores the login session)',
+      description: 'Use this profile from ~/.norbix/config',
       env: 'NORBIX_PROFILE',
       helpGroup: 'GLOBAL',
     }),
@@ -249,102 +279,262 @@ export abstract class BaseCommand extends Command {
     this.log(lines.join('\n'))
   }
 
-  protected resolveContext(flags: GlobalFlags): ResolvedContext {
+  /** Commands that never reach a Norbix server (config, profiles) set this to false: no discovery in `init`. */
+  static discoversHost = true
+
+  /** Discovery answers of this run, by host origin. */
+  private hostInfos = new Map<string, {hubKey: string; info: HostInfo; from: string}>()
+  /** Deprecation warnings already printed in this run. */
+  private warned = new Set<string>()
+
+  /**
+   * Before `run`: find the Hub behind the host (cache, else network). A
+   * parse error is left for `run` to report.
+   */
+  async init(): Promise<void> {
+    await super.init()
+    const ctor = this.constructor as typeof BaseCommand
+    if (!ctor.discoversHost) return
+    let flags: GlobalFlags
+    try {
+      flags = (await this.parse(ctor as unknown as Parameters<typeof this.parse>[0])).flags as GlobalFlags
+    } catch {
+      return
+    }
+
+    await this.prepareHost(flags)
+  }
+
+  /** Discover the host `flags` point at, so `resolveContext` knows its Hub. */
+  protected async prepareHost(flags: GlobalFlags, opts: {refresh?: boolean} = {}): Promise<void> {
+    const target = this.pickTarget(flags)
+    // Both addresses set by the deprecated settings: nothing to discover.
+    if (target.hubOverride && target.apiOverride) return
+    this.hostInfos.set(target.origin, await resolveHost(target.origin, opts))
+    await this.prepareRegion(flags)
+  }
+
+  /**
+   * On norbix.ai a region is required. When none is set, the project's
+   * primary region is asked from the Hub once and cached, so --region is
+   * optional there. Any failure keeps the old rule (assertEndpoints).
+   */
+  private async prepareRegion(flags: GlobalFlags): Promise<void> {
+    const ctx = this.resolveContext(flags)
+    if (!ctx.usesDefaultEndpoints || ctx.region || !ctx.projectId || !(ctx.apiKey || ctx.bearerToken)) return
+    if (ctx.hostInfo?.source !== 'discovered' || flags['dry-run']) return
+    let bearerToken = ctx.bearerToken
+    try {
+      bearerToken = (await this.sessionRefresher(ctx)?.ensureFresh()) ?? bearerToken
+    } catch {
+      return // the command itself reports an ended sign-in
+    }
+
+    const region = await fetchProjectRegion(await this.hubEndpoint(ctx), ctx.projectId, {...ctx, bearerToken})
+    if (region) saveProjectRegion(ctx.hubKey, ctx.projectId, region)
+  }
+
+  /** Which profile applies: --profile, else [default]. */
+  private selectProfile(flags: GlobalFlags): {prof: Profile; profileName?: string; explicit: boolean} {
     const profiles = readProfiles()
-    const legacy = this.readStore()
-    const explicitProfile = flags.profile
-
-    let prof: Profile = {}
-    let profileName: string | undefined
-    let session: ReturnType<typeof readSession>
-
-    if (explicitProfile) {
-      prof = profiles[explicitProfile] ?? {}
-      profileName = explicitProfile
-      if (!profiles[explicitProfile]) {
+    if (flags.profile) {
+      if (!profiles[flags.profile]) {
         throw usageError(
-          `Profile "${explicitProfile}" not found in ~/.norbix/config.`,
-          `Run \`norbix configure --profile ${explicitProfile}\` to create it, or \`norbix profiles\` to list existing ones.`,
+          `Profile "${flags.profile}" not found in ~/.norbix/config.`,
+          `Run \`norbix configure --profile ${flags.profile}\` to create it, or \`norbix profiles\` to list existing ones.`,
           'norbix profiles --help',
         )
       }
-    } else {
-      prof = profiles.default ?? {}
-      profileName = profiles.default ? 'default' : undefined
-      const s = readSession()
-      // An expired access token is still usable when it can be refreshed.
-      if (isSessionUsable(s)) session = s
+
+      return {prof: profiles[flags.profile], profileName: flags.profile, explicit: true}
     }
 
+    return profiles.default ? {prof: profiles.default, profileName: 'default', explicit: false} : {prof: {}, explicit: false}
+  }
+
+  /**
+   * The host and the profile that go with it. A profile is only used for
+   * its own host: its API key is never sent to another one.
+   */
+  private pickTarget(flags: GlobalFlags): {
+    origin: string
+    hostSource: ResolvedContext['hostSource']
+    prof: Profile
+    profileName?: string
+    explicit: boolean
+    hubOverride?: string
+    apiOverride?: string
+    deprecations: string[]
+  } {
+    let {prof, profileName, explicit} = this.selectProfile(flags)
+    const flagHost = flags.host?.trim() || undefined
+
+    if (flagHost) {
+      const origin = normalizeHost(flagHost)
+      if (profileName) {
+        const profOrigin = prof.host
+          ? normalizeHost(prof.host)
+          : prof.hub_url
+            ? originOf(prof.hub_url)
+            : normalizeHost(DEFAULT_HOST)
+        if (!sameHub(origin, profOrigin)) {
+          if (explicit) {
+            throw usageError(
+              `Profile "${profileName}" is for ${new URL(profOrigin).host}, but --host / NORBIX_HOST names ${new URL(origin).host}.`,
+              `Drop one of them, or change the profile: norbix config set host ${new URL(origin).host} --profile ${profileName}.`,
+              'norbix config --help',
+            )
+          }
+
+          prof = {}
+          profileName = undefined
+        }
+      }
+
+      return {origin, hostSource: 'flag/env', prof, profileName, explicit, deprecations: []}
+    }
+
+    if (prof.host) {
+      return {origin: normalizeHost(prof.host), hostSource: `profile [${profileName}]`, prof, profileName, explicit, deprecations: []}
+    }
+
+    // Deprecated for one release: full Api / Hub URLs instead of a host.
+    const legacy = this.readStore()
+    const envApi = process.env.NORBIX_API_URL?.trim() || undefined
+    const envHub = process.env.NORBIX_HUB_URL?.trim() || undefined
+    const pick = (fromProfile?: string, fromEnv?: string, fromLegacy?: string) =>
+      explicit ? (fromProfile ?? fromEnv) : (fromEnv ?? fromProfile ?? fromLegacy)
+    const hubOverride = pick(prof.hub_url, envHub, legacy.hubUrl)
+    const apiOverride = pick(prof.api_url, envApi, legacy.apiUrl)
+
+    const deprecations: string[] = []
+    if (hubOverride && hubOverride === envHub) deprecations.push('NORBIX_HUB_URL')
+    if (apiOverride && apiOverride === envApi) deprecations.push('NORBIX_API_URL')
+    if ((hubOverride && hubOverride === prof.hub_url) || (apiOverride && apiOverride === prof.api_url)) {
+      deprecations.push(`api_url / hub_url in profile [${profileName}]`)
+    }
+
+    if ((hubOverride && hubOverride === legacy.hubUrl) || (apiOverride && apiOverride === legacy.apiUrl)) {
+      deprecations.push('apiUrl / hubUrl in the old config.json')
+    }
+
+    return {
+      origin: hubOverride ? originOf(hubOverride) : normalizeHost(DEFAULT_HOST),
+      hostSource: hubOverride ? 'deprecated url' : 'default',
+      prof,
+      profileName,
+      explicit,
+      hubOverride,
+      apiOverride,
+      deprecations,
+    }
+  }
+
+  protected resolveContext(flags: GlobalFlags): ResolvedContext {
+    const target = this.pickTarget(flags)
+    const {prof, profileName, explicit} = target
+    const legacy = this.readStore()
+    this.warnDeprecated(target.deprecations, target.origin)
+
+    // What discovery learned (in `init`), else whatever the cache holds.
+    const known = target.hubOverride && target.apiOverride ? undefined : (this.hostInfos.get(target.origin) ?? cachedHost(target.origin))
+    const info = known?.info
+    const isDefault = isDefaultHost(target.origin)
+    const hubFull = target.hubOverride ?? info?.hubUrl ?? (isDefault ? DEFAULT_HUB_URL : target.origin)
+    const apiFull = target.apiOverride ?? info?.apiUrl ?? (isDefault ? DEFAULT_API_URL : target.origin)
+    const hubKey = target.hubOverride ? hostKey(originOf(target.hubOverride)) : (known?.hubKey ?? hostKey(hubFull))
+
+    // The browser sign-in of this Hub — also for a profile without an API key.
+    const stored = readSession(hubKey)
+    const session = isSessionUsable(stored) ? stored : undefined
+
     const apiKeyOverride = flags['api-key']
-    const bearerToken = apiKeyOverride ? undefined : session?.bearerToken
-    const apiKey = apiKeyOverride ?? (bearerToken ? undefined : (prof.api_key ?? legacy.apiKey))
+    const bearerToken = apiKeyOverride || prof.api_key ? undefined : session?.bearerToken
+    const legacyKey = explicit ? undefined : legacy.apiKey
+    const apiKey = apiKeyOverride ?? prof.api_key ?? (bearerToken ? undefined : legacyKey)
 
     const authSource: ResolvedContext['authSource'] = apiKeyOverride
       ? 'flag/env api key'
-      : bearerToken
-        ? 'session'
-        : prof.api_key
-          ? `profile [${profileName ?? 'default'}]`
-          : legacy.apiKey
+      : prof.api_key
+        ? `profile [${profileName ?? 'default'}]`
+        : bearerToken
+          ? 'session'
+          : legacyKey
             ? 'legacy config'
             : 'none'
 
-    // Endpoints: an explicit --profile's own URL wins; then NORBIX_API_URL /
-    // NORBIX_HUB_URL; then (no --profile) the URL a browser sign-in was made
-    // against, the [default] profile, the legacy config; then norbix.ai.
-    const envApiUrl = process.env.NORBIX_API_URL?.trim() || undefined
-    const envHubUrl = process.env.NORBIX_HUB_URL?.trim() || undefined
-    const apiUrlRaw = explicitProfile
-      ? (prof.api_url ?? envApiUrl ?? DEFAULT_API_URL)
-      : (envApiUrl ?? session?.apiUrl ?? prof.api_url ?? legacy.apiUrl ?? DEFAULT_API_URL)
-    const hubUrlRaw = explicitProfile
-      ? (prof.hub_url ?? envHubUrl ?? DEFAULT_HUB_URL)
-      : (envHubUrl ?? session?.hubUrl ?? prof.hub_url ?? legacy.hubUrl ?? DEFAULT_HUB_URL)
+    const fromLegacy = <T>(value: T | undefined) => (explicit ? undefined : value)
 
     // A URL may be given with its version (`https://hub.example.com/v3`) or
     // without; the SDK adds the version itself, so it is split off here.
-    const {base: apiUrlBase, version: apiUrlVersion} = splitVersionedUrl(apiUrlRaw)
-    const {base: hubUrlBase, version: hubUrlVersion} = splitVersionedUrl(hubUrlRaw)
+    const {base: apiUrlBase, version: apiUrlVersion} = splitVersionedUrl(apiFull)
+    const {base: hubUrlBase, version: hubUrlVersion} = splitVersionedUrl(hubFull)
 
+    const projectId = flags.project ?? prof.project_id ?? session?.projectId ?? fromLegacy(legacy.projectId)
     const region =
-      flags.region ?? (explicitProfile ? prof.region : (session?.region ?? prof.region ?? legacy.region))
+      flags.region ??
+      prof.region ??
+      session?.region ??
+      fromLegacy(legacy.region) ??
+      (projectId && info?.source === 'discovered' ? cachedProjectRegion(hubKey, projectId) : undefined)
 
-    // Region subdomain (api.norbix.ai → nb-eu-germany.api.norbix.ai) is only
-    // composed for the default domains — a custom URL is never rewritten.
-    const withRegion = (url: string, isDefault: boolean) =>
-      isDefault && region ? url.replace('://', `://${region}.`) : url
+    // The Hub lists its regions with their own addresses; the default
+    // norbix.ai domains get a region subdomain when the Hub cannot be asked.
+    const regional = info ? regionalEndpoints(info, region) : undefined
+    const withRegion = (url: string, isDefaultUrl: boolean) =>
+      isDefaultUrl && region ? url.replace('://', `://${region}.`) : url
+    const apiUrl = target.apiOverride
+      ? withRegion(apiUrlBase, apiUrlBase === DEFAULT_API_URL)
+      : (regional?.apiUrl ?? withRegion(apiUrlBase, apiUrlBase === DEFAULT_API_URL))
+    const hubUrl = target.hubOverride
+      ? withRegion(hubUrlBase, hubUrlBase === DEFAULT_HUB_URL)
+      : (regional?.hubUrl ?? withRegion(hubUrlBase, hubUrlBase === DEFAULT_HUB_URL))
 
-    const usesDefaultEndpoints =
-      apiUrlBase === DEFAULT_API_URL || hubUrlBase === DEFAULT_HUB_URL
+    const usesDefaultEndpoints = apiUrlBase === DEFAULT_API_URL || hubUrlBase === DEFAULT_HUB_URL
 
     return {
       usesDefaultEndpoints,
-      projectId:
-        flags.project ??
-        (explicitProfile ? prof.project_id : (session?.projectId ?? prof.project_id ?? legacy.projectId)),
-      accountId:
-        flags.account ??
-        (explicitProfile ? prof.account_id : (session?.accountId ?? prof.account_id ?? legacy.accountId)),
-      env: flags.env ?? (explicitProfile ? prof.env : (session?.env ?? prof.env ?? legacy.env)),
+      projectId,
+      accountId: flags.account ?? prof.account_id ?? session?.accountId ?? fromLegacy(legacy.accountId),
+      env: flags.env ?? prof.env ?? session?.env ?? fromLegacy(legacy.env),
       region,
       apiKey,
       bearerToken,
-      apiUrl: withRegion(apiUrlBase, apiUrlBase === DEFAULT_API_URL),
-      hubUrl: withRegion(hubUrlBase, hubUrlBase === DEFAULT_HUB_URL),
-      filesIntegrationId:
-        prof.files_integration_id ?? (explicitProfile ? undefined : legacy.filesIntegrationId),
+      apiUrl: splitVersionedUrl(apiUrl).base,
+      hubUrl: splitVersionedUrl(hubUrl).base,
+      host: target.origin,
+      hostSource: target.hostSource,
+      hubKey,
+      hostInfo: info,
+      // Sign-in, refresh and revoke go to the Hub itself; with the built-in
+      // norbix.ai addresses that is the regional Hub, as before discovery.
+      authHubUrl: info?.source === 'discovered' && !target.hubOverride ? hubUrlBase : splitVersionedUrl(hubUrl).base,
+      deprecations: target.deprecations,
+      filesIntegrationId: prof.files_integration_id ?? fromLegacy(legacy.filesIntegrationId),
       authSource,
       profileName,
       userName: session?.userName,
       session: bearerToken ? session : undefined,
-      hubVersion: cleanVersion(process.env.NORBIX_HUB_VERSION) ?? cleanVersion(prof.hub_version) ?? hubUrlVersion,
-      apiVersion: apiUrlVersion,
-      customEndpoints: {
-        api: apiUrlBase === DEFAULT_API_URL ? undefined : apiUrlBase,
-        hub: hubUrlBase === DEFAULT_HUB_URL ? undefined : hubUrlBase,
-      },
+      hubVersion:
+        cleanVersion(process.env.NORBIX_HUB_VERSION) ??
+        cleanVersion(prof.hub_version) ??
+        hubUrlVersion ??
+        (target.hubOverride ? undefined : info?.hubVersion),
+      apiVersion: apiUrlVersion ?? (target.apiOverride ? undefined : info?.apiVersion),
       stored: legacy,
+    }
+  }
+
+  /** One warning per deprecated setting and run, on stderr (stdout stays one JSON document). */
+  private warnDeprecated(names: string[], origin: string): void {
+    for (const name of names) {
+      if (this.warned.has(name)) continue
+      this.warned.add(name)
+      const host = new URL(origin).host
+      process.stderr.write(
+        `Warning: ${name} is deprecated and will stop working in the next release. ` +
+          `Use the host instead: \`host = ${host}\` in the profile (norbix config set host ${host}), --host or NORBIX_HOST.\n`,
+      )
     }
   }
 
@@ -353,10 +543,10 @@ export abstract class BaseCommand extends Command {
 
   /** The Hub base + version for calls the CLI makes without the SDK (sign-in, refresh, revoke). */
   protected hubEndpoint(ctx: ResolvedContext): Promise<HubEndpoint> {
-    const key = `${ctx.hubUrl}|${ctx.hubVersion ?? ''}|${ctx.session?.hubVersion ?? ''}`
+    const key = `${ctx.authHubUrl}|${ctx.hubVersion ?? ''}|${ctx.session?.hubVersion ?? ''}`
     let hub = this.hubEndpoints.get(key)
     if (!hub) {
-      hub = resolveHubEndpoint(ctx.hubUrl, {explicit: ctx.hubVersion, stored: ctx.session?.hubVersion})
+      hub = resolveHubEndpoint(ctx.authHubUrl, {explicit: ctx.hubVersion, stored: ctx.session?.hubVersion})
       this.hubEndpoints.set(key, hub)
     }
 
@@ -366,7 +556,12 @@ export abstract class BaseCommand extends Command {
   /** One refresher per run, when the session in use can refresh its token. */
   protected sessionRefresher(ctx: ResolvedContext): SessionRefresher | undefined {
     if (ctx.authSource !== 'session' || !isSessionRefreshable(ctx.session)) return undefined
-    this.refresher ??= new SessionRefresher(ctx.session, () => this.hubEndpoint(ctx))
+    const session = ctx.session
+    this.refresher ??= new SessionRefresher(
+      session,
+      () => (session.hubUrl ? resolveHubEndpoint(session.hubUrl, {stored: session.hubVersion}) : this.hubEndpoint(ctx)),
+      {hubKey: ctx.hubKey},
+    )
     return this.refresher
   }
 
@@ -390,8 +585,8 @@ export abstract class BaseCommand extends Command {
     if (ctx.usesDefaultEndpoints && !ctx.region) {
       throw usageError(
         'Region is required when using the default norbix.ai endpoints.',
-        'Set it with `norbix configure` (region field), pass --region <code> (e.g. nb-eu-germany), ' +
-          'or set custom api_url / hub_url in the profile for self-hosted installations.',
+        'Set it with `norbix configure` (region field) or pass --region <code> (e.g. nb-eu-germany). ' +
+          'For your own installation, pass --host <your dashboard or Hub address>.',
         'norbix configure --help',
       )
     }
@@ -540,6 +735,8 @@ export abstract class BaseCommand extends Command {
     // arrives wrapped as a network error: report the CLI error itself.
     const raw = (error as {raw?: unknown}).raw
     const envelope = toEnvelope(raw instanceof CliError ? raw : error, {command: this.commandName})
+    // A Hub that cannot be reached may have moved: discover it again next time.
+    if (envelope.exit === EXIT.NETWORK) for (const origin of this.hostInfos.keys()) forgetHost(origin)
     if (this.jsonEnabled()) {
       this.logJson({error: envelope})
     } else {
@@ -554,6 +751,22 @@ export abstract class BaseCommand extends Command {
     marked.skipOclifErrorHandling = true
     throw marked
   }
+}
+
+/** The origin of a full URL (deprecated settings are not checked for https). */
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin
+  } catch {
+    throw usageError(`"${url}" is not a URL.`, 'Set the host instead: norbix config set host <host>.', 'norbix config --help')
+  }
+}
+
+/** Two hosts lead to the same Hub: equal, or known (cached) to share one. */
+function sameHub(a: string, b: string): boolean {
+  if (a === b) return true
+  const ha = cachedHost(a)?.hubKey
+  return ha !== undefined && ha === cachedHost(b)?.hubKey
 }
 
 function dryRunStopOf(error: unknown): DryRunStop | undefined {

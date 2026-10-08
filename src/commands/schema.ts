@@ -6,6 +6,8 @@ import {VALUE_RULES} from '../lib/namespace-command.js'
 import {buildSchema, formatSchemaTable, type CommandDescriptor} from '../lib/schema.js'
 
 export default class Schema extends BaseCommand {
+  static discoversHost = false
+
   static description = `Describe the CLI as data: every command with its args, flags, examples, whether it is destructive and whether it supports --dry-run.
 
 Made for coding agents and scripts: run it once with --json, then

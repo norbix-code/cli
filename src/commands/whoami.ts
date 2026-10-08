@@ -2,16 +2,16 @@ import {BaseCommand} from '../base.js'
 import {CliError} from '../lib/cli-error.js'
 import {
   PROFILES_PATH,
-  SESSION_PATH,
   isSessionRefreshable,
   readSession,
+  sessionPath,
   sessionExpiryMs,
   type Session,
 } from '../lib/profiles.js'
 import {redact} from '../lib/store.js'
 
 export default class Whoami extends BaseCommand {
-  static description = 'Show the resolved context (profile, auth source, endpoints) and verify it against the server'
+  static description = 'Show the resolved context (host, Hub, Api, profile, auth source, project) and verify it against the server'
 
   static examples = [
     '<%= config.bin %> whoami',
@@ -23,7 +23,14 @@ export default class Whoami extends BaseCommand {
     const {flags} = await this.parse(Whoami)
     const ctx = this.resolveContext(flags)
 
+    const hubVersioned = `${ctx.hubUrl}${ctx.hubVersion ? `/${ctx.hubVersion}` : ''}`
+    const apiVersioned = `${ctx.apiUrl}${ctx.apiVersion ? `/${ctx.apiVersion}` : ''}`
     const summary = {
+      host: new URL(ctx.host).host,
+      hostSource: ctx.hostSource,
+      discovery: ctx.hostInfo?.source ?? (ctx.deprecations.length ? 'deprecated urls' : 'not discovered'),
+      hub: hubVersioned,
+      api: apiVersioned,
       profile: ctx.profileName ?? '(none)',
       auth: ctx.authSource === 'session' ? `session (${ctx.userName ?? 'user'})` : ctx.authSource,
       apiKey: ctx.apiKey ? redact(ctx.apiKey) : undefined,
@@ -33,12 +40,12 @@ export default class Whoami extends BaseCommand {
       region:
         ctx.region ??
         (ctx.usesDefaultEndpoints
-          ? '(NOT SET — required with default endpoints!)'
-          : '(not set — optional with custom endpoints)'),
+          ? '(NOT SET — required on norbix.ai, or the project must tell it)'
+          : '(not set — optional on this host)'),
       apiUrl: ctx.apiUrl,
       hubUrl: ctx.hubUrl,
       profilesFile: PROFILES_PATH,
-      sessionFile: SESSION_PATH,
+      sessionFile: sessionPath(ctx.hubKey),
     }
 
     let verified = false
@@ -62,10 +69,13 @@ export default class Whoami extends BaseCommand {
     }
 
     // Read after the check: it may have refreshed (or ended) the sign-in.
-    const signIn = ctx.session ? describeSession(readSession()) : undefined
+    const signIn = ctx.session ? describeSession(readSession(ctx.hubKey)) : undefined
 
     this.print(
       [
+        `Host:     ${summary.host} (${summary.hostSource})`,
+        `Hub:      ${summary.hub}`,
+        `API:      ${summary.api}`,
         `Profile:  ${summary.profile}`,
         `Auth:     ${summary.auth}${summary.apiKey ? ` (${summary.apiKey})` : ''}`,
         ...(signIn ? signInLines(signIn) : []),
@@ -73,8 +83,6 @@ export default class Whoami extends BaseCommand {
         `Account:  ${summary.accountId ?? '(not set)'}`,
         `Env:      ${summary.env}`,
         `Region:   ${summary.region}`,
-        `API:      ${summary.apiUrl}`,
-        `Hub:      ${summary.hubUrl}`,
         verified
           ? `Server:   OK${environments?.length ? ` — environments: ${environments.join(', ')}` : ''}`
           : `Server:   not verified${verifyError ? ` (${verifyError})` : ''}`,

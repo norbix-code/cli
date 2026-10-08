@@ -1,6 +1,7 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
+import {storedHost} from '../../lib/hosts.js'
 import {PROFILES_PATH, PROFILE_KEYS, profileKey, readProfiles, writeProfile} from '../../lib/profiles.js'
 
 export default class ConfigSet extends BaseCommand {
@@ -8,12 +9,14 @@ export default class ConfigSet extends BaseCommand {
 
 Without --profile the [default] profile is written (and created when missing).
 Keys are written as in the file (project_id); the camelCase name (projectId)
-is accepted too.`
+is accepted too. \`host\` is your dashboard or Hub address (https, or http
+for localhost); setting it removes the deprecated api_url / hub_url.`
 
   static examples = [
     '<%= config.bin %> config set project_id 5f1a9f7e2b3c4d5e6f708192',
     '<%= config.bin %> config set region nb-eu-germany --profile ci',
-    '<%= config.bin %> config set hub_url http://localhost:5001 --profile local',
+    '<%= config.bin %> config set host cloud.example.com --profile example',
+    '<%= config.bin %> config set host localhost:5001 --profile local',
     '<%= config.bin %> config set env TEST --dry-run',
   ]
 
@@ -26,19 +29,28 @@ is accepted too.`
     ...BaseCommand.dryRunFlags,
   }
 
+  static discoversHost = false
+
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(ConfigSet)
     const key = profileKey(args.key)
     if (!key) this.error(`Unknown key "${args.key}". Valid keys: ${PROFILE_KEYS.join(', ')}`)
     const profile = flags.profile ?? 'default'
-    const shown = key === 'api_key' ? '***' : args.value
+    const value = key === 'host' ? storedHost(args.value) : args.value
+    const shown = key === 'api_key' ? '***' : value
 
     if (flags['dry-run']) {
       return this.dryRun({method: 'config.set', request: {file: PROFILES_PATH, profile, key, value: shown}})
     }
 
-    writeProfile(profile, {...readProfiles()[profile], [key]: args.value})
-    this.print(`[${profile}] ${key} = ${key === 'api_key' ? '(saved)' : args.value}`)
+    const next = {...readProfiles()[profile], [key]: value}
+    if (key === 'host') {
+      delete next.api_url
+      delete next.hub_url
+    }
+
+    writeProfile(profile, next)
+    this.print(`[${profile}] ${key} = ${key === 'api_key' ? '(saved)' : value}`)
     return {profile, key, saved: true}
   }
 }

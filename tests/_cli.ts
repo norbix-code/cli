@@ -5,6 +5,8 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
+import {seedDefaultHost} from '../test/seed.js'
+
 /**
  * Test seam for the agent contract: the BUILT CLI is run as a child process
  * (stdin, stdout and stderr are pipes — exactly what a coding agent or a
@@ -34,9 +36,21 @@ export async function startFakeGateway(): Promise<FakeGateway> {
     let body = ''
     req.on('data', (chunk) => (body += chunk))
     req.on('end', () => {
-      hits.push({method: req.method ?? '', url: req.url ?? '', body})
       res.setHeader('content-type', 'application/json')
       const url = req.url ?? ''
+      // Discovery (`--host 127.0.0.1:<port>`): no well-known file, so the
+      // host is the Hub; /echo names this server as Hub and Api. Not a hit.
+      if (url === '/.well-known/norbix.json') {
+        res.statusCode = 404
+        return res.end('{}')
+      }
+
+      if (url === '/v3/echo') {
+        const self = `http://127.0.0.1:${port}/v3`
+        return res.end(JSON.stringify({hubUrl: self, apiUrl: self, hubVersion: 'v3', apiVersion: 'v3', regions: []}))
+      }
+
+      hits.push({method: req.method ?? '', url, body})
       if (url.includes('missing')) {
         res.statusCode = 404
         return res.end('{"message":"User not found","code":"USER_NOT_FOUND","traceId":"t-1"}')
@@ -60,9 +74,10 @@ export async function startFakeGateway(): Promise<FakeGateway> {
       res.end('{"ok":true}')
     })
   })
+  let port = 0
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
-  const port = typeof address === 'object' && address ? address.port : 0
+  port = typeof address === 'object' && address ? address.port : 0
   return {
     port,
     hits,
@@ -84,25 +99,23 @@ export function makeHome(port: number): string {
     join(home, '.norbix', 'config'),
     [
       '[x]',
+      `host=127.0.0.1:${port}`,
       'api_key=k',
       'project_id=p',
-      `api_url=http://127.0.0.1:${port}`,
-      `hub_url=http://127.0.0.1:${port}`,
       '[y]',
+      'host=127.0.0.1:1',
       'api_key=k',
       'project_id=p',
-      'api_url=http://127.0.0.1:1',
-      'hub_url=http://127.0.0.1:1',
       '[noauth]',
+      `host=127.0.0.1:${port}`,
       'project_id=p',
-      `api_url=http://127.0.0.1:${port}`,
-      `hub_url=http://127.0.0.1:${port}`,
       '[z]',
       'api_key=k',
       'project_id=p',
       '',
     ].join('\n'),
   )
+  seedDefaultHost(home)
   return home
 }
 

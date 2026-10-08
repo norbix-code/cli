@@ -66,6 +66,13 @@ export interface DeviceDeps {
   now?: () => number
 }
 
+export interface PollLimits {
+  /** Stop waiting at this time (ms) — after at least one poll — and return undefined. */
+  until?: number
+  /** Called when the Hub asks to poll more slowly, with the new interval in seconds. */
+  onSlowDown?: (intervalSeconds: number) => void
+}
+
 /** This computer's name for the AI service user ("Norbix CLI (<name>)"). */
 export function deviceName(raw: string = safeHostname()): string | undefined {
   const name = raw.trim().replace(/\.local$/i, '').slice(0, 64).trim()
@@ -131,15 +138,35 @@ export async function pollDeviceToken(
   log: (msg: string) => void,
   deps: DeviceDeps = {},
 ): Promise<DeviceTokenSuccess> {
+  const token = await pollDeviceTokenUntil(hub, start, log, {}, deps)
+  if (!token) throw expiredError()
+  return token
+}
+
+/**
+ * `pollDeviceToken` that may stop early: at `limits.until` it returns
+ * undefined while the code is still valid (`login --wait` polls at most
+ * ~90 s per run, so a coding agent's shell never times out).
+ */
+export async function pollDeviceTokenUntil(
+  hub: HubEndpoint,
+  start: DeviceStartResponse,
+  log: (msg: string) => void,
+  limits: PollLimits,
+  deps: DeviceDeps = {},
+): Promise<DeviceTokenSuccess | undefined> {
   const fetchFn = deps.fetch ?? fetch
   const wait = deps.sleep ?? sleep
   const now = deps.now ?? Date.now
   const url = hubRoute(hub, 'auth/device/token')
   const deadline = now() + (start.expiresIn ?? 600) * 1000
   let intervalMs = (start.interval ?? 5) * 1000
+  let polled = false
 
   while (now() < deadline) {
+    if (limits.until !== undefined && polled && now() + intervalMs > limits.until) return undefined
     await wait(intervalMs)
+    polled = true
 
     let res: Response
     try {
@@ -160,6 +187,7 @@ export async function pollDeviceToken(
         continue
       case 'slow_down':
         intervalMs += 5000
+        limits.onSlowDown?.(intervalMs / 1000)
         continue
       case 'access_denied':
         throw new CliError({
@@ -215,7 +243,7 @@ function withDescription(message: string, description: string | undefined): stri
   return text ? `${message} The Hub says: ${text}` : message
 }
 
-function expiredError(): CliError {
+export function expiredError(): CliError {
   return new CliError({
     exit: EXIT.AUTH,
     code: 'EXPIRED_TOKEN',
@@ -230,7 +258,7 @@ function networkError(url: string, error: unknown): CliError {
     exit: EXIT.NETWORK,
     code: 'NETWORK_ERROR',
     message: `Could not reach the Hub: ${error instanceof Error ? error.message : String(error)}`,
-    hint: 'Check --region, hub_url in the profile, and the network.',
+    hint: 'Check the host (--host, NORBIX_HOST or `host` in the profile), --region and the network.',
     url,
   })
 }
@@ -258,14 +286,17 @@ export function openBrowser(url: string): void {
 }
 
 /**
- * True when this machine can show a browser. Linux and the BSDs need a
- * desktop session (X11 or Wayland); an SSH session or a container has none,
- * so the CLI only prints the link and waits.
+ * True when this machine can show a browser to the person at the keyboard.
+ * Over SSH it never can — on any system: `open` on a Mac reached by SSH
+ * opens the browser on that remote Mac, not in front of the person. Linux
+ * and the BSDs also need a desktop session (X11 or Wayland); a container
+ * has none. Then the CLI only prints the link and waits.
  */
 export function canOpenBrowser(
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
+  if (env.SSH_CONNECTION || env.SSH_CLIENT || env.SSH_TTY) return false
   if (platform === 'darwin' || platform === 'win32') return true
   return Boolean(env.DISPLAY || env.WAYLAND_DISPLAY)
 }

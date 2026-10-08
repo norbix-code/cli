@@ -68,6 +68,14 @@ describe('openBrowser', () => {
     expect(canOpenBrowser('win32', {})).toBe(true)
   })
 
+  it('over SSH never — on every system, even with a desktop session (open on a Mac over SSH shows the browser on the remote Mac)', () => {
+    for (const ssh of [{SSH_CONNECTION: '10.0.0.2 52144 10.0.0.9 22'}, {SSH_CLIENT: '10.0.0.2 52144 22'}, {SSH_TTY: '/dev/ttys003'}]) {
+      expect(canOpenBrowser('darwin', ssh)).toBe(false)
+      expect(canOpenBrowser('linux', {...ssh, DISPLAY: ':0'})).toBe(false)
+      expect(canOpenBrowser('win32', ssh)).toBe(false)
+    }
+  })
+
   it('uses open on macOS and xdg-open elsewhere', () => {
     expect(browserCommand('https://x.test/', 'darwin')).toEqual(['open', ['https://x.test/']])
     expect(browserCommand('https://x.test/', 'linux')).toEqual(['xdg-open', ['https://x.test/']])

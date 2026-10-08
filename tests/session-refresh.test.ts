@@ -33,8 +33,19 @@ beforeAll(async () => {
     req.on('data', (chunk) => (body += chunk))
     req.on('end', () => {
       const url = req.url ?? ''
-      hits.push({method: req.method ?? '', url, auth: req.headers.authorization, body})
       res.setHeader('content-type', 'application/json')
+      // Discovery of `host = 127.0.0.1:<port>` — not a hit.
+      if (url === '/.well-known/norbix.json') {
+        res.statusCode = 404
+        return res.end('{}')
+      }
+
+      if (url === '/v3/echo') {
+        const self = `http://127.0.0.1:${port}/v3`
+        return res.end(JSON.stringify({hubUrl: self, apiUrl: self, hubVersion: 'v3', apiVersion: 'v3'}))
+      }
+
+      hits.push({method: req.method ?? '', url, auth: req.headers.authorization, body})
       if (url === '/v3/oauth/token') {
         if (mode.token === 'invalid_grant') {
           res.statusCode = 400
@@ -61,17 +72,16 @@ afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())))
 
 let home: string
 
-/** A HOME with a [default] profile on the fake Hub and a browser sign-in. */
+/** A HOME with a [default] profile for the fake Hub's host and its browser sign-in. */
 function makeHome(secondsLeft: number): string {
   const dir = mkdtempSync(join(tmpdir(), 'norbix-refresh-'))
-  mkdirSync(join(dir, '.norbix'), {recursive: true})
+  mkdirSync(join(dir, '.norbix', 'sessions'), {recursive: true})
+  writeFileSync(join(dir, '.norbix', 'config'), ['[default]', `host=127.0.0.1:${port}`, 'project_id=p1', ''].join('\n'))
   writeFileSync(
-    join(dir, '.norbix', 'config'),
-    ['[default]', 'project_id=p1', `api_url=http://127.0.0.1:${port}`, `hub_url=http://127.0.0.1:${port}`, ''].join('\n'),
-  )
-  writeFileSync(
-    join(dir, '.norbix', 'session.json'),
+    join(dir, '.norbix', 'sessions', `127.0.0.1_${port}.json`),
     JSON.stringify({
+      hubUrl: `http://127.0.0.1:${port}`,
+      host: `127.0.0.1:${port}`,
       bearerToken: 'access-old',
       refreshToken: 'refresh-old',
       clientId: 'norbix-cli',
@@ -86,7 +96,7 @@ function makeHome(secondsLeft: number): string {
   return dir
 }
 
-const sessionFile = () => join(home, '.norbix', 'session.json')
+const sessionFile = () => join(home, '.norbix', 'sessions', `127.0.0.1_${port}.json`)
 const readStored = () => JSON.parse(readFileSync(sessionFile(), 'utf8')) as Record<string, string>
 
 function expectNoTokens(text: string): void {
@@ -158,8 +168,19 @@ describe('token refresh', () => {
   })
 })
 
-describe('NORBIX_HUB_URL / NORBIX_API_URL', () => {
-  it('point every call at that install, with the version from the URL, without editing ~/.norbix/config', async () => {
+describe('NORBIX_HOST', () => {
+  it('points every call at the Hub the host leads to, without editing ~/.norbix/config', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'norbix-env-host-'))
+    const r = await cli(dir, ['env', 'list', '--api-key', 'k', '--project', 'p1', '--json'], {NORBIX_HOST: `127.0.0.1:${port}`})
+    expect(r.code).toBe(0)
+    expect(r.stderr).toBe('')
+    expect(hits.map((h) => h.url.split('?')[0])).toEqual(['/v3/account/projects/environments'])
+    expect(hits[0].auth).toBe('Bearer k')
+  })
+})
+
+describe('NORBIX_HUB_URL / NORBIX_API_URL (deprecated, one more release)', () => {
+  it('point every call at that install, with the version from the URL, and warn on stderr', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'norbix-env-urls-'))
     const r = await cli(dir, ['env', 'list', '--api-key', 'k', '--project', 'p1', '--json'], {
       NORBIX_HUB_URL: `http://127.0.0.1:${port}/v3`,
@@ -168,6 +189,9 @@ describe('NORBIX_HUB_URL / NORBIX_API_URL', () => {
     expect(r.code).toBe(0)
     expect(hits.map((h) => h.url.split('?')[0])).toEqual(['/v3/account/projects/environments'])
     expect(hits[0].auth).toBe('Bearer k')
+    expect(r.stderr).toContain('Warning: NORBIX_HUB_URL is deprecated')
+    expect(r.stderr).toContain('Warning: NORBIX_API_URL is deprecated')
+    parseSingleJson(r.stdout) // stdout is still one JSON document
   })
 })
 
@@ -197,7 +221,11 @@ describe('whoami and logout with a browser sign-in', () => {
     home = makeHome(30 * 60)
     const r = await cli(home, ['logout', '--json'])
     expect(r.code).toBe(0)
-    expect(parseSingleJson(r.stdout)).toEqual({loggedOut: true, revoked: 'revoked'})
+    expect(parseSingleJson(r.stdout)).toEqual({
+      loggedOut: true,
+      revoked: 'revoked',
+      sessions: [{hub: `127.0.0.1_${port}`, host: `127.0.0.1:${port}`, revoked: 'revoked'}],
+    })
     expect(hits.map((h) => `${h.method} ${h.url}`)).toEqual(['POST /v3/oauth/revoke'])
     expect(hits[0].body).toBe('token=refresh-old&token_type_hint=refresh_token&client_id=norbix-cli')
     expect(existsSync(sessionFile())).toBe(false)

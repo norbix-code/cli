@@ -69,7 +69,7 @@ export const EXIT_CODES: ExitCodeInfo[] = [
     code: EXIT.NETWORK,
     name: 'NETWORK',
     meaning: 'network / timeout / endpoint unreachable',
-    hint: 'shows the URL; check --region, api_url, connectivity',
+    hint: 'shows the URL; check --host, --region, connectivity',
   },
   {
     code: EXIT.SERVER,

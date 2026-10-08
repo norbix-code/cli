@@ -420,10 +420,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   {
     "args": [],
     "destructive": false,
-    "flags": [
-      "api-url:string",
-      "hub-url:string",
-    ],
+    "flags": [],
     "id": "configure",
     "supportsDryRun": false,
   },
@@ -1672,8 +1669,8 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [],
     "destructive": false,
     "flags": [
-      "api-url:string",
-      "hub-url:string",
+      "no-browser:boolean",
+      "wait:boolean",
     ],
     "id": "login",
     "supportsDryRun": false,
