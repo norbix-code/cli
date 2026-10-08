@@ -11,6 +11,7 @@ import Logout from '../src/commands/logout.js'
 import {CliError} from '../src/lib/cli-error.js'
 import {
   HOSTS_DIR,
+  storedHost,
   cachedProjectRegion,
   discover,
   hostCachePath,
@@ -83,7 +84,9 @@ afterEach(() => {
 })
 
 describe('normalizeHost', () => {
-  it('https by default, http only for localhost, path and slash dropped', () => {
+  it('https by default, http only for localhost and *.test names, path and slash dropped', () => {
+    expect(normalizeHost('dcli.norbix.test:5001')).toBe('http://dcli.norbix.test:5001')
+    expect(normalizeHost('http://cloud.dcli.norbix.test')).toBe('http://cloud.dcli.norbix.test')
     expect(normalizeHost('cloud.finlo.space')).toBe('https://cloud.finlo.space')
     expect(normalizeHost('https://hub.finlo.space/v3/')).toBe('https://hub.finlo.space')
     expect(normalizeHost('localhost:5001')).toBe('http://localhost:5001')
@@ -91,8 +94,15 @@ describe('normalizeHost', () => {
     expect(normalizeHost('https://localhost:8443')).toBe('https://localhost:8443')
   })
 
+  it('a stored host drops the scheme only when it is the default one', () => {
+    expect(storedHost('https://cloud.finlo.space/')).toBe('cloud.finlo.space')
+    expect(storedHost('http://localhost:5001')).toBe('localhost:5001')
+    expect(storedHost('http://dcli.norbix.test:5001')).toBe('dcli.norbix.test:5001')
+    expect(storedHost('https://localhost:8443')).toBe('https://localhost:8443')
+  })
+
   it('refuses plain http for a server, other schemes and empty input (exit 2)', () => {
-    for (const bad of ['http://hub.finlo.space', 'ftp://hub.finlo.space', '  ']) {
+    for (const bad of ['http://hub.finlo.space', 'http://hub.test.example.com', 'ftp://hub.finlo.space', '  ']) {
       const error = (() => {
         try {
           normalizeHost(bad)
@@ -160,6 +170,17 @@ describe('discover', () => {
     })
     const info = await discover(normalizeHost('localhost:5001'), {fetch})
     expect([info.hubUrl, info.apiUrl]).toEqual(['http://localhost:5001/v3', 'http://localhost:5002/v3'])
+  })
+
+  it('a local Norbix stack (*.test over http): the http Hub and Api /echo names are kept', async () => {
+    const {fetch, urls} = fakeFetch({
+      'dcli.norbix.test:5001/v3/echo': {
+        body: {hubUrl: 'http://dcli.norbix.test:5001/v3', apiUrl: 'http://dcli.norbix.test:5002/v3', hubVersion: 'v3', apiVersion: 'v3'},
+      },
+    })
+    const info = await discover(normalizeHost('dcli.norbix.test:5001'), {fetch})
+    expect(urls[0]).toBe('GET http://dcli.norbix.test:5001/.well-known/norbix.json')
+    expect([info.hubUrl, info.apiUrl]).toEqual(['http://dcli.norbix.test:5001/v3', 'http://dcli.norbix.test:5002/v3'])
   })
 
   it('a host that is no Hub: exit 2 NOT_A_HUB; a host that cannot be reached: exit 7', async () => {

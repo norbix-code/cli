@@ -119,7 +119,7 @@ describe('host in a profile', () => {
     writeFileSync(PROFILES_PATH, '[local]\napi_url = http://localhost:5002\nhub_url = http://localhost:5001\nproject_id = p1\n')
     const {error} = await runCommand(['config', 'set', 'host', 'localhost:5001', '--profile', 'local'])
     expect(error).toBeUndefined()
-    expect(ini()).toBe('[local]\nproject_id = p1\nhost = http://localhost:5001\n')
+    expect(ini()).toBe('[local]\nproject_id = p1\nhost = localhost:5001\n')
 
     await runCommand(['config', 'set', 'host', 'https://cloud.example.com/', '--profile', 'example'])
     const {result} = await runCommand<{value?: string}>(['config', 'get', 'host', '--profile', 'example'])
@@ -128,7 +128,7 @@ describe('host in a profile', () => {
 
   it('config set host refuses plain http for a server and writes nothing', async () => {
     const {error} = await runCommand(['config', 'set', 'host', 'http://hub.example.com'])
-    expect(error?.message).toBe('Plain http is only allowed for localhost, not for hub.example.com.')
+    expect(error?.message).toBe('Plain http is only allowed for localhost and *.test names, not for hub.example.com.')
     expect(existsSync(PROFILES_PATH)).toBe(false)
   })
 

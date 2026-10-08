@@ -20,8 +20,10 @@ profile's `host` → (deprecated, one release) `hub_url` / `api_url` in the
 profile, `NORBIX_HUB_URL` / `NORBIX_API_URL` → `hub.norbix.ai`.
 
 A host is written bare (`cloud.example.com`) or as a URL. It is https by
-default; plain http is accepted only for `localhost`, `127.0.0.1`, `::1`
-and `*.localhost`, so `--host localhost:5001` works for local development.
+default; plain http is accepted only for this computer (`localhost`,
+`127.0.0.1`, `::1`, `*.localhost`) and for `*.test` names (reserved for
+testing, RFC 6761 — never on the internet), so `--host localhost:5001` and a
+local Norbix stack (`--host dcli.norbix.test:5001`) work over http.
 
 ```
 host                     GET https://<host>/.well-known/norbix.json

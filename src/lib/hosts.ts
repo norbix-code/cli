@@ -74,16 +74,21 @@ export function builtInDefault(now = Date.now()): HostInfo {
 
 // ---------- host names ----------
 
-/** localhost, 127.0.0.1, ::1 and *.localhost — the only hosts plain http is allowed for. */
+/**
+ * The only hosts plain http is allowed for: this computer (localhost,
+ * 127.0.0.1, ::1, *.localhost) and *.test — a name reserved for testing
+ * (RFC 6761) that never exists on the internet; local Norbix stacks use it
+ * (`http://<item>.norbix.test:5001`).
+ */
 export function isLocalHost(hostname: string): boolean {
-  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '')
-  return h === 'localhost' || h.endsWith('.localhost') || h === '127.0.0.1' || h === '::1'
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '')
+  return h === 'localhost' || h.endsWith('.localhost') || h === '127.0.0.1' || h === '::1' || h.endsWith('.test')
 }
 
 /**
  * A host as people type it — `cloud.finlo.space`, `https://hub.x/v3`,
  * `localhost:5001` — as an origin: `https://cloud.finlo.space`,
- * `http://localhost:5001`. https by default; http only for a local host.
+ * `http://localhost:5001`. https by default; http only for this computer and *.test names.
  */
 export function normalizeHost(input: string): string {
   const raw = input.trim().replace(/\/+$/, '')
@@ -103,7 +108,7 @@ export function normalizeHost(input: string): string {
 
   if (url.protocol === 'http:' && !isLocalHost(url.hostname)) {
     throw usageError(
-      `Plain http is only allowed for localhost, not for ${url.host}.`,
+      `Plain http is only allowed for localhost and *.test names, not for ${url.host}.`,
       `Use https://${url.host} (or just ${url.host}).`,
       'norbix login --help',
     )
@@ -112,10 +117,15 @@ export function normalizeHost(input: string): string {
   return url.origin
 }
 
-/** The host as it is written into a profile: `cloud.example.com`, or `http://localhost:5001`. */
+/**
+ * The host as it is written into a profile or a hint: without its scheme
+ * when the scheme is the default one (`cloud.example.com`,
+ * `localhost:5001`), else the whole origin (`https://localhost:8443`).
+ */
 export function storedHost(input: string): string {
   const origin = normalizeHost(input)
-  return origin.startsWith('https://') ? origin.slice('https://'.length) : origin
+  const bare = origin.replace(/^https?:\/\//, '')
+  return normalizeHost(bare) === origin ? bare : origin
 }
 
 /** True when `origin` is the default host, hub.norbix.ai. */
@@ -241,7 +251,7 @@ function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim().replace(/\/+$/, '') : undefined
 }
 
-/** An address the Hub returned: http(s) only, plain http only for a local host. */
+/** An address the Hub returned: http(s) only, plain http only for this computer and *.test names. */
 function safeUrl(value: unknown): string | undefined {
   const s = str(value)
   if (!s) return undefined
