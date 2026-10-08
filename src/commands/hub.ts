@@ -12,7 +12,11 @@ Grammar: norbix hub <module> <words...> [id] [--field value | --body '<json>']
 The method is resolved from the words — plural means "list", singular (or a
 positional id) means one item. Destructive verbs (delete, remove, stop,
 disable, block, regenerate, rotate) ask for confirmation; without a terminal
-they exit 3 unless --yes. Add --dry-run to see the exact request first.
+they exit 3 unless --yes. Add --dry-run to see the exact request first:
+it resolves auth, region and project but sends nothing, so the server does
+not check the values. One exception: \`database schema bundle apply
+--dry-run\` also sends the bundleJson to the Hub's read-only schema check
+(account.validateSchema) and prints its issues; an invalid bundle exits 6.
 Field values are typed from the SDK's request type; force one with
 --field:str / :num / :bool / :json, or pass the whole request with --body.
 \`norbix hub <module> --help\` lists every method with its fields.`
@@ -37,6 +41,8 @@ Field values are typed from the SDK's request type; force one with
     '<%= config.bin %> hub scheduler task delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes --json',
     `<%= config.bin %> hub scheduler task save --body '{"name":"nightly","cronExpression":"0 2 * * *"}'`,
     '<%= config.bin %> hub membership user get --userId:str 0042',
+    '<%= config.bin %> hub membership role 66b2f0a1c3d4e5f6a7b8c9d0      # no verb: get one; without an id, the list',
+    '<%= config.bin %> hub database schema bundle apply --bundleJson \"$(cat bundle.json)\" --dry-run   # the Hub validates the bundle',
   ]
 
   async run(): Promise<unknown> {
