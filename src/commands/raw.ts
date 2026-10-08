@@ -59,12 +59,8 @@ path and it becomes v3.`
       Accept: 'application/json',
       Authorization: `Bearer ${token}`,
       'norbix-project-id': ctx.projectId,
-      'X-CM-ProjectId': ctx.projectId,
     }
-    if (ctx.accountId) {
-      headers['norbix-account-id'] = ctx.accountId
-      headers['X-CM-AccountId'] = ctx.accountId
-    }
+    if (ctx.accountId) headers['norbix-account-id'] = ctx.accountId
     if (ctx.env && ctx.env !== 'PROD') headers['norbix-env'] = ctx.env
     if (ctx.region) headers['nb-region'] = ctx.region
 

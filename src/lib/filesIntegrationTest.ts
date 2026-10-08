@@ -61,14 +61,8 @@ export async function callTestFilesIntegration(
   const token = ctx.bearerToken ?? ctx.apiKey
   const headers = new Headers({Accept: 'application/json'})
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  if (ctx.projectId) {
-    headers.set('norbix-project-id', ctx.projectId)
-    headers.set('X-CM-ProjectId', ctx.projectId)
-  }
-  if (ctx.accountId) {
-    headers.set('norbix-account-id', ctx.accountId)
-    headers.set('X-CM-AccountId', ctx.accountId)
-  }
+  if (ctx.projectId) headers.set('norbix-project-id', ctx.projectId)
+  if (ctx.accountId) headers.set('norbix-account-id', ctx.accountId)
   if (ctx.env && ctx.env !== 'PROD') headers.set('norbix-env', ctx.env)
   if (ctx.region) headers.set('nb-region', ctx.region)
 

@@ -345,8 +345,9 @@ describe('norbix files publish / unpublish', () => {
     expect(seen[0].authorization).toBe(`Bearer ${API_KEY}`)
     // norbix-project-id is the header the gateway reads; with only X-CM-ProjectId
     // it answered "Property ProjectId is required" (CLI 1.21.4 and older).
+    // The legacy X-CM-* names are no longer sent.
     expect(seen[0]['norbix-project-id']).toBe(PROJECT)
-    expect(seen[0]['x-cm-projectid']).toBe(PROJECT)
+    expect(seen[0]['x-cm-projectid']).toBeUndefined()
     expect(seen[0]['nb-region']).toBe(REGION)
   })
 
@@ -520,8 +521,8 @@ describe('norbix files integrations test', () => {
     // The only field is the path token, so — like the SDK — no body is sent.
     expect(calls[0].body).toBeUndefined()
     expect(seen[0].authorization).toBe(`Bearer ${API_KEY}`)
-    expect(seen[0]['x-cm-projectid']).toBe(PROJECT)
     expect(seen[0]['norbix-project-id']).toBe(PROJECT)
+    expect(seen[0]['x-cm-projectid']).toBeUndefined()
     expect(seen[0]['nb-region']).toBe(REGION)
   })
 
