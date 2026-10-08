@@ -10,6 +10,11 @@ import {seedDefaultHost} from './seed.js'
 const sandboxHome = mkdtempSync(join(tmpdir(), 'norbix-cli-test-'))
 process.env.HOME = sandboxHome
 process.env.USERPROFILE = sandboxHome
+// oclif's per-OS config folder (the old config.json) follows these on Linux
+// and Windows; without them parallel workers on Windows share the runner's
+// real %LOCALAPPDATA% and see each other's files.
+process.env.XDG_CONFIG_HOME = join(sandboxHome, '.config')
+process.env.LOCALAPPDATA = join(sandboxHome, 'AppData', 'Local')
 
 // Nothing should reach the network. Any test that needs a response installs its
 // own fake fetch; anything else fails loudly instead of calling out.

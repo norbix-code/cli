@@ -1,4 +1,4 @@
-import {existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs'
+import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import {homedir} from 'node:os'
 import {join} from 'node:path'
 import {fileURLToPath} from 'node:url'
@@ -25,7 +25,7 @@ import {
   readSession,
   sessionPath,
 } from '../src/lib/profiles.js'
-import {seedDefaultHost} from './seed.js'
+import {ownerOnly, seedDefaultHost} from './seed.js'
 
 /**
  * Hosts: the CLI is given one host and asks it where its Hub is
@@ -187,7 +187,7 @@ describe('host cache (~/.norbix/hosts)', () => {
     const b = await resolveHost('https://hub.finlo.space', {fetch: net.fetch})
     // hub.x is the Hub itself: its cache file is already there.
     expect([a.hubKey, a.from, b.hubKey, b.from]).toEqual(['hub.finlo.space', 'network', 'hub.finlo.space', 'cache'])
-    expect(statSync(hostCachePath('hub.finlo.space')).mode & 0o777).toBe(0o600)
+    expect(ownerOnly(hostCachePath('hub.finlo.space'))).toBe(true)
 
     const before = net.urls.length
     const again = await resolveHost('https://cloud.finlo.space', {fetch: net.fetch})
@@ -400,7 +400,7 @@ describe('sessions per Hub', () => {
     writeFileSync(LEGACY_SESSION_PATH, JSON.stringify({bearerToken: 'a', refreshToken: 'r', clientId: 'norbix-cli', hubUrl: 'https://hub.finlo.space'}))
     expect(readSession('hub.finlo.space')).toMatchObject({bearerToken: 'a', hubUrl: 'https://hub.finlo.space'})
     expect(existsSync(LEGACY_SESSION_PATH)).toBe(false)
-    expect(statSync(sessionPath('hub.finlo.space')).mode & 0o777).toBe(0o600)
+    expect(ownerOnly(sessionPath('hub.finlo.space'))).toBe(true)
   })
 
   it('a migrated sign-in that stored no Hub was made on norbix.ai', () => {
