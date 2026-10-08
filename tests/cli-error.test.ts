@@ -67,6 +67,28 @@ describe('toEnvelope', () => {
     expect(env.hint).toMatch(/permission/)
   })
 
+  it('keeps the gateway code and the context of the matching error item', () => {
+    const env = toEnvelope(
+      sdkError('NorbixAuthError', {
+        message: "Caller is missing required permission 'db:read'.",
+        status: 403,
+        code: 'CM-ERRORS-MEMBERSHIP-039',
+        fieldErrors: [
+          {message: 'other', errorCode: 'CM-ERRORS-X-001', meta: {a: 'b'}},
+          {message: "Caller is missing required permission 'db:read'.", errorCode: 'CM-ERRORS-MEMBERSHIP-039', meta: {missingPermissions: 'db:read'}},
+        ],
+      }),
+    )
+    expect(env).toMatchObject({code: 'CM-ERRORS-MEMBERSHIP-039', status: 403, exit: 4, context: {missingPermissions: 'db:read'}})
+    expect(formatErrorText(env)).toContain('  code: CM-ERRORS-MEMBERSHIP-039\n  status: 403\n  context.missingPermissions: db:read')
+  })
+
+  it('has no context when no error item carries one', () => {
+    const env = toEnvelope(sdkError('NorbixError', {message: 'Not found', status: 404, code: 'CM-ERRORS-FILES-004', fieldErrors: [{message: 'Not found', errorCode: 'CM-ERRORS-FILES-004'}]}))
+    expect(env.context).toBeUndefined()
+    expect(env.code).toBe('CM-ERRORS-FILES-004')
+  })
+
   it('maps a 500 to exit 8', () => {
     expect(toEnvelope(sdkError('NorbixError', {message: 'boom', status: 500})).exit).toBe(8)
   })

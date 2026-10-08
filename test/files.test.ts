@@ -387,6 +387,69 @@ describe('norbix files publish / unpublish', () => {
 
     expect(error?.message).toContain('public through the folder')
   })
+
+  /** The gateway's 403 for a caller without the permission: code and context sit in errors[]. */
+  const forbidden = {
+    responseStatus: {
+      isSuccess: false,
+      errors: [
+        {
+          message: "Caller is missing required permission 'files:public'.",
+          errorCode: 'CM-ERRORS-MEMBERSHIP-039',
+          context: {missingPermissions: 'files:public'},
+        },
+      ],
+    },
+  }
+
+  function answer403(): void {
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      calls.push({method: init?.method ?? 'GET', url})
+      return new Response(JSON.stringify(forbidden), {status: 403, headers: {'Content-Type': 'application/json'}})
+    }) as typeof globalThis.fetch
+  }
+
+  it('reads a 403 body with the SDK: message, gateway code and context, exit 4', async () => {
+    answer403()
+
+    const {error, stderr} = await runCommand(['files', 'publish', 'invoices/invoice.pdf', ...globalArgs])
+
+    expect(error).toMatchObject({
+      name: 'NorbixAuthError',
+      message: "Caller is missing required permission 'files:public'.",
+      code: 'CM-ERRORS-MEMBERSHIP-039',
+      status: 403,
+    })
+    expect(error?.oclif?.exit).toBe(4)
+    expect(stderr).toContain("Error: Caller is missing required permission 'files:public'.")
+    expect(stderr).toContain('code: CM-ERRORS-MEMBERSHIP-039')
+    expect(stderr).toContain('status: 403')
+    expect(stderr).toContain('context.missingPermissions: files:public')
+    expect(stderr).not.toContain('responseStatus')
+  })
+
+  it('--json puts status, code, message and context of a 403 into the error envelope', async () => {
+    answer403()
+    const printed: string[] = []
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      printed.push(args.map(String).join(' '))
+    })
+
+    try {
+      await runCommand(['files', 'publish', 'invoices/invoice.pdf', '--json', ...globalArgs])
+    } finally {
+      spy.mockRestore()
+    }
+
+    expect(JSON.parse(printed.join('\n')).error).toMatchObject({
+      code: 'CM-ERRORS-MEMBERSHIP-039',
+      message: "Caller is missing required permission 'files:public'.",
+      status: 403,
+      exit: 4,
+      context: {missingPermissions: 'files:public'},
+    })
+  })
 })
 
 describe('norbix files integrations test', () => {
