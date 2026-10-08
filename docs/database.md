@@ -187,7 +187,7 @@ webhook …) when records of a schema are inserted, updated or deleted.
 |---|---|---|
 | `norbix db triggers [--schema <id>] [--page-size <n>] [--after <cursor>]` | list triggers | `GET /schemas/triggers` |
 | `norbix db trigger <id> [--schema <id>]` | show one trigger | `GET /schemas/triggers/{id}` |
-| `norbix db trigger create --file <trigger.json> [--schema <id>] [--id <triggerId>]` | create (or, with `--id`, update) a trigger | `POST /schemas/triggers` |
+| `norbix db trigger create --file <trigger.json> [--schema <id>] [--id <triggerId>] [--order <n>] [--[no-]break-on-error]` | create (or, with `--id`, update) a trigger | `POST /schemas/triggers` |
 | `norbix db trigger enable <id>` | turn it on | `PATCH /schemas/triggers/{triggerId}/enable` |
 | `norbix db trigger disable <id> [--yes]` | turn it off | `PATCH /schemas/triggers/{triggerId}/disable` |
 | `norbix db trigger delete <id> [--yes]` | delete it | `DELETE /schemas/triggers/{triggerId}` |
@@ -208,8 +208,17 @@ file. The action names an integration and a template of the e-mail, push or SMS
 module: look them up with `norbix email integrations` / `norbix email templates`
 (and the push / sms equivalents).
 
+When several triggers fire for the same record event they run as a queue.
+`--order <n>` sets this trigger's place (0 or more, lower runs first; a trigger
+without an order runs after the numbered ones, equal places run by name) and
+`--break-on-error` stops the later triggers of the event when this one's action
+fails (`--no-break-on-error` turns it off). Both win over `order` /
+`breakOnError` in the file; `db trigger <id>` shows them back. An update
+replaces the whole trigger, so keep the rest of the file as it was.
+
 ```bash
 norbix db trigger create --file notify-on-order.json --schema 66b2f0a1c3d4e5f6a7b8c9d0
+norbix db trigger create --file notify-on-order.json --id 66b2f0a1c3d4e5f6a7b8c9d1 --order 1 --break-on-error
 norbix db trigger disable 66b2f0a1c3d4e5f6a7b8c9d1 --yes
 ```
 

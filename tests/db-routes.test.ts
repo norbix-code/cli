@@ -357,6 +357,38 @@ describe('db trigger', () => {
     })
   })
 
+  // The queue of one record event: order (lower runs first) and breakOnError
+  // (stop the later triggers when this one fails) — gateway trigger-order-break.
+  it('create sends --order and --break-on-error, and they win over the file', async () => {
+    const ordered = join(dir, 'ordered-trigger.json')
+    writeFileSync(ordered, JSON.stringify({...trigger, order: 5, breakOnError: false}))
+    expect(await bodyOf(['trigger', 'create', '--file', ordered, '--order', '0', '--break-on-error'])).toEqual({
+      trigger: {type: 'Schema', ...trigger, order: 0, breakOnError: true},
+    })
+  })
+
+  it('create keeps order and breakOnError from the file when no flag is given', async () => {
+    const ordered = join(dir, 'ordered-trigger-2.json')
+    writeFileSync(ordered, JSON.stringify({...trigger, order: 2, breakOnError: true}))
+    expect(await bodyOf(['trigger', 'create', '--file', ordered])).toEqual({
+      trigger: {type: 'Schema', ...trigger, order: 2, breakOnError: true},
+    })
+  })
+
+  it('create --no-break-on-error turns the file\'s breakOnError off', async () => {
+    const ordered = join(dir, 'ordered-trigger-3.json')
+    writeFileSync(ordered, JSON.stringify({...trigger, order: 2, breakOnError: true}))
+    expect(await bodyOf(['trigger', 'create', '--file', ordered, '--no-break-on-error'])).toEqual({
+      trigger: {type: 'Schema', ...trigger, order: 2, breakOnError: false},
+    })
+  })
+
+  it('create refuses a negative --order and sends nothing', async () => {
+    const {error} = await runCommand(['db', 'trigger', 'create', '--file', TRIGGER_FILE, '--order', '-1', ...globalArgs])
+    expect(error?.message).toMatch(/order/)
+    expect(calls).toHaveLength(0)
+  })
+
   it('create reports a file that is not JSON and sends nothing', async () => {
     const bad = join(dir, 'bad.json')
     writeFileSync(bad, 'not-json')
