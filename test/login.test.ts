@@ -177,6 +177,47 @@ describe('norbix login (browser sign-in)', () => {
     expect(result).toMatchObject({status: 'signed-in', host: 'hub.example.com', hub: 'hub.example.com', userName: 'norbix-cli-mac'})
   })
 
+  it('no project chosen and the account has one: it is saved into the session and named', async () => {
+    writeFileSync(PROFILES_PATH, '[default]\nhost = hub.example.com\n')
+    const hits = stubNetwork({
+      '/v3/echo': [{body: ECHO}],
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: {...SUCCESS, projectId: undefined}}],
+      '/v3/account/projects': [{body: {list: [{viewId: 'p-only', name: 'Finlo', uniqueName: 'finlo'}]}}],
+    })
+    const result = await runLogin()
+    expect(hits.at(-1)).toMatchObject({method: 'GET', url: 'https://hub.example.com/v3/account/projects'})
+    expect(readJson(HUB_SESSION()).projectId).toBe('p-only')
+    expect(output.at(-1)).toBe('Project: Finlo (p-only) — the only project of this account, saved to the sign-in.')
+    expect(result).toMatchObject({status: 'signed-in', projectId: 'p-only'})
+  })
+
+  it('no project chosen and the account has several: they are listed with how to pick one, nothing is saved', async () => {
+    writeFileSync(PROFILES_PATH, '[default]\nhost = hub.example.com\n')
+    stubNetwork({
+      '/v3/echo': [{body: ECHO}],
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: {...SUCCESS, projectId: undefined}}],
+      '/v3/account/projects': [{body: {list: [{viewId: 'p-a', name: 'Alpha'}, {viewId: 'p-b', name: 'Beta'}]}}],
+    })
+    const result = await runLogin()
+    expect(readJson(HUB_SESSION()).projectId).toBeUndefined()
+    expect(output.at(-1)).toBe(
+      'This account has 2 projects and none is chosen yet. Pick one: norbix config set project_id <id>, or pass --project <id> / set NORBIX_PROJECT_ID.\n  p-a  Alpha\n  p-b  Beta',
+    )
+    expect(result).toMatchObject({status: 'signed-in', projects: [{id: 'p-a', name: 'Alpha'}, {id: 'p-b', name: 'Beta'}]})
+  })
+
+  it('a sign-in that has a project does not ask for the projects', async () => {
+    const hits = stubNetwork({
+      '/v3/echo': [{body: ECHO}],
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: SUCCESS}],
+    })
+    await runLogin()
+    expect(hits.some((h) => h.url.includes('/account/projects'))).toBe(false)
+  })
+
   it('--host cloud.example.com: the well-known file names the Hub, and the sign-in is stored under the Hub, not the cloud host', async () => {
     const hits = stubNetwork({
       'cloud.example.com/.well-known/norbix.json': [{body: {hubUrl: 'https://hub.example.com/v3'}}],
