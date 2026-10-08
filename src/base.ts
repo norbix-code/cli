@@ -25,6 +25,7 @@ import {
   isSessionUsable,
   readProfiles,
   readSession,
+  writeSession,
   type Profile,
   type Session,
 } from './lib/profiles.js'
@@ -38,6 +39,32 @@ type NorbixMiddleware = (ctx: {
   attempt: number
   next: () => Promise<Response>
 }) => Promise<Response>
+
+/** One project of the account, as the "no project" hint and `login` show it. */
+export interface ProjectChoice {
+  id: string
+  name?: string
+}
+
+/** What `adoptOnlyProject` did: saved the one project, or found none / several. */
+export interface ProjectAdoption {
+  state: 'saved' | 'one' | 'several' | 'none' | 'not checked'
+  projects: ProjectChoice[]
+  projectId?: string
+}
+
+/** "No project ID configured" — `catch` adds the account's projects to its hint. */
+class NoProjectError extends CliError {
+  constructor(readonly flags: GlobalFlags) {
+    super({
+      exit: EXIT.USAGE,
+      code: 'USAGE_ERROR',
+      message: 'No project ID configured.',
+      hint: 'Run `norbix login` (or `norbix configure`), pass --project <id>, set NORBIX_PROJECT_ID, or save one: norbix config set project_id <id>.',
+      docs: 'norbix account projects --help',
+    })
+  }
+}
 
 /** Stands in for a projectId the SDK constructor insists on; never sent. */
 const NO_PROJECT_PLACEHOLDER = 'no-project'
@@ -612,13 +639,7 @@ export abstract class BaseCommand extends Command {
     const ctx = this.resolveContext(flags)
     this.assertEndpoints(ctx)
     const noProject = !ctx.projectId && opts.requireProject === false
-    if (!ctx.projectId && !noProject) {
-      throw usageError(
-        'No project ID configured.',
-        'Run `norbix configure` (or `norbix login`), pass --project <id>, or set NORBIX_PROJECT_ID.',
-        'norbix configure --help',
-      )
-    }
+    if (!ctx.projectId && !noProject) throw new NoProjectError(flags)
 
     if (opts.requireAuth !== false && !ctx.apiKey && !ctx.bearerToken) {
       throw new CliError({
@@ -692,6 +713,54 @@ export abstract class BaseCommand extends Command {
     })
   }
 
+  /** The account's projects (Hub `account/projects`), or undefined when they cannot be read. */
+  protected async accountProjects(flags: GlobalFlags): Promise<ProjectChoice[] | undefined> {
+    try {
+      const client = this.client({...flags, 'dry-run': false} as GlobalFlags, {requireProject: false})
+      const res = await client.hub.account.getProjects({})
+      return (res.list ?? [])
+        .filter((p) => p.viewId)
+        .map((p) => ({id: p.viewId, name: p.name || p.uniqueName || undefined}))
+    } catch {
+      return undefined // no auth, no region, Hub down: the caller keeps its plain message
+    }
+  }
+
+  /**
+   * No project set and the account has exactly one: save it into the
+   * browser sign-in (the session), so every later command uses it. With an
+   * API key nothing is saved (state 'one') — keys belong in a profile the
+   * user edits. Several projects (or none) are returned for the caller to list.
+   */
+  protected async adoptOnlyProject(flags: GlobalFlags): Promise<ProjectAdoption> {
+    const ctx = this.resolveContext(flags)
+    if (ctx.projectId || flags['dry-run'] || (!ctx.apiKey && !ctx.bearerToken)) return {state: 'not checked', projects: []}
+    const projects = await this.accountProjects(flags)
+    if (!projects) return {state: 'not checked', projects: []}
+    if (projects.length === 0) return {state: 'none', projects}
+    if (projects.length > 1) return {state: 'several', projects}
+    const session = ctx.authSource === 'session' ? readSession(ctx.hubKey) : undefined
+    if (!session) return {state: 'one', projects}
+    writeSession(ctx.hubKey, {...session, projectId: projects[0].id})
+    return {state: 'saved', projects, projectId: projects[0].id}
+  }
+
+  /** "No project ID configured", with the account's projects in the hint (and the only one saved). */
+  private async explainNoProject(error: NoProjectError): Promise<CliError> {
+    const adoption = await this.adoptOnlyProject(error.flags)
+    if (adoption.state === 'not checked') return error
+    const choose = 'pass --project <id>, set NORBIX_PROJECT_ID, or save one: norbix config set project_id <id>'
+    const hint =
+      adoption.state === 'saved'
+        ? `Your account has one project, ${projectLabel(adoption.projects[0])}; it is now saved to your sign-in. Run the command again.`
+        : adoption.state === 'one'
+          ? `Your account has one project, ${projectLabel(adoption.projects[0])}: pass --project ${adoption.projects[0].id}, or save it: norbix config set project_id ${adoption.projects[0].id}.`
+          : adoption.state === 'none'
+          ? 'Your account has no projects yet. Create one in the dashboard, then run the command again.'
+            : `Your account has ${adoption.projects.length} projects — ${choose}:\n${projectLines(adoption.projects)}`
+    return new CliError({exit: error.exit, code: error.code, message: error.message, hint, docs: error.docs})
+  }
+
   /** Pretty-print a result unless --json is active (oclif prints the return value then). */
   protected print(data: unknown): void {
     if (!this.jsonEnabled()) {
@@ -733,7 +802,8 @@ export abstract class BaseCommand extends Command {
     // A CLI error raised inside the SDK's middleware (an ended sign-in)
     // arrives wrapped as a network error: report the CLI error itself.
     const raw = (error as {raw?: unknown}).raw
-    const envelope = toEnvelope(raw instanceof CliError ? raw : error, {command: this.commandName})
+    const reported = error instanceof NoProjectError ? await this.explainNoProject(error) : raw instanceof CliError ? raw : error
+    const envelope = toEnvelope(reported, {command: this.commandName})
     // A Hub that cannot be reached may have moved: discover it again next time.
     if (envelope.exit === EXIT.NETWORK) for (const origin of this.hostInfos.keys()) forgetHost(origin)
     if (this.jsonEnabled()) {
@@ -750,6 +820,16 @@ export abstract class BaseCommand extends Command {
     marked.skipOclifErrorHandling = true
     throw marked
   }
+}
+
+/** `Finlo (66b2…)`, or the id alone. */
+export function projectLabel(p: ProjectChoice): string {
+  return p.name ? `${p.name} (${p.id})` : p.id
+}
+
+/** One indented `id  name` line per project. */
+export function projectLines(projects: ProjectChoice[]): string {
+  return projects.map((p) => `  ${p.id}${p.name ? `  ${p.name}` : ''}`).join('\n')
 }
 
 /** The origin of a full URL (deprecated settings are not checked for https). */
