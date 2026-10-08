@@ -5,6 +5,8 @@ import {PROFILES_PATH, readProfiles} from '../../lib/profiles.js'
 import {configFilePath, redact} from '../../lib/store.js'
 
 export default class ConfigList extends BaseCommand {
+  static discoversHost = false
+
   static description = `Show a profile of ~/.norbix/config ([default] without --profile), secrets redacted
 
 \`norbix profiles\` lists every profile and the login session. When the old

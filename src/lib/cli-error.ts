@@ -159,7 +159,7 @@ function hintForExit(exit: ExitCode, env: {status?: number; url?: string}, comma
     case EXIT.VALIDATION:
       return `The server rejected the request. fieldErrors names the fields; see ${help}.`
     case EXIT.NETWORK:
-      return `Could not reach ${env.url ?? 'the endpoint'}. Check --region, api_url / hub_url in the profile, and connectivity.`
+      return `Could not reach ${env.url ?? 'the endpoint'}. Check the host (--host / NORBIX_HOST / host in the profile), --region, and connectivity.`
     case EXIT.SERVER:
       return 'Retry with backoff. If it keeps failing, report it with the traceId.'
     case EXIT.USAGE:

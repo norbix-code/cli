@@ -36,7 +36,9 @@ export const REFRESH_SKEW_MS = 60_000
 export interface RefreshDeps {
   fetch?: typeof fetch
   now?: () => number
-  /** Read / write the stored session — the files in ~/.norbix by default. */
+  /** The Hub whose session file is read and written (~/.norbix/sessions/<hubKey>.json). */
+  hubKey?: string
+  /** Read / write the stored session — the Hub's file in ~/.norbix/sessions by default. */
   read?: () => Session | undefined
   write?: (session: Session) => void
   clear?: () => void
@@ -83,9 +85,11 @@ export class SessionRefresher {
   ) {
     this.fetchFn = deps.fetch ?? fetch
     this.now = deps.now ?? Date.now
-    this.read = deps.read ?? readSession
-    this.write = deps.write ?? writeSession
-    this.clear = deps.clear ?? clearSession
+    const key = deps.hubKey
+    const none = () => undefined
+    this.read = deps.read ?? (key ? () => readSession(key) : none)
+    this.write = deps.write ?? (key ? (s: Session) => writeSession(key, s) : () => {})
+    this.clear = deps.clear ?? (key ? () => clearSession(key) : () => {})
   }
 
   /** The current access token (after any refresh this run made). */

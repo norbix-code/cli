@@ -10,6 +10,8 @@ import {usageError} from '../../lib/cli-error.js'
 const TARGETS: Target[] = ['claude', 'agents', 'cursor']
 
 export default class AiInit extends BaseCommand {
+  static discoversHost = false
+
   static description = `Set up this project so a coding agent uses the norbix CLI correctly.
 
 Writes, into the current folder:
@@ -78,8 +80,8 @@ written.`
         ...files.map((f) => `${f.action === 'append' ? 'updated' : f.action === 'replace' ? 'replaced' : 'wrote'}  ${f.path}`),
         '',
         'Done. The agent now knows to use `norbix` with --json, --dry-run first, and --yes only for destructive changes.',
-        'Sign in once with `norbix login` (browser: you pick the roles the agent gets in the dashboard).',
-        'CI and scripts: `norbix login --api-key ... --profile <name>` or NORBIX_* variables.',
+        'Signing in: the agent runs `norbix login --no-browser --json` itself and shows you a link — open it, check the code, pick the roles it gets, press Allow; it finishes with `norbix login --wait`. Or sign in yourself with `norbix login`.',
+        'CI and scripts: NORBIX_HOST + NORBIX_API_KEY + NORBIX_PROJECT_ID, or `norbix login --api-key ... [--host <host>] --profile <name>`.',
       ].join('\n'),
     )
     return {dir: root, targets, files}

@@ -1,4 +1,4 @@
-import {chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync} from 'node:fs'
+import {chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync} from 'node:fs'
 import {homedir} from 'node:os'
 import {join} from 'node:path'
 
@@ -7,41 +7,49 @@ import {join} from 'node:path'
  *
  *   ~/.norbix/config          (mode 600, secrets + settings together)
  *   ---------------------------------------------------------------
- *   [default]
- *   api_key = nbk_live_...
+ *   [default]                 # no host = hub.norbix.ai
  *   project_id = 5f1a...
  *
- *   [fitskin-prod]
- *   api_key = nbk_live_...
+ *   [finlo]
+ *   host = cloud.finlo.space    # the Hub tells the CLI every other address
  *   project_id = 64ff...
- *   account_id = ...
- *   env = TEST
- *   api_url = https://api.norbix.ai
- *   hub_url = https://hub.norbix.ai
+ *
+ *   [finlo-ci]
+ *   host = hub.finlo.space
+ *   api_key = nbsu_...
+ *   project_id = 64ff...
  *
  * This is the only config file the CLI writes. The old
  * ~/.config/norbix/config.json (camelCase keys) is still read as a last
- * fallback, never written.
+ * fallback, never written. `api_url` / `hub_url` are still read for one
+ * release (deprecated: `host` replaces them).
  *
- * Browser sign-in sessions live in ~/.norbix/session.json —
- * separate on purpose: sessions rotate and are machine-managed, the
- * config file is edited by people.
+ * Browser sign-in sessions live in ~/.norbix/sessions/<hub-host>.json, one
+ * per Hub — separate on purpose: sessions rotate and are machine-managed,
+ * the config file is edited by people. `cloud.x` and `hub.x` lead to the
+ * same Hub, so they share one sign-in.
  */
 
 export const NORBIX_DIR = join(homedir(), '.norbix')
 export const PROFILES_PATH = join(NORBIX_DIR, 'config')
-export const SESSION_PATH = join(NORBIX_DIR, 'session.json')
+export const SESSIONS_DIR = join(NORBIX_DIR, 'sessions')
+/** The one session file of CLI 1.18 and older; moved into SESSIONS_DIR on first read. */
+export const LEGACY_SESSION_PATH = join(NORBIX_DIR, 'session.json')
 
 export const DEFAULT_API_URL = 'https://api.norbix.ai'
 export const DEFAULT_HUB_URL = 'https://hub.norbix.ai'
 
 export interface Profile {
+  /** The Norbix host this profile talks to (`cloud.finlo.space`); none = hub.norbix.ai. */
+  host?: string
   api_key?: string
   project_id?: string
   account_id?: string
   env?: string
   region?: string
+  /** Deprecated — `host` replaces it. Still read for one release. */
   api_url?: string
+  /** Deprecated — `host` replaces it. Still read for one release. */
   hub_url?: string
   /** Hub version path (`v3`). Normally discovered from the Hub's /echo; set it only to override. */
   hub_version?: string
@@ -49,6 +57,7 @@ export interface Profile {
 }
 
 export const PROFILE_KEYS: Array<keyof Profile> = [
+  'host',
   'api_key',
   'project_id',
   'account_id',
@@ -154,7 +163,7 @@ export function deleteProfile(name: string): boolean {
   return true
 }
 
-// ---------- session (from `norbix login`) ----------
+// ---------- sessions (from `norbix login`), one per Hub ----------
 
 export interface Session {
   bearerToken: string
@@ -163,16 +172,18 @@ export interface Session {
   expiresAt?: string
   /** The OAuth client the refresh token belongs to (`norbix-cli`); a refresh needs it. */
   clientId?: string
-  /** `browser` (device sign-in, an AI service user) or `password` (the person). */
+  /** `browser` (device sign-in, an AI service user) or `password` (the person, CLI 1.16 and older). */
   method?: 'browser' | 'password'
   /** The Hub version path the session was made with (`v3`), reused for refresh and revoke. */
   hubVersion?: string
   /**
-   * The Hub / API the browser sign-in was made against, when not norbix.ai —
-   * so later commands, the refresh and the revoke reach the Hub that issued the token.
+   * The Hub that issued the token (base URL, no version) — refresh and
+   * revoke go there, even with no network discovery.
    */
   hubUrl?: string
   apiUrl?: string
+  /** The host the sign-in was started with (`cloud.finlo.space`). */
+  host?: string
   projectId?: string
   accountId?: string
   env?: string
@@ -183,13 +194,90 @@ export interface Session {
   savedAt?: string
 }
 
-export function readSession(): Session | undefined {
+export function sessionPath(hubKey: string): string {
+  return join(SESSIONS_DIR, `${hubKey}.json`)
+}
+
+export function pendingPath(hubKey: string): string {
+  return join(SESSIONS_DIR, `${hubKey}.pending.json`)
+}
+
+/** The file-name key of a URL's host: `hub.finlo.space`, `localhost_5001`. */
+export function hostKey(url: string): string {
+  const {hostname, port} = new URL(url)
+  const name = hostname.toLowerCase().replace(/^\[|\]$/g, '').replaceAll(':', '_')
+  return port ? `${name}_${port}` : name
+}
+
+/**
+ * Move ~/.norbix/session.json (CLI 1.18 and older) to
+ * ~/.norbix/sessions/<hub-host>.json. Its Hub is the one it stored, or
+ * hub.norbix.ai. A session already in the new place is never overwritten.
+ */
+export function migrateLegacySession(): string | undefined {
+  if (!existsSync(LEGACY_SESSION_PATH)) return undefined
+  let legacy: Session | undefined
   try {
-    const s = JSON.parse(readFileSync(SESSION_PATH, 'utf8')) as Session
+    legacy = JSON.parse(readFileSync(LEGACY_SESSION_PATH, 'utf8')) as Session
+  } catch {
+    legacy = undefined
+  }
+
+  if (!legacy?.bearerToken) {
+    unlinkSync(LEGACY_SESSION_PATH)
+    return undefined
+  }
+
+  const hubUrl = legacy.hubUrl ?? 'https://hub.norbix.ai'
+  let key: string
+  try {
+    key = hostKey(hubUrl)
+  } catch {
+    return undefined
+  }
+
+  if (!existsSync(sessionPath(key))) writeSession(key, {...legacy, hubUrl})
+  unlinkSync(LEGACY_SESSION_PATH)
+  return key
+}
+
+export function readSession(hubKey: string): Session | undefined {
+  migrateLegacySession()
+  try {
+    const s = JSON.parse(readFileSync(sessionPath(hubKey), 'utf8')) as Session
     return s.bearerToken ? s : undefined
   } catch {
     return undefined
   }
+}
+
+/** Every stored sign-in, by Hub key. */
+export function listSessions(): Array<{hubKey: string; session: Session}> {
+  migrateLegacySession()
+  let names: string[]
+  try {
+    names = readdirSync(SESSIONS_DIR)
+  } catch {
+    return []
+  }
+
+  return names
+    .filter((n) => n.endsWith('.json') && !n.endsWith('.pending.json'))
+    .map((n) => n.slice(0, -'.json'.length))
+    .sort()
+    .flatMap((hubKey) => {
+      const session = readSession(hubKey)
+      return session ? [{hubKey, session}] : []
+    })
+}
+
+/** Write a file in one step (temporary file, then rename), mode 600. */
+function writeSecretJson(path: string, data: object): void {
+  mkdirSync(SESSIONS_DIR, {recursive: true, mode: 0o700})
+  const clean = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined))
+  const tmp = `${path}.${process.pid}.tmp`
+  writeFileSync(tmp, JSON.stringify(clean, null, 2) + '\n', {mode: 0o600})
+  renameSync(tmp, path)
 }
 
 /**
@@ -197,16 +285,62 @@ export function readSession(): Session | undefined {
  * A refresh rotates the refresh token, so a half-written file would lose the
  * only token that can get a new one.
  */
-export function writeSession(session: Session): void {
-  mkdirSync(NORBIX_DIR, {recursive: true})
-  const clean = Object.fromEntries(Object.entries(session).filter(([, v]) => v !== undefined))
-  const tmp = `${SESSION_PATH}.${process.pid}.tmp`
-  writeFileSync(tmp, JSON.stringify(clean, null, 2) + '\n', {mode: 0o600})
-  renameSync(tmp, SESSION_PATH)
+export function writeSession(hubKey: string, session: Session): void {
+  writeSecretJson(sessionPath(hubKey), session)
 }
 
-export function clearSession(): void {
-  if (existsSync(SESSION_PATH)) unlinkSync(SESSION_PATH)
+export function clearSession(hubKey: string): void {
+  if (existsSync(sessionPath(hubKey))) unlinkSync(sessionPath(hubKey))
+}
+
+/** A device sign-in started by `login --no-browser --json`, waiting for `login --wait`. */
+export interface PendingSignIn {
+  deviceCode: string
+  userCode: string
+  verificationUri: string
+  verificationUriComplete?: string
+  /** ISO time the code runs out. */
+  expiresAt: string
+  /** Seconds between polls (grows on `slow_down`). */
+  interval: number
+  host: string
+  hubUrl: string
+  hubVersion: string
+  apiUrl?: string
+  projectId?: string
+  accountId?: string
+  env?: string
+  region?: string
+  startedAt: string
+}
+
+export function readPending(hubKey: string): PendingSignIn | undefined {
+  try {
+    const p = JSON.parse(readFileSync(pendingPath(hubKey), 'utf8')) as PendingSignIn
+    return p.deviceCode ? p : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function writePending(hubKey: string, pending: PendingSignIn): void {
+  writeSecretJson(pendingPath(hubKey), pending)
+}
+
+/** The Hub keys with a sign-in waiting for `login --wait`. */
+export function listPendingKeys(): string[] {
+  try {
+    return readdirSync(SESSIONS_DIR)
+      .filter((n) => n.endsWith('.pending.json'))
+      .map((n) => n.slice(0, -'.pending.json'.length))
+      .sort()
+  } catch {
+    return []
+  }
+}
+
+export function clearPending(hubKey: string): void {
+  if (existsSync(pendingPath(hubKey))) unlinkSync(pendingPath(hubKey))
 }
 
 /** Decode a JWT `exp` claim (ms). Returns undefined when not decodable. */

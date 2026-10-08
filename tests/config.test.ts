@@ -113,3 +113,45 @@ describe('config list shows the old file when it still exists', () => {
     }
   })
 })
+
+describe('host in a profile', () => {
+  it('config set host normalizes the value and replaces the deprecated api_url / hub_url', async () => {
+    writeFileSync(PROFILES_PATH, '[local]\napi_url = http://localhost:5002\nhub_url = http://localhost:5001\nproject_id = p1\n')
+    const {error} = await runCommand(['config', 'set', 'host', 'localhost:5001', '--profile', 'local'])
+    expect(error).toBeUndefined()
+    expect(ini()).toBe('[local]\nproject_id = p1\nhost = http://localhost:5001\n')
+
+    await runCommand(['config', 'set', 'host', 'https://cloud.example.com/', '--profile', 'example'])
+    const {result} = await runCommand<{value?: string}>(['config', 'get', 'host', '--profile', 'example'])
+    expect(result?.value).toBe('cloud.example.com')
+  })
+
+  it('config set host refuses plain http for a server and writes nothing', async () => {
+    const {error} = await runCommand(['config', 'set', 'host', 'http://hub.example.com'])
+    expect(error?.message).toBe('Plain http is only allowed for localhost, not for hub.example.com.')
+    expect(existsSync(PROFILES_PATH)).toBe(false)
+  })
+
+  it('whoami names the host, the Hub and the Api the Hub reported', async () => {
+    writeFileSync(PROFILES_PATH, '[default]\nhost = hub.example.com\nproject_id = p1\n')
+    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url === 'https://hub.example.com/v3/echo') {
+        return new Response(JSON.stringify({hubUrl: 'https://hub.example.com/v3', apiUrl: 'https://api.example.com/v3', hubVersion: 'v3', apiVersion: 'v3'}))
+      }
+
+      return new Response('{}', {status: 404})
+    })
+    const {result} = await runCommand<Record<string, unknown>>(['whoami', '--json'])
+    expect(result).toMatchObject({
+      host: 'hub.example.com',
+      hostSource: 'profile [default]',
+      discovery: 'discovered',
+      hub: 'https://hub.example.com/v3',
+      api: 'https://api.example.com/v3',
+      profile: 'default',
+      auth: 'none',
+      projectId: 'p1',
+    })
+  })
+})

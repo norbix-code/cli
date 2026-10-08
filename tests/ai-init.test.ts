@@ -4,6 +4,7 @@ import {join} from 'node:path'
 
 import {beforeEach, describe, expect, it} from 'vitest'
 
+import {claudeSkill, recipeBlock} from '../src/lib/agent-files.js'
 import {cli, makeHome, parseSingleJson} from './_cli.js'
 
 const home = makeHome(1)
@@ -88,10 +89,10 @@ describe('norbix ai init', () => {
     expect(readFileSync(join(project, '.cursor/rules/norbix.mdc'), 'utf8')).toMatch(/^---\ndescription: /)
   })
 
-  it('the block and the skill carry the rules: browser login by the user, --json, --dry-run first, no secrets', async () => {
+  it('the block and the skill carry the rules: two-step browser sign-in approved by the user, --json, --dry-run first, no secrets', async () => {
     const r = await cli(home, ['ai', 'init', '--target', 'all', '--dir', project])
     expect(r.code).toBe(0)
-    expect(r.stdout).toContain('Sign in once with `norbix login` (browser: you pick the roles the agent gets in the dashboard).')
+    expect(r.stdout).toContain('Signing in: the agent runs `norbix login --no-browser --json` itself and shows you a link')
 
     const block = readFileSync(join(project, 'AGENTS.md'), 'utf8')
     const bullets = block.split('\n').filter((l) => l.startsWith('- '))
@@ -104,8 +105,8 @@ describe('norbix ai init', () => {
       '- Branch on the exit code: 0 ok · 2 usag',
       '- Full contract: `docs/agent-contract.md',
     ])
-    expect(bullets[0]).toContain('ask the user to run `norbix login` in their own terminal')
-    expect(bullets[0]).toContain('they pick the roles you get')
+    expect(bullets[0]).toContain('run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode`')
+    expect(bullets[0]).toContain('pick the roles you get')
     expect(bullets[0]).toContain('Account → AI service users')
     expect(bullets[3]).toContain('show the user the request')
     expect(block).not.toMatch(/norbix login --api-key|nbk_/)
@@ -113,7 +114,8 @@ describe('norbix ai init', () => {
 
     const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
     expect(skill).toContain('## Secrets\n\nNever print, echo, paste or ask for API keys, passwords or tokens')
-    expect(skill).toContain('Exit 4: ask the user to run `norbix login` in their own terminal')
+    expect(skill).toContain('Exit 4: sign in in two steps (your shell commands time out; the code lives 10 minutes):')
+    expect(skill).toContain('Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.')
     expect(skill).toContain('`norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user.')
     expect(skill).not.toMatch(/--api-key|nbk_/)
     expect(skill.split('\n').length).toBeLessThanOrEqual(40)
@@ -124,6 +126,26 @@ describe('norbix ai init', () => {
   it('rejects an unknown target with exit 2', async () => {
     const r = await cli(home, ['ai', 'init', '--target', 'emacs', '--dir', project, '--json'])
     expect(r.code).toBe(2)
+  })
+})
+
+describe('the agent rules: sign in in two steps, CI with a key', () => {
+  it('the block tells the agent to start the sign-in, show the link, and wait — never to hand login to the user only', () => {
+    const block = recipeBlock()
+    expect(block).toContain('`norbix login --no-browser --json`')
+    expect(block).toContain('`norbix login --wait --json`')
+    expect(block).toContain('`AUTHORIZATION_PENDING`')
+    expect(block).toContain('`--host <their dashboard address>`')
+    expect(block).toContain('`NORBIX_HOST` + `NORBIX_API_KEY` + `NORBIX_PROJECT_ID`')
+    expect(block).not.toContain('Do not run it yourself')
+  })
+
+  it('the Claude skill has the same two steps and the exit codes that drive them', () => {
+    const skill = claudeSkill()
+    expect(skill).toContain('`norbix login --no-browser --json` → `{userCode, verificationUriComplete, expiresIn}`')
+    expect(skill).toContain('Exit 4 `AUTHORIZATION_PENDING`: not approved yet, run it again.')
+    expect(skill).toContain('`ACCESS_DENIED` or `EXPIRED_TOKEN`: start over with step one.')
+    expect(skill).toContain('Context flags on every command: `--host`, `--profile`')
   })
 })
 

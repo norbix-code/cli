@@ -1,12 +1,12 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
-import {PROFILES_PATH, SESSION_PATH, isSessionUsable, readProfiles, readSession, writeProfile, writeSession} from '../../lib/profiles.js'
+import {PROFILES_PATH, isSessionUsable, readProfiles, readSession, sessionPath, writeProfile, writeSession} from '../../lib/profiles.js'
 
 export default class EnvUse extends BaseCommand {
   static description = `Set the default environment for future commands.
 
-Written to the active session when you are logged in; with --profile it is
+Written to the browser session of the host when you are signed in there; with --profile it is
 written into that profile in ~/.norbix/config; otherwise to the [default]
 profile (created when missing). Override per command with --env.`
 
@@ -39,10 +39,11 @@ profile (created when missing). Override per command with --env.`
       return {env: args.name, profile: flags.profile}
     }
 
-    const session = readSession()
+    const {hubKey} = this.resolveContext(flags)
+    const session = readSession(hubKey)
     if (isSessionUsable(session)) {
-      if (flags['dry-run']) return dry('session', SESSION_PATH)
-      writeSession({...session, env: args.name})
+      if (flags['dry-run']) return dry('session', sessionPath(hubKey))
+      writeSession(hubKey, {...session, env: args.name})
       this.print(`Session now targets environment ${args.name}.`)
       return {env: args.name, target: 'session'}
     }
