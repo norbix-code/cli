@@ -218,10 +218,36 @@ function networkError(origin: string, url: string, error: unknown): CliError {
   })
 }
 
+/** A dashboard's Hub is usually hub.<domain>. */
+function likelyHub(host: string): string | undefined {
+  return /^(cloud|app|dashboard)\./.test(host) ? host.replace(/^[^.]+\./, 'hub.') : undefined
+}
+
+/**
+ * /.well-known/norbix.json answered 2xx with a web page and /echo is no Hub
+ * either: the dashboard's own catch-all route served the file, so discovery
+ * never reaches the Hub. "Older than discovery" would be the wrong guess.
+ */
+function wellKnownIsWebPage(origin: string, url: string, contentType: string): CliError {
+  const host = new URL(origin).host
+  const hub = likelyHub(host)
+  return new CliError({
+    exit: EXIT.USAGE,
+    code: 'NOT_A_HUB',
+    message: `${host} is not a Norbix Hub (/.well-known/norbix.json answered a web page, ${contentType || 'HTML'}).`,
+    hint:
+      `${host} answered its web page for /.well-known/norbix.json, so discovery is not routed to the Hub ` +
+      `(ingress rule missing or installation predates discovery). ` +
+      (hub ? `Use --host ${hub}.` : 'Pass the Hub address with --host, e.g. --host hub.example.com.'),
+    docs: 'norbix login --help',
+    url,
+  })
+}
+
 function notAHub(origin: string, url: string, detail: string): CliError {
   const host = new URL(origin).host
   // A dashboard of an installation older than /.well-known/norbix.json: its Hub is usually hub.<domain>.
-  const hub = /^(cloud|app|dashboard)\./.test(host) ? host.replace(/^[^.]+\./, 'hub.') : undefined
+  const hub = likelyHub(host)
   return new CliError({
     exit: EXIT.USAGE,
     code: 'NOT_A_HUB',
@@ -234,17 +260,24 @@ function notAHub(origin: string, url: string, detail: string): CliError {
   })
 }
 
-async function getJson(fetchFn: typeof fetch, url: string): Promise<{status: number; body?: Record<string, unknown>}> {
+async function getJson(
+  fetchFn: typeof fetch,
+  url: string,
+): Promise<{status: number; body?: Record<string, unknown>; contentType: string; html: boolean}> {
   const res = await fetchFn(url, {headers: {Accept: 'application/json'}, signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS)})
+  const contentType = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase()
+  const text = await res.text()
+  // A web page: by its type, or by its first tag when the type is missing or wrong.
+  const html = contentType === 'text/html' || /^\s*<(!doctype|html|head|body)\b/i.test(text)
   let body: Record<string, unknown> | undefined
   try {
-    const parsed = JSON.parse(await res.text()) as unknown
+    const parsed = JSON.parse(text) as unknown
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) body = parsed as Record<string, unknown>
   } catch {
     body = undefined // an HTML page (a dashboard's own 404) is not an answer
   }
 
-  return {status: res.status, body}
+  return {status: res.status, body, contentType, html}
 }
 
 function str(value: unknown): string | undefined {
@@ -276,12 +309,20 @@ export async function discover(origin: string, deps: DiscoveryDeps = {}): Promis
 
   const wellKnown = `${origin}/.well-known/norbix.json`
   let hubUrl: string | undefined
+  let wellKnownRes: Awaited<ReturnType<typeof getJson>>
   try {
-    const res = await getJson(fetchFn, wellKnown)
-    if (res.status >= 200 && res.status < 300) hubUrl = safeUrl(res.body?.hubUrl)
+    wellKnownRes = await getJson(fetchFn, wellKnown)
+    if (wellKnownRes.status >= 200 && wellKnownRes.status < 300) hubUrl = safeUrl(wellKnownRes.body?.hubUrl)
   } catch (error) {
     throw networkError(origin, wellKnown, error)
   }
+
+  // 2xx with a web page: a dashboard's catch-all answered. /echo is still
+  // asked — one origin may serve the dashboard at / and the Hub at /v3 — but
+  // when it fails too, the error says what really happened.
+  const webPage = !hubUrl && wellKnownRes.status >= 200 && wellKnownRes.status < 300 && wellKnownRes.html
+  const notAHubHere = (url: string, detail: string) =>
+    webPage ? wellKnownIsWebPage(origin, wellKnown, wellKnownRes.contentType) : notAHub(origin, url, detail)
 
   // No (usable) well-known file: the host itself is the Hub.
   const {base, version} = splitVersionedUrl(hubUrl ?? origin)
@@ -293,9 +334,9 @@ export async function discover(origin: string, deps: DiscoveryDeps = {}): Promis
     throw networkError(origin, echoUrl, error)
   }
 
-  if (echo.status < 200 || echo.status >= 300) throw notAHub(origin, echoUrl, `/echo answered HTTP ${echo.status}`)
+  if (echo.status < 200 || echo.status >= 300) throw notAHubHere(echoUrl, `/echo answered HTTP ${echo.status}`)
   const body = echo.body
-  if (!body || (!('hubUrl' in body) && !('hubVersion' in body))) throw notAHub(origin, echoUrl, '/echo did not answer like a Hub')
+  if (!body || (!('hubUrl' in body) && !('hubVersion' in body))) throw notAHubHere(echoUrl, '/echo did not answer like a Hub')
 
   const hubVersion = cleanVersion(str(body.hubVersion)) ?? version
   const echoHub = safeUrl(body.hubUrl)
