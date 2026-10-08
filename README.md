@@ -151,7 +151,10 @@ written; `norbix config list` shows what is left in it.
 lead to the same Hub, so they share one sign-in. Every terminal window, and
 every profile of that host without an `api_key`, uses it. `norbix logout`
 removes all of them; `norbix logout --host h` or `--profile p` only that
-host's. Profiles are never touched by login or logout.
+host's. Profiles are never touched by logout. After `norbix login --host h`
+with no `[default]` profile yet, the CLI saves `host = h` there so plain
+commands use the sign-in; an existing `[default]` for another host is left
+alone and the CLI prints how to switch.
 
 **Which credential wins:** `--api-key` / `NORBIX_API_KEY` → the profile's
 `api_key` → the browser sign-in of the profile's host. A profile is used
