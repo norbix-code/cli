@@ -1,4 +1,4 @@
-import {existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs'
+import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import {homedir} from 'node:os'
 import {join} from 'node:path'
 import {fileURLToPath} from 'node:url'
@@ -11,7 +11,7 @@ import Login from '../src/commands/login.js'
 import {CliError} from '../src/lib/cli-error.js'
 import {HOSTS_DIR} from '../src/lib/hosts.js'
 import {NORBIX_DIR, PROFILES_PATH, SESSIONS_DIR, pendingPath, sessionPath} from '../src/lib/profiles.js'
-import {seedDefaultHost} from './seed.js'
+import {ownerOnly, seedDefaultHost} from './seed.js'
 
 /**
  * `norbix login` against a mocked host + Hub that follows the gateway
@@ -170,7 +170,7 @@ describe('norbix login (browser sign-in)', () => {
       expiresAt: undefined,
       savedAt: undefined,
     })
-    expect(statSync(HUB_SESSION()).mode & 0o777).toBe(0o600)
+    expect(ownerOnly(HUB_SESSION())).toBe(true)
     const ttl = Date.parse(String(session.expiresAt)) - before
     expect(ttl).toBeGreaterThanOrEqual(3_600_000)
     expect(ttl).toBeLessThan(3_600_000 + 60_000)
@@ -344,7 +344,7 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
     expect(opened).toEqual([])
     const pending = readJson(pendingPath('hub.test'))
     expect(pending).toMatchObject({deviceCode: 'dc-1', userCode: 'BCDF-GHJK', hubUrl: 'https://hub.test', hubVersion: 'v3', host: 'hub.test'})
-    expect(statSync(pendingPath('hub.test')).mode & 0o777).toBe(0o600)
+    expect(ownerOnly(pendingPath('hub.test'))).toBe(true)
     expect(existsSync(HUB_SESSION())).toBe(false)
   })
 
