@@ -10,7 +10,7 @@ export default class ConfigSet extends BaseCommand {
 Without --profile the [default] profile is written (and created when missing).
 Keys are written as in the file (project_id); the camelCase name (projectId)
 is accepted too. \`host\` is your dashboard or Hub address (https, or http
-for localhost); setting it removes the deprecated api_url / hub_url.`
+for localhost and *.test names); setting it removes the deprecated api_url / hub_url.`
 
   static examples = [
     '<%= config.bin %> config set project_id 5f1a9f7e2b3c4d5e6f708192',

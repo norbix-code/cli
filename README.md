@@ -102,7 +102,8 @@ the host where its Hub is (`/.well-known/norbix.json`) and the Hub for
 everything else (`/echo`: the Api address, versions, regions, sign-in
 URLs), and caches the answer for 24 hours in `~/.norbix/hosts`. Give it with
 `--host`, `NORBIX_HOST`, or `host` in a profile. https is the default; plain
-http only for localhost — local development is `--host localhost:5001`.
+http only for localhost and `*.test` names — local development is
+`--host localhost:5001`, a local Norbix stack `--host <item>.norbix.test:5001`.
 
 **Profiles (AWS-style)** — one INI file at `~/.norbix/config`:
 
