@@ -51,8 +51,18 @@ export function publicFilesRequest(
   const base = ctx.hubUrl.endsWith('/') ? ctx.hubUrl.slice(0, -1) : ctx.hubUrl
   const headers: Record<string, string> = {Accept: 'application/json', 'Content-Type': 'application/json'}
   if (ctx.bearerToken ?? ctx.apiKey) headers.Authorization = 'Bearer ***'
-  if (ctx.projectId) headers['X-CM-ProjectId'] = ctx.projectId
-  if (ctx.accountId) headers['X-CM-AccountId'] = ctx.accountId
+  // `norbix-project-id` is the name the gateway reads (as for every other
+  // command); `X-CM-*` stays for older gateways.
+  if (ctx.projectId) {
+    headers['norbix-project-id'] = ctx.projectId
+    headers['X-CM-ProjectId'] = ctx.projectId
+  }
+
+  if (ctx.accountId) {
+    headers['norbix-account-id'] = ctx.accountId
+    headers['X-CM-AccountId'] = ctx.accountId
+  }
+
   if (ctx.env && ctx.env !== 'PROD') headers['norbix-env'] = ctx.env
   if (ctx.region) headers['nb-region'] = ctx.region
   return {method: 'POST', url: `${base}/${HUB_VERSION}/${ROUTES[operation]}`, headers, body}
@@ -69,8 +79,17 @@ export async function callPublicFiles(
     'Content-Type': 'application/json',
   })
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  if (ctx.projectId) headers.set('X-CM-ProjectId', ctx.projectId)
-  if (ctx.accountId) headers.set('X-CM-AccountId', ctx.accountId)
+  // Same names as publicFilesRequest: norbix-* is what the gateway reads.
+  if (ctx.projectId) {
+    headers.set('norbix-project-id', ctx.projectId)
+    headers.set('X-CM-ProjectId', ctx.projectId)
+  }
+
+  if (ctx.accountId) {
+    headers.set('norbix-account-id', ctx.accountId)
+    headers.set('X-CM-AccountId', ctx.accountId)
+  }
+
   if (ctx.env && ctx.env !== 'PROD') headers.set('norbix-env', ctx.env)
   if (ctx.region) headers.set('nb-region', ctx.region)
 
