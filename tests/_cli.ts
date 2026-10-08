@@ -29,8 +29,11 @@ export interface FakeGateway {
   close: () => Promise<void>
 }
 
-/** A gateway that answers by path: missing→404, bad→400, unauth→401, boom→500, else 200 {ok:true}. */
-export async function startFakeGateway(): Promise<FakeGateway> {
+/**
+ * A gateway that answers by path: `answers[path]` when given, else
+ * missing→404, bad→400, unauth→401, boom→500, else 200 {ok:true}.
+ */
+export async function startFakeGateway(answers: Record<string, unknown> = {}): Promise<FakeGateway> {
   const hits: Hit[] = []
   const server = http.createServer((req, res) => {
     let body = ''
@@ -51,6 +54,8 @@ export async function startFakeGateway(): Promise<FakeGateway> {
       }
 
       hits.push({method: req.method ?? '', url, body})
+      const answer = answers[url.split('?')[0]]
+      if (answer !== undefined) return res.end(JSON.stringify(answer))
       if (url.includes('missing')) {
         res.statusCode = 404
         return res.end('{"message":"User not found","code":"USER_NOT_FOUND","traceId":"t-1"}')
