@@ -14,7 +14,7 @@ import {
   type DeviceTokenSuccess,
 } from '../lib/device-login.js'
 import {EXIT} from '../lib/exit-codes.js'
-import {storedHost} from '../lib/hosts.js'
+import {DEFAULT_HOST, cachedHost, hostKey, normalizeHost, storedHost} from '../lib/hosts.js'
 import {type HubEndpoint} from '../lib/hub-version.js'
 import {
   clearPending,
@@ -289,6 +289,37 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     return this.saveSignIn(ctx, hub, token, pending)
   }
 
+  /**
+   * A sign-in made with --host / NORBIX_HOST is used by later commands only
+   * when they name that host too. With no [default] profile yet, the host is
+   * saved as [default], so plain `norbix …` uses the sign-in. An existing
+   * [default] for another host is never changed: the note says how to switch.
+   */
+  private rememberHost(ctx: ResolvedContext): {state: 'created' | 'same host' | 'other host' | 'not needed'; note?: string} {
+    if (ctx.hostSource !== 'flag/env') return {state: 'not needed'}
+    const host = storedHost(ctx.host)
+    const current = readProfiles().default
+    if (!current) {
+      writeProfile('default', {host})
+      return {state: 'created', note: `Saved host = ${host} in profile [default]: later commands use this sign-in.`}
+    }
+
+    const origin = current.host
+      ? normalizeHost(current.host)
+      : current.hub_url
+        ? new URL(current.hub_url).origin
+        : normalizeHost(DEFAULT_HOST)
+    const hub = cachedHost(origin)?.hubKey ?? hostKey(origin)
+    if (hub === ctx.hubKey) return {state: 'same host'}
+    const shown = storedHost(origin)
+    return {
+      state: 'other host',
+      note:
+        `Commands without --host still use profile [default] (${shown}). ` +
+        `Use this sign-in with --host ${host} or NORBIX_HOST=${host}, or make it the default: norbix config set host ${host}`,
+    }
+  }
+
   private saveSignIn(
     ctx: ResolvedContext,
     hub: HubEndpoint,
@@ -316,12 +347,14 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       savedAt: new Date(now).toISOString(),
     })
 
+    const defaultProfile = this.rememberHost(ctx)
     const who = token.displayName ?? token.userName ?? 'an AI service user'
     this.print(
       [
         `Signed in to ${meta.host} as ${who}${token.userName && token.displayName && token.userName !== token.displayName ? ` (${token.userName})` : ''} — an AI service user with the roles you picked.`,
         'Remove it any time in the dashboard: Account → AI service users.',
         `Session saved to ${sessionPath(ctx.hubKey)}.`,
+        ...(defaultProfile.note ? [defaultProfile.note] : []),
       ].join('\n'),
     )
     return {
@@ -329,6 +362,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       method: 'browser',
       host: meta.host,
       hub: ctx.hubKey,
+      defaultProfile: defaultProfile.state,
       userId: token.userId,
       userName: token.userName,
       displayName: token.displayName,

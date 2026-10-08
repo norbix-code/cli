@@ -194,6 +194,43 @@ describe('norbix login (browser sign-in)', () => {
     expect(existsSync(sessionPath('cloud.example.com'))).toBe(false)
   })
 
+  describe('login --host and the [default] profile', () => {
+    const routes = () => ({
+      'cloud.example.com/.well-known/norbix.json': [{body: {hubUrl: 'https://hub.example.com/v3'}}],
+      '/v3/echo': [{body: ECHO}],
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: SUCCESS}],
+    })
+
+    it('with no [default] profile yet, the host is saved there, so plain commands use the sign-in', async () => {
+      rmSync(PROFILES_PATH, {force: true})
+      stubNetwork(routes())
+      const result = (await runLogin(['--host', 'cloud.example.com'])) as {defaultProfile: string}
+      expect(result.defaultProfile).toBe('created')
+      expect(readFileSync(PROFILES_PATH, 'utf8')).toBe('[default]\nhost = cloud.example.com\n')
+      expect(output.at(-1)!.split('\n').at(-1)).toBe('Saved host = cloud.example.com in profile [default]: later commands use this sign-in.')
+    })
+
+    it('an existing [default] for another host is left alone, and the note says how to switch', async () => {
+      writeFileSync(PROFILES_PATH, '[default]\nproject_id = p-norbix\n')
+      stubNetwork(routes())
+      const result = (await runLogin(['--host', 'cloud.example.com'])) as {defaultProfile: string}
+      expect(result.defaultProfile).toBe('other host')
+      expect(readFileSync(PROFILES_PATH, 'utf8')).toBe('[default]\nproject_id = p-norbix\n')
+      expect(output.at(-1)!.split('\n').at(-1)).toBe(
+        'Commands without --host still use profile [default] (hub.norbix.ai). ' +
+          'Use this sign-in with --host cloud.example.com or NORBIX_HOST=cloud.example.com, or make it the default: norbix config set host cloud.example.com',
+      )
+    })
+
+    it('a [default] already for the same Hub (hub.x while signing in through cloud.x) needs nothing', async () => {
+      stubNetwork(routes())
+      const result = (await runLogin(['--host', 'cloud.example.com'])) as {defaultProfile: string}
+      expect(result.defaultProfile).toBe('same host')
+      expect(readFileSync(PROFILES_PATH, 'utf8')).toBe('[default]\nhost = hub.example.com\nproject_id = p1\n')
+    })
+  })
+
   it('uses the version the Hub reports — never a fixed v2', async () => {
     const hits = stubNetwork({
       '/v3/echo': [{body: {...ECHO, hubUrl: 'https://hub.example.com/v4', hubVersion: 'v4'}}],

@@ -119,6 +119,11 @@ host, Hub, Api, profile and auth source that won.
 - `norbix login [--profile p | --host h]` — browser sign-in (RFC 8628) to
   that host's Hub. The person approves on `<cloud>/device` and picks the
   roles; the CLI becomes the AI service user "Norbix CLI (<computer>)".
+- After `login --host h` (or `NORBIX_HOST`), later commands use the sign-in
+  only when they reach that host. With no `[default]` profile yet, the CLI
+  writes `host = h` into a new `[default]`; an existing `[default]` for
+  another host is never changed — the CLI prints how to switch
+  (`norbix config set host h`).
 - `norbix login --api-key ... [--host h] --profile p` — saves key and host
   in the profile. No network.
 - Over SSH (`SSH_CONNECTION`, `SSH_CLIENT` or `SSH_TTY` set — on every
