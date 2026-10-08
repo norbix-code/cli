@@ -1,6 +1,6 @@
 import {Flags} from '@oclif/core'
 
-import {BaseCommand, type ResolvedContext} from '../base.js'
+import {BaseCommand, projectLabel, projectLines, type GlobalFlags, type ResolvedContext} from '../base.js'
 import {CliError, usageError} from '../lib/cli-error.js'
 import {
   DeviceFlowUnsupportedError,
@@ -115,13 +115,13 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     const ctx = this.resolveContext(flags)
 
     // Mode 3: the second step of the agent sign-in.
-    if (flags.wait) return this.finishPending(ctx)
+    if (flags.wait) return this.pickProject(flags, await this.finishPending(ctx))
 
     if (ctx.hostInfo?.source !== 'discovered') this.assertEndpoints(ctx)
 
     // Mode 2 (default): browser sign-in via the device flow.
     try {
-      return await this.browserLogin(ctx, flags)
+      return await this.pickProject(flags, await this.browserLogin(ctx, flags))
     } catch (error) {
       if (!(error instanceof DeviceFlowUnsupportedError)) throw error
       throw usageError(
@@ -130,6 +130,32 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
         'norbix login --help',
       )
     }
+  }
+
+  /**
+   * A sign-in without a project: the account's only project is saved into
+   * the session; with several, they are listed with how to choose one.
+   */
+  private async pickProject(flags: GlobalFlags, result: unknown): Promise<unknown> {
+    const signedIn = result as {status?: string; projectId?: string}
+    if (signedIn?.status !== 'signed-in' || signedIn.projectId) return result
+    const adoption = await this.adoptOnlyProject(flags)
+    if (adoption.state === 'saved') {
+      this.print(`Project: ${projectLabel(adoption.projects[0])} — the only project of this account, saved to the sign-in.`)
+      return {...signedIn, projectId: adoption.projectId, projectSource: 'only project of the account'}
+    }
+
+    if (adoption.state === 'several') {
+      this.print(
+        `This account has ${adoption.projects.length} projects and none is chosen yet. Pick one: ` +
+          `norbix config set project_id <id>${flags.profile ? ` --profile ${flags.profile}` : ''}, or pass --project <id> / set NORBIX_PROJECT_ID.\n` +
+          projectLines(adoption.projects),
+      )
+      return {...signedIn, projects: adoption.projects}
+    }
+
+    if (adoption.state === 'none') this.print('This account has no projects yet: create one in the dashboard.')
+    return result
   }
 
   private async saveApiKey(flags: {
