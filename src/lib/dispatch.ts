@@ -240,11 +240,15 @@ export interface MethodMatch {
  * Match user words against SDK method names. "aggregates get" prefers
  * getDatabaseAggregates (plural = list); "aggregate get" (or a positional id)
  * prefers getDatabaseAggregate.
+ *
+ * `opts.hasId` (true / false: a positional id was / was not given) turns on
+ * the read tie-break of `pickReadMethod`; leave it out to get every tie.
  */
 export function matchMethods(
   methods: string[],
   words: string[],
   moduleName: string,
+  opts: {hasId?: boolean} = {},
 ): MethodMatch[] {
   const userWords = words.map((w) => w.toLowerCase().replaceAll('-', ''))
   const moduleTokens = new Set(camelSplit(moduleName))
@@ -278,10 +282,40 @@ export function matchMethods(
   // Keep only the best-scoring group so callers can detect ambiguity.
   if (matches.length > 1) {
     const best = matches[0]
-    return matches.filter((m) => m.exact === best.exact && m.extra === best.extra)
+    const group = matches.filter((m) => m.exact === best.exact && m.extra === best.extra)
+    if (group.length > 1 && opts.hasId !== undefined) {
+      const read = pickReadMethod(methods, matches, userWords, opts.hasId)
+      if (read) return [read]
+    }
+
+    return group
   }
 
   return matches
+}
+
+/**
+ * Words with no verb that fit several methods (`membership role <id>` fits
+ * createRole, deleteRole and getRole) mean "read": with an id the get of one
+ * item (getRole), without one the list (getRoles). A write or destructive
+ * verb is never picked without being typed. Undefined when no single read
+ * method fits — the caller reports the ambiguity as before.
+ */
+function pickReadMethod(methods: string[], matches: MethodMatch[], userWords: string[], hasId: boolean): MethodMatch | undefined {
+  const verbs = new Set(methods.map((m) => camelSplit(m)[0]))
+  if (userWords.some((w) => verbs.has(w))) return undefined
+
+  const reads = matches.filter((m) => {
+    const tokens = camelSplit(m.method)
+    if (tokens[0] !== 'get' && tokens[0] !== 'list') return false
+    const last = tokens.at(-1) ?? ''
+    const plural = tokens[0] === 'list' || singular(last) !== last
+    return hasId ? !plural : plural
+  })
+  if (reads.length === 0) return undefined
+  const fewest = Math.min(...reads.map((m) => m.extra))
+  const best = reads.filter((m) => m.extra === fewest)
+  return best.length === 1 ? best[0] : undefined
 }
 
 const DESTRUCTIVE_VERBS = new Set(['delete', 'remove', 'clean', 'regenerate', 'rotate', 'stop', 'disable', 'block'])

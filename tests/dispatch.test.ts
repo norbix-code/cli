@@ -69,6 +69,43 @@ describe('method matching', () => {
     expect(matchMethods(methods, ['task', 'get'], 'scheduler').map((m) => m.method)).toEqual(['getSchedulerTask'])
   })
 
+  describe('words without a verb pick the read method', () => {
+    const roles = ['createRole', 'deleteRole', 'getRole', 'getRoles', 'updateRolePolicies']
+    const pick = (words: string[], hasId?: boolean) =>
+      matchMethods(roles, words, 'membership', hasId === undefined ? {} : {hasId}).map((m) => m.method)
+
+    it('`role <id>` → getRole', () => {
+      expect(pick(['role'], true)).toEqual(['getRole'])
+    })
+
+    it('`role` without an id → getRoles (the list)', () => {
+      expect(pick(['role'], false)).toEqual(['getRoles'])
+    })
+
+    it('`roles` → getRoles', () => {
+      expect(pick(['roles'], false)).toEqual(['getRoles'])
+    })
+
+    it('a typed verb still decides: `role create`, `role delete <id>`', () => {
+      expect(pick(['role', 'create'], false)).toEqual(['createRole'])
+      expect(pick(['role', 'delete'], true)).toEqual(['deleteRole'])
+    })
+
+    it('never a write verb implicitly: no read method fits → still ambiguous', () => {
+      const writes = ['createTag', 'deleteTag', 'saveTag']
+      expect(matchMethods(writes, ['tag'], 'notifications', {hasId: true}).map((m) => m.method)).toEqual(['createTag', 'deleteTag', 'saveTag'])
+    })
+
+    it('two read methods that fit equally → still ambiguous', () => {
+      const two = ['createItem', 'deleteItem', 'getItemOwner', 'getItemName']
+      expect(matchMethods(two, ['item'], 'x', {hasId: true}).map((m) => m.method)).toEqual(['createItem', 'deleteItem'])
+    })
+
+    it('without hasId (scope help) every tie is kept', () => {
+      expect(pick(['role'])).toEqual(['createRole', 'deleteRole', 'getRole'])
+    })
+  })
+
   it('treats delete, disable and block as destructive', () => {
     expect(isDestructive('deleteSchedulerTask')).toBe(true)
     expect(isDestructive('disableSchedulerTask')).toBe(true)

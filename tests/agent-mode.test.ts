@@ -169,6 +169,18 @@ describe('--dry-run', () => {
     expect(gateway.hits).toEqual([])
   })
 
+  it('hub: a noun with no verb reads — `membership role <id>` is getRole, `membership role` is getRoles', async () => {
+    const one = await cli(home, ['hub', 'membership', 'role', 'abc123', '--profile', 'x', '--dry-run', '--json'])
+    expect(one.code).toBe(0)
+    expect(parseSingleJson(one.stdout)).toMatchObject({method: 'hub.membership.getRole', request: {id: 'abc123'}})
+    const many = await cli(home, ['hub', 'membership', 'role', '--profile', 'x', '--dry-run', '--json'])
+    expect(many.code).toBe(0)
+    expect(parseSingleJson(many.stdout)).toMatchObject({method: 'hub.membership.getRoles'})
+    const create = await cli(home, ['hub', 'membership', 'role', 'create', '--name', 'editors', '--profile', 'x', '--dry-run', '--json'])
+    expect(parseSingleJson(create.stdout)).toMatchObject({method: 'hub.membership.createRole'})
+    expect(gateway.hits).toEqual([])
+  })
+
   it('still resolves the context: a missing region fails', async () => {
     const r = await cli(home, ['users', 'delete', 'abc123', '--profile', 'z', '--dry-run', '--json'])
     expect(r.code).toBe(2)

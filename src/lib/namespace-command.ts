@@ -174,7 +174,9 @@ export abstract class NamespaceCommand extends BaseCommand {
 
     const words = [...restWords]
     if (injected) words.unshift(injected)
-    const matches = matchMethods(methods, words, moduleName)
+    // An id (positional or --id) means one item: a verb-less tie picks get<One>, else get<Many>.
+    const hasId = parsed.positionals.length > 0 || parsed.rawFields.some((f) => f.name === 'id')
+    const matches = matchMethods(methods, words, moduleName, {hasId})
     if (matches.length === 0) {
       // Show only methods sharing at least one word — the full list can be 100+.
       const lower = words.map((w) => w.toLowerCase().replace(/s$/, ''))
@@ -191,7 +193,7 @@ export abstract class NamespaceCommand extends BaseCommand {
     if (matches.length > 1) {
       throw usageError(
         `"${words.join(' ')}" is ambiguous — did you mean: ${matches.map((m) => m.method).join(', ')}`,
-        'Add a word (e.g. the verb) to be specific, or type the camelCase method name itself.',
+        'Add the verb (get, create, delete, …) to be specific, or type the camelCase method name itself.',
         `norbix ${this.target} ${moduleWord} --help`,
       )
     }
