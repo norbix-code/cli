@@ -44,6 +44,8 @@ type NorbixMiddleware = (ctx: {
 export interface ProjectChoice {
   id: string
   name?: string
+  /** The project's primary region code (e.g. nb-eu-germany), when the Hub sent it. */
+  region?: string
 }
 
 /** What `adoptOnlyProject` did: saved the one project, or found none / several. */
@@ -51,6 +53,8 @@ export interface ProjectAdoption {
   state: 'saved' | 'one' | 'several' | 'none' | 'not checked'
   projects: ProjectChoice[]
   projectId?: string
+  /** The saved project's region (norbix.ai only). */
+  region?: string
 }
 
 /** "No project ID configured" — `catch` adds the account's projects to its hint. */
@@ -660,12 +664,17 @@ export abstract class BaseCommand extends Command {
    */
   protected client(
     flags: GlobalFlags,
-    opts: {requireAuth?: boolean; requireProject?: boolean} = {},
+    opts: {requireAuth?: boolean; requireProject?: boolean; account?: boolean} = {},
   ): Norbix {
     const ctx = this.resolveContext(flags)
-    this.assertEndpoints(ctx)
     const noProject = !ctx.projectId && opts.requireProject === false
+    // No project first: on norbix.ai the region comes from the project, so
+    // "Region is required" would hide the real cause (and its project list).
     if (!ctx.projectId && !noProject) throw new NoProjectError(flags)
+    // An account-level call (Hub account/*) needs no region: with none set on
+    // norbix.ai it goes to the account Hub (hub.norbix.ai), not a regional one.
+    const accountHub = opts.account === true && ctx.usesDefaultEndpoints && !ctx.region
+    if (!accountHub) this.assertEndpoints(ctx)
 
     if (opts.requireAuth !== false && !ctx.apiKey && !ctx.bearerToken) {
       throw new CliError({
@@ -694,7 +703,7 @@ export abstract class BaseCommand extends Command {
         region: ctx.region,
         // Always explicit: CLI defaults are api/hub.norbix.ai (the SDK's own
         // defaults still point at .dev — tracked as an SDK bug).
-        baseUrl: {api: ctx.apiUrl, hub: ctx.hubUrl},
+        baseUrl: {api: ctx.apiUrl, hub: accountHub ? ctx.authHubUrl : ctx.hubUrl},
         // Only when known (a /vN in the URL, NORBIX_HUB_VERSION, hub_version);
         // otherwise the SDK default, unchanged.
         ...(ctx.hubVersion ? {hubVersion: ctx.hubVersion} : {}),
@@ -739,16 +748,27 @@ export abstract class BaseCommand extends Command {
     })
   }
 
-  /** The account's projects (Hub `account/projects`), or undefined when they cannot be read. */
+  /**
+   * The account's projects (Hub `account/projects`) with their primary
+   * region, or undefined when they cannot be read. An account-level call: on
+   * norbix.ai it needs no region (see `client`, option `account`).
+   */
   protected async accountProjects(flags: GlobalFlags): Promise<ProjectChoice[] | undefined> {
     try {
-      const client = this.client({...flags, 'dry-run': false} as GlobalFlags, {requireProject: false})
+      const client = this.client({...flags, 'dry-run': false} as GlobalFlags, {requireProject: false, account: true})
       const res = await client.hub.account.getProjects({})
       return (res.list ?? [])
         .filter((p) => p.viewId)
-        .map((p) => ({id: p.viewId, name: p.name || p.uniqueName || undefined}))
+        .map((p) => {
+          const region = p.primaryRegion?.id
+          return {
+            id: p.viewId,
+            name: p.name || p.uniqueName || undefined,
+            ...(typeof region === 'string' && /^[a-z0-9-]+$/.test(region) ? {region} : {}),
+          }
+        })
     } catch {
-      return undefined // no auth, no region, Hub down: the caller keeps its plain message
+      return undefined // no auth, Hub down: the caller keeps its plain message
     }
   }
 
@@ -765,10 +785,15 @@ export abstract class BaseCommand extends Command {
     if (!projects) return {state: 'not checked', projects: []}
     if (projects.length === 0) return {state: 'none', projects}
     if (projects.length > 1) return {state: 'several', projects}
+    const [only] = projects
+    // On norbix.ai every call needs the project's region: it is kept with the
+    // project. A self-hosted Hub needs none, so nothing changes there.
+    const region = ctx.usesDefaultEndpoints && !ctx.region ? only.region : undefined
+    if (region) saveProjectRegion(ctx.hubKey, only.id, region)
     const session = ctx.authSource === 'session' ? readSession(ctx.hubKey) : undefined
     if (!session) return {state: 'one', projects}
-    writeSession(ctx.hubKey, {...session, projectId: projects[0].id})
-    return {state: 'saved', projects, projectId: projects[0].id}
+    writeSession(ctx.hubKey, {...session, projectId: only.id, ...(region ? {region} : {})})
+    return {state: 'saved', projects, projectId: only.id, ...(region ? {region} : {})}
   }
 
   /** "No project ID configured", with the account's projects in the hint (and the only one saved). */

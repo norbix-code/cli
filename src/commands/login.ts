@@ -141,8 +141,14 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     if (signedIn?.status !== 'signed-in' || signedIn.projectId) return result
     const adoption = await this.adoptOnlyProject(flags)
     if (adoption.state === 'saved') {
-      this.print(`Project: ${projectLabel(adoption.projects[0])} — the only project of this account, saved to the sign-in.`)
-      return {...signedIn, projectId: adoption.projectId, projectSource: 'only project of the account'}
+      const inRegion = adoption.region ? ` (region ${adoption.region})` : ''
+      this.print(`Project: ${projectLabel(adoption.projects[0])}${inRegion} — the only project of this account, saved to the sign-in.`)
+      return {
+        ...signedIn,
+        projectId: adoption.projectId,
+        ...(adoption.region ? {region: adoption.region} : {}),
+        projectSource: 'only project of the account',
+      }
     }
 
     if (adoption.state === 'several') {

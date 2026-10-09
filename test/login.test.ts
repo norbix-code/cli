@@ -208,6 +208,43 @@ describe('norbix login (browser sign-in)', () => {
     expect(result).toMatchObject({status: 'signed-in', projects: [{id: 'p-a', name: 'Alpha'}, {id: 'p-b', name: 'Beta'}]})
   })
 
+  it('hub.norbix.ai with no region: the projects are read from the account Hub, and the project is saved with its region', async () => {
+    rmSync(HOSTS_DIR, {recursive: true, force: true}) // no built-in cache: hub.norbix.ai is discovered like any host
+    writeFileSync(PROFILES_PATH, '[default]\n')
+    const NORBIX_ECHO = {hubUrl: 'https://hub.norbix.ai/v3', apiUrl: 'https://api.norbix.ai/v3', hubVersion: 'v3', apiVersion: 'v3', regions: []}
+    const hits = stubNetwork({
+      'hub.norbix.ai/.well-known/norbix.json': [{body: {hubUrl: 'https://hub.norbix.ai/v3'}}],
+      'hub.norbix.ai/v3/echo': [{body: NORBIX_ECHO}],
+      'hub.norbix.ai/v3/auth/device/start': [{body: START}],
+      'hub.norbix.ai/v3/auth/device/token': [{body: {...SUCCESS, projectId: undefined}}],
+      'hub.norbix.ai/v3/account/projects': [
+        {body: {list: [{viewId: 'p-only', name: 'Finlo', primaryRegion: {id: 'nb-eu-germany', name: 'Germany'}}]}},
+      ],
+    })
+    const result = await runLogin()
+    const lookup = hits.at(-1)!
+    expect(lookup).toMatchObject({method: 'GET', url: 'https://hub.norbix.ai/v3/account/projects'}) // not <region>.hub.norbix.ai
+    const session = readJson(sessionPath('hub.norbix.ai'))
+    expect([session.projectId, session.region]).toEqual(['p-only', 'nb-eu-germany'])
+    expect(output.at(-1)).toBe('Project: Finlo (p-only) (region nb-eu-germany) — the only project of this account, saved to the sign-in.')
+    expect(result).toMatchObject({status: 'signed-in', projectId: 'p-only', region: 'nb-eu-germany'})
+  })
+
+  it('a self-hosted Hub: the project is saved without a region, even when the Hub names one', async () => {
+    writeFileSync(PROFILES_PATH, '[default]\nhost = hub.example.com\n')
+    const hits = stubNetwork({
+      '/v3/echo': [{body: ECHO}],
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: {...SUCCESS, projectId: undefined}}],
+      '/v3/account/projects': [{body: {list: [{viewId: 'p-only', name: 'Finlo', primaryRegion: {id: 'nb-eu-germany'}}]}}],
+    })
+    const result = await runLogin()
+    expect(hits.at(-1)).toMatchObject({method: 'GET', url: 'https://hub.example.com/v3/account/projects'})
+    const session = readJson(HUB_SESSION())
+    expect([session.projectId, session.region]).toEqual(['p-only', undefined])
+    expect(result).not.toHaveProperty('region')
+  })
+
   it('a sign-in that has a project does not ask for the projects', async () => {
     const hits = stubNetwork({
       '/v3/echo': [{body: ECHO}],
