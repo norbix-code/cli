@@ -353,8 +353,30 @@ describe('norbix files publish / unpublish', () => {
 
   it('--dry-run shows the same project header the real call sends', async () => {
     fakeFetch()
-    const {result} = await runCommand<{http: {headers: Record<string, string>}}>(['files', 'publish', 'invoices/invoice.pdf', '--dry-run', '--json', ...globalArgs])
-    expect(result?.http.headers['norbix-project-id']).toBe(PROJECT)
+    // The SDK stops the call just before fetch; the report is printed by the
+    // command's `catch`, so it is read from what was printed.
+    const printed: string[] = []
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      printed.push(args.map(String).join(' '))
+    })
+    try {
+      await runCommand(['files', 'publish', 'invoices/invoice.pdf', '--dry-run', '--json', ...globalArgs])
+    } finally {
+      spy.mockRestore()
+    }
+
+    const report = JSON.parse(printed.join('\n')) as {
+      dryRun: boolean
+      method: string
+      http: {method: string; url: string; headers: Record<string, string>; body: unknown}
+    }
+    expect(report.dryRun).toBe(true)
+    expect(report.method).toBe('hub.files.makeFilePublic')
+    expect(report.http.method).toBe('POST')
+    expect(new URL(report.http.url).pathname).toBe('/v3/files/item/public')
+    expect(report.http.headers['norbix-project-id']).toBe(PROJECT)
+    expect(report.http.headers.authorization).toBe('Bearer ***')
+    expect(report.http.body).toEqual({filesIntegrationId: INTEGRATION, path: 'invoices/invoice.pdf'})
     expect(calls).toHaveLength(0)
   })
 

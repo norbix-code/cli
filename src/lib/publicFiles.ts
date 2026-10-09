@@ -1,23 +1,15 @@
-import {errorFromBody, isFailedBody} from '@norbix.ai/ts'
-
-import type {ResolvedContext} from '../base.js'
+import type {Norbix} from '@norbix.ai/ts'
 
 /**
  * The four "make it public / make it private" Hub endpoints (gateway slice
- * PUB, 10b-files).
+ * PUB, 10b-files): `POST /{version}/files/item/public`, `files/item/private`,
+ * `files/folder/public` and `files/folder/private`.
  *
- * ---------------------------------------------------------------------------
- * Why this file exists, and when it should go away
- *
- * These endpoints are new. The published `@norbix.ai/ts` the CLI depends on
- * (1.2.0) has no method for them yet — slice SDK-2 adds them, but that release
- * has not happened. So the CLI sends the request itself, with exactly the
- * headers the SDK's own transport sends.
- *
- * Once `@norbix.ai/ts` ships `hub.files.makeFilePublic` and friends, bump the
- * dependency and replace the body of `callPublicFiles` with the SDK call. The
- * two commands above it do not change.
- * ---------------------------------------------------------------------------
+ * They go through the SDK (`hub.files.makeFilePublic` and friends), so the
+ * headers, the Hub version, a session refresh and `--dry-run` work exactly as
+ * for every other command. The SDK also turns an error status, and a 2xx with
+ * `responseStatus.isSuccess = false` (a business refusal, 10b-files issue
+ * #67), into a `NorbixError` — the command exits non-zero for both.
  */
 
 export type PublicFilesOperation =
@@ -26,82 +18,20 @@ export type PublicFilesOperation =
   | 'makeFolderPrivate'
   | 'makeFolderPublic'
 
-const ROUTES: Record<PublicFilesOperation, string> = {
-  makeFilePrivate: 'files/item/private',
-  makeFilePublic: 'files/item/public',
-  makeFolderPrivate: 'files/folder/private',
-  makeFolderPublic: 'files/folder/public',
-}
-
 /** What the gateway answers with: an id for publish, nothing for unpublish. */
 export interface PublicFilesResult {
   id?: string
   status?: string
 }
 
-/** The Hub version the SDK talks by default. Kept in one place. */
-const HUB_VERSION = 'v3'
-
-/** The exact request `callPublicFiles` sends — for `--dry-run`. */
-export function publicFilesRequest(
-  ctx: ResolvedContext,
-  operation: PublicFilesOperation,
-  body: {filesIntegrationId: string; path: string},
-): {method: string; url: string; headers: Record<string, string>; body: unknown} {
-  const base = ctx.hubUrl.endsWith('/') ? ctx.hubUrl.slice(0, -1) : ctx.hubUrl
-  const headers: Record<string, string> = {Accept: 'application/json', 'Content-Type': 'application/json'}
-  if (ctx.bearerToken ?? ctx.apiKey) headers.Authorization = 'Bearer ***'
-  // `norbix-project-id` / `norbix-account-id` are the names the gateway reads.
-  if (ctx.projectId) headers['norbix-project-id'] = ctx.projectId
-  if (ctx.accountId) headers['norbix-account-id'] = ctx.accountId
-
-  if (ctx.env && ctx.env !== 'PROD') headers['norbix-env'] = ctx.env
-  if (ctx.region) headers['nb-region'] = ctx.region
-  return {method: 'POST', url: `${base}/${HUB_VERSION}/${ROUTES[operation]}`, headers, body}
-}
-
 export async function callPublicFiles(
-  ctx: ResolvedContext,
+  client: Norbix,
   operation: PublicFilesOperation,
   body: {filesIntegrationId: string; path: string},
 ): Promise<PublicFilesResult> {
-  const token = ctx.bearerToken ?? ctx.apiKey
-  const headers = new Headers({
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  })
-  if (token) headers.set('Authorization', `Bearer ${token}`)
-  // Same names as publicFilesRequest: norbix-* is what the gateway reads.
-  if (ctx.projectId) headers.set('norbix-project-id', ctx.projectId)
-  if (ctx.accountId) headers.set('norbix-account-id', ctx.accountId)
-
-  if (ctx.env && ctx.env !== 'PROD') headers.set('norbix-env', ctx.env)
-  if (ctx.region) headers.set('nb-region', ctx.region)
-
-  const base = ctx.hubUrl.endsWith('/') ? ctx.hubUrl.slice(0, -1) : ctx.hubUrl
-  const url = `${base}/${HUB_VERSION}/${ROUTES[operation]}`
-
-  const response = await fetch(url, {body: JSON.stringify(body), headers, method: 'POST'})
-  const text = await response.text()
-  let raw: unknown
-  if (text) {
-    try {
-      raw = JSON.parse(text)
-    } catch {
-      raw = text
-    }
-  }
-
-  // The SDK's own reader: the message and the gateway code come from
-  // `responseStatus.errors[]`, the error class from the status.
-  if (!response.ok) throw errorFromBody({raw, status: response.status, url})
-
-  // A 2xx does not mean the call worked: the gateway answers a business
-  // refusal with HTTP 200 and responseStatus.isSuccess = false, and the
-  // command must exit non-zero for it (10b-files, issue #67).
-  if (isFailedBody(raw)) throw errorFromBody({raw, status: response.status, url})
-
-  return (raw && typeof raw === 'object' ? raw : {}) as PublicFilesResult
+  // publish answers an IdResponse, unpublish an EmptyResponse (or no body).
+  const res = (await client.hub.files[operation](body)) as PublicFilesResult | undefined
+  return res ?? {}
 }
 
 /**

@@ -2,7 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 import {integrationFlag, resolveIntegration} from '../../lib/files.js'
-import {callPublicFiles, publicFilesRequest} from '../../lib/publicFiles.js'
+import {callPublicFiles} from '../../lib/publicFiles.js'
 
 export default class FilesUnpublish extends BaseCommand {
   static args = {
@@ -28,7 +28,7 @@ export default class FilesUnpublish extends BaseCommand {
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesUnpublish)
     const ctx = await this.freshContext(flags)
-    this.client(flags)
+    const client = this.client(flags)
 
     const integration = resolveIntegration(flags.integration, ctx.filesIntegrationId)
     if (!integration) {
@@ -37,11 +37,7 @@ export default class FilesUnpublish extends BaseCommand {
 
     const operation = flags.folder ? 'makeFolderPrivate' : 'makeFilePrivate'
     const body = {filesIntegrationId: integration, path: args.remote}
-    if (flags['dry-run']) {
-      return this.dryRun({method: `hub.files.${operation}`, request: body, http: publicFilesRequest(ctx, operation, body)})
-    }
-
-    await callPublicFiles(ctx, operation, body)
+    await callPublicFiles(client, operation, body)
 
     this.print(
       flags.folder
