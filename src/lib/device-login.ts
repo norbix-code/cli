@@ -19,7 +19,9 @@ import {hubRoute, type HubEndpoint} from './hub-version.js'
  *     always HTTP 200 with one of
  *       { error: "authorization_pending" }  → poll again
  *       { error: "slow_down" }              → poll again, 5 s slower
- *       { error: "access_denied" }          → the person pressed Deny
+ *       { error: "access_denied" }          → the person pressed Deny, or the Hub
+ *                                             refused the decision (account not active);
+ *                                             errorDescription / errorCode / reason say why
  *       { error: "expired_token" }          → the code ran out
  *       { error: "invalid_grant" }          → unknown / spent code, user deleted
  *       { error: "invalid_request" }        → no deviceCode
@@ -181,7 +183,8 @@ export async function pollDeviceTokenUntil(
 
     if (res.status === 428) continue // pending, the older shape
 
-    const data = (await res.json().catch(() => ({}))) as DeviceTokenSuccess & {error?: string; errorDescription?: string}
+    const raw = (await res.json().catch(() => ({}))) as DeviceTokenSuccess & DeviceTokenError
+    const data = {...raw, errorDescription: raw.errorDescription ?? raw.error_description}
     switch (data.error) {
       case 'authorization_pending':
         continue
@@ -190,13 +193,7 @@ export async function pollDeviceTokenUntil(
         limits.onSlowDown?.(intervalMs / 1000)
         continue
       case 'access_denied':
-        throw new CliError({
-          exit: EXIT.AUTH,
-          code: 'ACCESS_DENIED',
-          message: 'Sign-in was denied in the browser.',
-          hint: 'Run `norbix login` again and choose Allow on the dashboard page.',
-          docs: 'norbix login --help',
-        })
+        throw accessDeniedError(data)
       case 'expired_token':
         throw expiredError()
       case 'invalid_grant':
@@ -235,6 +232,75 @@ export async function pollDeviceTokenUntil(
   }
 
   throw expiredError()
+}
+
+/** The error part of a device token answer (camelCase from the Hub; snake_case accepted too). */
+export interface DeviceTokenError {
+  error?: string
+  errorDescription?: string
+  error_description?: string
+  /** The Norbix code behind `error`, e.g. CM-ERRORS-AI-OAUTH-014 or CM-ERRORS-ACCOUNT-003. */
+  errorCode?: string
+  /** Why the account refused, when the Hub says: EmailNotVerified | Blocked | Unregistered. */
+  reason?: string
+  context?: Record<string, unknown>
+}
+
+/** The plain "the person pressed Deny" answer — no account problem behind it. */
+const PLAIN_DENIAL_CODE = 'CM-ERRORS-AI-OAUTH-014'
+/** "Account is not active" — the reason is in `context.Reason` (gateway Errors/Account.cs). */
+const ACCOUNT_NOT_ACTIVE_CODE = 'CM-ERRORS-ACCOUNT-003'
+
+export type DenialReason = 'EmailNotVerified' | 'Blocked' | 'Unregistered'
+
+/**
+ * Why the account refused the sign-in: the Hub's `reason` / `context.Reason`
+ * when it sends one; else, for "Account is not active", read from its message.
+ */
+export function denialReason(data: DeviceTokenError): DenialReason | undefined {
+  const named = data.reason ?? data.context?.Reason ?? data.context?.reason
+  if (typeof named === 'string') {
+    const match = (['EmailNotVerified', 'Blocked', 'Unregistered'] as const).find((r) => r.toLowerCase() === named.toLowerCase())
+    if (match) return match
+  }
+
+  if (data.errorCode !== ACCOUNT_NOT_ACTIVE_CODE) return undefined
+  const text = (data.errorDescription ?? '').toLowerCase()
+  if (/not verified|verify/.test(text)) return 'EmailNotVerified'
+  if (/blocked/.test(text)) return 'Blocked'
+  if (/closed|unregistered/.test(text)) return 'Unregistered'
+  return undefined
+}
+
+const DENIAL_HINTS: Record<DenialReason, string> = {
+  EmailNotVerified: 'Verify your email in the dashboard (banner → Resend), then run `norbix login` again.',
+  Blocked: 'The account is blocked. Contact the account owner or Norbix support, then run `norbix login` again.',
+  Unregistered: 'The account is closed. Sign in with another account, or contact Norbix support.',
+}
+
+/**
+ * `access_denied`: the person pressed Deny, or the Hub refused the decision
+ * (an account that is not active). The Hub's own words are shown when it
+ * sent any other than the plain denial; the code stays ACCESS_DENIED so
+ * scripts and agents keep matching it.
+ */
+export function accessDeniedError(data: DeviceTokenError): CliError {
+  const description = data.errorDescription?.trim()
+  const reason = denialReason(data)
+  const plain = !description || (data.errorCode === PLAIN_DENIAL_CODE && !reason)
+  return new CliError({
+    exit: EXIT.AUTH,
+    code: 'ACCESS_DENIED',
+    message: plain ? 'Sign-in was denied in the browser.' : `Sign-in was refused: ${description}`,
+    hint: reason ? DENIAL_HINTS[reason] : 'Run `norbix login` again and choose Allow on the dashboard page.',
+    docs: 'norbix login --help',
+    context: compactContext({reason, errorCode: data.errorCode && data.errorCode !== PLAIN_DENIAL_CODE ? data.errorCode : undefined}),
+  })
+}
+
+function compactContext(values: Record<string, unknown>): Record<string, unknown> | undefined {
+  const entries = Object.entries(values).filter(([, v]) => v !== undefined)
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
 }
 
 /** `message` plus the Hub's own words, when it sent any. */

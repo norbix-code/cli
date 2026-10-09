@@ -42,6 +42,8 @@ export interface CliErrorInit {
   fieldErrors?: Record<string, string[]>
   url?: string
   traceId?: string
+  /** Extra values for scripts, e.g. `{reason: "EmailNotVerified"}` (JSON envelope `context`). */
+  context?: Record<string, unknown>
 }
 
 /** An error the CLI raises itself, already carrying its exit code and hint. */
@@ -54,6 +56,7 @@ export class CliError extends Error {
   readonly fieldErrors?: Record<string, string[]>
   readonly url?: string
   readonly traceId?: string
+  readonly context?: Record<string, unknown>
 
   constructor(init: CliErrorInit) {
     super(init.message)
@@ -66,6 +69,7 @@ export class CliError extends Error {
     this.fieldErrors = init.fieldErrors
     this.url = init.url
     this.traceId = init.traceId
+    this.context = init.context
   }
 }
 
@@ -203,6 +207,7 @@ export function toEnvelope(err: unknown, ctx: {command?: string} = {}): ErrorEnv
       status: err.status,
       exit: err.exit,
       fieldErrors: err.fieldErrors,
+      context: err.context,
       url: err.url,
       traceId: err.traceId,
       hint: err.hint ?? hintForExit(err.exit, {status: err.status, url: err.url}, ctx.command),

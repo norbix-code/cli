@@ -5,7 +5,9 @@ import {describe, expect, it, vi} from 'vitest'
 import {CliError} from '../src/lib/cli-error.js'
 import {
   DeviceFlowUnsupportedError,
+  accessDeniedError,
   browserCommand,
+  denialReason,
   canOpenBrowser,
   deviceName,
   openBrowser,
@@ -197,6 +199,60 @@ describe('pollDeviceToken', () => {
       exit: EXIT.AUTH,
       code: 'ACCESS_DENIED',
       message: 'Sign-in was denied in the browser.',
+      hint: 'Run `norbix login` again and choose Allow on the dashboard page.',
+    })
+  })
+
+  it('access_denied with the plain denial description keeps the plain message', async () => {
+    const clock = fakeClock()
+    const {fetchFn} = fakeHub({
+      '/v3/auth/device/token': [
+        {body: {error: 'access_denied', errorCode: 'CM-ERRORS-AI-OAUTH-014', errorDescription: 'The person signed in to Norbix did not allow this access.'}},
+      ],
+    })
+    const error = (await pollDeviceToken(HUB, START, () => {}, {fetch: fetchFn, ...clock}).catch((e: unknown) => e)) as CliError
+    expect({code: error.code, message: error.message, context: error.context}).toEqual({
+      code: 'ACCESS_DENIED',
+      message: 'Sign-in was denied in the browser.',
+      context: undefined,
+    })
+  })
+
+  it('access_denied refused for an unverified email shows the Hub message and the verify hint', async () => {
+    const clock = fakeClock()
+    const description =
+      'The account\'s email address is not verified yet. Open the verification email we sent to the account owner, or press "Resend verification email" in the Norbix dashboard, then try again.'
+    const {fetchFn} = fakeHub({
+      '/v3/auth/device/token': [{body: {error: 'access_denied', errorCode: 'CM-ERRORS-ACCOUNT-003', errorDescription: description, reason: 'EmailNotVerified'}}],
+    })
+    const error = (await pollDeviceToken(HUB, START, () => {}, {fetch: fetchFn, ...clock}).catch((e: unknown) => e)) as CliError
+    expect({exit: error.exit, code: error.code, message: error.message, hint: error.hint, context: error.context}).toEqual({
+      exit: EXIT.AUTH,
+      code: 'ACCESS_DENIED',
+      message: `Sign-in was refused: ${description}`,
+      hint: 'Verify your email in the dashboard (banner → Resend), then run `norbix login` again.',
+      context: {reason: 'EmailNotVerified', errorCode: 'CM-ERRORS-ACCOUNT-003'},
+    })
+  })
+
+  it.each([
+    [{reason: 'Blocked'}, 'Blocked', 'The account is blocked.'],
+    [{context: {Reason: 'Unregistered'}}, 'Unregistered', 'The account is closed.'],
+    [{errorCode: 'CM-ERRORS-ACCOUNT-003', errorDescription: 'The account is blocked.'}, 'Blocked', 'The account is blocked.'],
+    [{errorCode: 'CM-ERRORS-ACCOUNT-003', errorDescription: 'Email is not verified.'}, 'EmailNotVerified', 'Verify your email'],
+  ])('access_denied reason from %j → %s', (extra, reason, hintStart) => {
+    const error = accessDeniedError({error: 'access_denied', errorDescription: 'Account is not active.', ...extra})
+    expect(error.context?.reason).toBe(reason)
+    expect(error.hint?.startsWith(hintStart)).toBe(true)
+    expect(denialReason({errorDescription: 'Account is not active.', ...extra})).toBe(reason)
+  })
+
+  it('access_denied with snake_case error_description and no code: the description is shown, generic hint', async () => {
+    const clock = fakeClock()
+    const {fetchFn} = fakeHub({'/v3/auth/device/token': [{body: {error: 'access_denied', error_description: 'Your plan does not allow the CLI.'}}]})
+    const error = (await pollDeviceToken(HUB, START, () => {}, {fetch: fetchFn, ...clock}).catch((e: unknown) => e)) as CliError
+    expect({message: error.message, hint: error.hint}).toEqual({
+      message: 'Sign-in was refused: Your plan does not allow the CLI.',
       hint: 'Run `norbix login` again and choose Allow on the dashboard page.',
     })
   })

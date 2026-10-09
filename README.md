@@ -210,6 +210,7 @@ command then exits 4 and asks you to run `norbix login` again.
 | Situation | What happens | Exit |
 | --- | --- | --- |
 | You press **Deny** | `Sign-in was denied in the browser.` (`ACCESS_DENIED`) | 4 |
+| You press **Allow**, but the Hub refuses (e.g. the account email is not verified, the account is blocked or closed) | `Sign-in was refused: <the Hub's message>` (`ACCESS_DENIED`, `context.reason` in `--json`); for an unverified email the hint says: verify it in the dashboard (banner → Resend), then run `norbix login` again | 4 |
 | Nobody approves within 10 minutes | `The sign-in code expired before it was approved.` (`EXPIRED_TOKEN`) | 4 |
 | The Hub refuses the code (already used, unknown, the AI service user deleted) | The Hub's reason is shown (`INVALID_GRANT` / `INVALID_REQUEST`) | 4 |
 | `login --wait` and nobody approved yet | `Not approved yet.` — run it again (`AUTHORIZATION_PENDING`) | 4 |
