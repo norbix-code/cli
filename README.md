@@ -226,7 +226,10 @@ project_id <id>`, `--project <id>` or `NORBIX_PROJECT_ID`). A command that
 needs a project and has none stops with `No project ID configured.` and the
 account's projects in the hint; with one project and a browser sign-in, that
 project is saved into the sign-in and the next run uses it (the failed run
-is not repeated by itself, so nothing is sent twice).
+is not repeated by itself, so nothing is sent twice). On norbix.ai the list
+is read from the account Hub (`hub.norbix.ai`), so no `--region` is needed
+for it, and the saved project keeps its primary region with it. A
+self-hosted Hub needs no region, so none is saved there.
 
 There is no user + password sign-in. **CI and scripts** use a service-user
 API key, never a browser sign-in:
