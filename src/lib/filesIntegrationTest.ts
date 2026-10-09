@@ -1,6 +1,4 @@
-import {errorFromBody} from '@norbix.ai/ts'
-
-import type {ResolvedContext} from '../base.js'
+import {NorbixError, type Norbix} from '@norbix.ai/ts'
 
 /**
  * `POST /{version}/files/{filesIntegrationId}/test` — the API-surface probe of
@@ -8,24 +6,9 @@ import type {ResolvedContext} from '../base.js'
  * uploads a small file, reads it, lists the folder and deletes it again, and
  * answers one item per step.
  *
- * ---------------------------------------------------------------------------
- * Why this file exists, and when it should go away
- *
- * The published `@norbix.ai/ts` the CLI depends on (^1.3.0) has no method for
- * this endpoint. `api.files.testFilesIntegration` is added by
- * https://github.com/norbix-code/sdk-ts/pull/44, which is not released yet.
- * (`hub.files.testFilesIntegration` in 1.3.0 is a DIFFERENT endpoint — the Hub
- * one, `POST /{version}/files/integrations/test` — so it is not used here.)
- *
- * So the CLI sends the request itself, the way the SDK transport would: same
- * headers, same version, no body (the only field is in the path), and the same
- * error classes for an error status.
- *
- * TODO(10b-API-TEST): once `@norbix.ai/ts` ships `api.files.testFilesIntegration`,
- * bump the dependency and replace the body of `callTestFilesIntegration` with
- *   client.api.files.testFilesIntegration({filesIntegrationId})
- * The command and its tests do not change.
- * ---------------------------------------------------------------------------
+ * Sent through the SDK: `api.files.testFilesIntegration`. (`hub.files.
+ * testFilesIntegration` is a DIFFERENT endpoint — the Hub one,
+ * `POST /{version}/files/integrations/test` — so it is not used here.)
  */
 
 /** One probe step as the gateway answers it. */
@@ -51,38 +34,27 @@ export interface TestFilesIntegrationResult {
   }
 }
 
-/** The API version the SDK talks by default. Kept in one place. */
-const API_VERSION = 'v3'
-
 export async function callTestFilesIntegration(
-  ctx: ResolvedContext,
+  client: Norbix,
   filesIntegrationId: string,
 ): Promise<TestFilesIntegrationResult> {
-  const token = ctx.bearerToken ?? ctx.apiKey
-  const headers = new Headers({Accept: 'application/json'})
-  if (token) headers.set('Authorization', `Bearer ${token}`)
-  if (ctx.projectId) headers.set('norbix-project-id', ctx.projectId)
-  if (ctx.accountId) headers.set('norbix-account-id', ctx.accountId)
-  if (ctx.env && ctx.env !== 'PROD') headers.set('norbix-env', ctx.env)
-  if (ctx.region) headers.set('nb-region', ctx.region)
-
-  const base = ctx.apiUrl.endsWith('/') ? ctx.apiUrl.slice(0, -1) : ctx.apiUrl
-  const url = `${base}/${API_VERSION}/files/${encodeURIComponent(filesIntegrationId)}/test`
-
-  const response = await fetch(url, {headers, method: 'POST'})
-  const text = await response.text()
-  let raw: unknown
-  if (text) {
-    try {
-      raw = JSON.parse(text)
-    } catch {
-      raw = text
+  try {
+    const res = await client.api.files.testFilesIntegration({filesIntegrationId})
+    return (res ?? {}) as TestFilesIntegrationResult
+  } catch (error) {
+    // The SDK throws on a 2xx with `responseStatus.isSuccess = false`. Here
+    // that answer is a result, not a failure of the call: the command prints
+    // the gateway's errors (and any steps) itself and exits 2.
+    if (error instanceof NorbixError && error.status >= 200 && error.status < 300 && isObject(error.raw)) {
+      return error.raw as TestFilesIntegrationResult
     }
+
+    throw error
   }
+}
 
-  if (!response.ok) throw errorFromBody({raw, status: response.status, url})
-
-  return (raw && typeof raw === 'object' ? raw : {}) as TestFilesIntegrationResult
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 /** `Failed` / `NotTested` / `NOT_TESTED` → `FAILED` / `NOT_TESTED`. */

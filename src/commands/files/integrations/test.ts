@@ -38,14 +38,12 @@ Needs the files:create permission, because the probe writes to the storage.`
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesIntegrationsTest)
-    const ctx = await this.freshContext(flags)
-    // Builds nothing itself, but it is what refuses early and with a useful
-    // sentence when there is no project, region or credentials.
-    this.client(flags)
+    await this.freshContext(flags)
+    // Refuses early, with a useful sentence, when there is no project, region
+    // or credentials.
+    const client = this.client(flags)
 
-    // TODO(10b-API-TEST): switch to `client.api.files.testFilesIntegration`
-    // once @norbix.ai/ts releases it (sdk-ts PR #44) — see the lib file.
-    const res = await callTestFilesIntegration(ctx, args.id)
+    const res = await callTestFilesIntegration(client, args.id)
     const output = summarise(args.id, res)
 
     if (this.jsonEnabled()) {
