@@ -39,6 +39,14 @@ describe('toEnvelope', () => {
     })
   })
 
+  it('a CliError with context (a refused sign-in) keeps it in the envelope', () => {
+    const env = toEnvelope(
+      new CliError({exit: EXIT.AUTH, code: 'ACCESS_DENIED', message: 'Sign-in was refused: x', hint: 'Verify.', docs: 'norbix login --help', context: {reason: 'EmailNotVerified'}}),
+      {command: 'login'},
+    )
+    expect(env).toEqual({code: 'ACCESS_DENIED', message: 'Sign-in was refused: x', exit: 4, context: {reason: 'EmailNotVerified'}, hint: 'Verify.', docs: 'norbix login --help'})
+  })
+
   it('maps a 404 from the SDK, keeping the body code and trace id', () => {
     const env = toEnvelope(sdkError('NorbixError', {message: 'User not found', status: 404, raw: {code: 'USER_NOT_FOUND', traceId: 't-1'}, url: 'http://x/u/1'}), {command: 'users get'})
     expect(env.exit).toBe(5)

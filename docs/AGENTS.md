@@ -32,7 +32,9 @@ token in the chat.
      the AI service user `Norbix CLI (<computer>)` (removable under
      Account → AI service users; `norbix whoami --json` shows it under
      `session`). Exit 4 `AUTHORIZATION_PENDING`: not approved yet, run it
-     again. `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over with step 1.
+     again. `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over with step 1
+     (`ACCESS_DENIED` with `context.reason` `EmailNotVerified`: ask the
+     person to verify their email in the dashboard first).
 
   Not on norbix.ai? Add `--host <their dashboard or Hub address>` (or
   `--profile <name>`) to both steps. The user can also sign in themselves
