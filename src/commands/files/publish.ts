@@ -2,7 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 import {integrationFlag, resolveIntegration} from '../../lib/files.js'
-import {callPublicFiles, publicFilesRequest, publicUrlFor} from '../../lib/publicFiles.js'
+import {callPublicFiles, publicUrlFor} from '../../lib/publicFiles.js'
 
 export default class FilesPublish extends BaseCommand {
   static args = {
@@ -29,9 +29,9 @@ export default class FilesPublish extends BaseCommand {
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesPublish)
     const ctx = await this.freshContext(flags)
-    // Builds nothing itself, but it is what refuses early and with a useful
-    // sentence when there is no project or no credentials.
-    this.client(flags)
+    // Refuses early, with a useful sentence, when there is no project or no
+    // credentials; with --dry-run it stops the call just before it is sent.
+    const client = this.client(flags)
 
     const integration = resolveIntegration(flags.integration, ctx.filesIntegrationId)
     if (!integration) {
@@ -40,11 +40,7 @@ export default class FilesPublish extends BaseCommand {
 
     const operation = flags.folder ? 'makeFolderPublic' : 'makeFilePublic'
     const body = {filesIntegrationId: integration, path: args.remote}
-    if (flags['dry-run']) {
-      return this.dryRun({method: `hub.files.${operation}`, request: body, http: publicFilesRequest(ctx, operation, body)})
-    }
-
-    const result = await callPublicFiles(ctx, operation, body)
+    const result = await callPublicFiles(client, operation, body)
 
     if (!result.id) {
       this.error('The gateway did not return a public id.')

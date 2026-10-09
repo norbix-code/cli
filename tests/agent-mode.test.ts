@@ -351,7 +351,7 @@ describe('--dry-run on non-destructive mutating commands', () => {
     expect(doc.method).toBe('hub.files.makeFilePublic')
     expect(doc.http.method).toBe('POST')
     expect(doc.http.url).toMatch(/\/v3\/files\/item\/public$/)
-    expect(doc.http.headers.Authorization).toBe('Bearer ***')
+    expect(doc.http.headers.authorization).toBe('Bearer ***')
     expect(doc.http.body).toEqual({filesIntegrationId: 'fi_1', path: 'invoices/2026/invoice.pdf'})
     expect(gateway.hits).toEqual([])
   })
