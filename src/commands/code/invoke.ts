@@ -2,6 +2,7 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 import {readPayload} from '../../lib/code.js'
+import {readJsonInput} from '../../lib/json.js'
 
 export default class CodeInvoke extends BaseCommand {
   static description = `Call a cloud function by hand
@@ -30,6 +31,8 @@ Sends the function a \`manual.invoke\` envelope with your payload in \`data.payl
   async run(): Promise<unknown> {
     const {flags} = await this.parse(CodeInvoke)
     const payload = await readPayload(flags)
+    // Validated and normalized JSON text — the DTO takes config as a string.
+    const config = flags.config ? await readJsonInput(flags.config, 'config') : undefined
     const client = this.client(flags)
 
     const res = await client.hub.code.invokeCodeFunction({
@@ -37,7 +40,7 @@ Sends the function a \`manual.invoke\` envelope with your payload in \`data.payl
       payload,
       invocationType: flags.async ? 'Async' : 'Sync',
       runAsUserId: flags['run-as'],
-      config: flags.config,
+      config,
     } as Parameters<typeof client.hub.code.invokeCodeFunction>[0])
 
     this.print(res)

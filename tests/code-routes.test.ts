@@ -121,6 +121,20 @@ describe('norbix code invoke', () => {
     })
   })
 
+  it('--config @file reads the file and sends its JSON as the envelope config (a string)', async () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'norbix-code-')), 'config.json')
+    writeFileSync(file, '{"acceptStatus": "processing", "imageWidth": 568}')
+
+    const {error} = await runCommand(['code', 'invoke', '--integration', INTEGRATION, '--function', FUNCTION, '--config', `@${file}`, ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.body).toMatchObject({config: '{"acceptStatus":"processing","imageWidth":568}'})
+
+    const bad = await runCommand(['code', 'invoke', '--integration', INTEGRATION, '--function', FUNCTION, '--config', '{nope', ...globalArgs])
+    expect(bad.error?.message).toContain('--config is not valid JSON')
+    expect(calls).toHaveLength(1)
+  })
+
   it('refuses a payload that is not a JSON object, and both --payload and --payload-file', async () => {
     const notObject = await runCommand(['code', 'invoke', '--integration', INTEGRATION, '--function', FUNCTION, '--payload', '[1,2]', ...globalArgs])
     expect(notObject.error?.message).toContain('JSON object')
