@@ -55,6 +55,7 @@ norbix scheduler list
 | `norbix project ...` | One project's settings — name, look, languages, regions, CORS origins, admin portal, legal documents, AI chat and assistants, see [docs/project.md](docs/project.md) |
 | `norbix ai ...` | LLM and MCP server integrations, AI service users and their keys, see [docs/ai.md](docs/ai.md) |
 | `norbix payments integrations/triggers/trigger/enable/disable` | Payment integrations and triggers |
+| `norbix code functions/qualifiers/invoke/event-sample/runs` | Cloud functions (AWS Lambda, Azure Functions, Google Cloud Functions): list what a code integration may call, aliases and versions, call one by hand, a sample envelope for a local run, the last runs of a trigger or task — see [docs/code.md](docs/code.md) |
 | `norbix integrations <module>` | List integrations of any module |
 | `norbix module enable/disable <name>` | Turn a whole project module on or off |
 | `norbix hub <module> <words...>` | Call ANY hub endpoint with plain words (see below) |

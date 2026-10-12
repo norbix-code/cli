@@ -379,6 +379,68 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "source:option",
+      "event:string",
+      "schema:string",
+    ],
+    "id": "code event-sample",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "prefix:string",
+      "tag:string",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "code functions",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+      "function:string",
+      "qualifier:string",
+      "payload:string",
+      "payload-file:string",
+      "async:boolean",
+      "run-as:string",
+      "config:string",
+    ],
+    "id": "code invoke",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "function:string",
+    ],
+    "id": "code qualifiers",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "trigger:string",
+      "task:string",
+      "limit:string",
+    ],
+    "id": "code runs",
+    "supportsDryRun": false,
+  },
+  {
     "args": [
       "key",
     ],
