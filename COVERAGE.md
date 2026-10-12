@@ -58,8 +58,10 @@ Cross-cutting commands: `norbix integrations <module>` lists integrations for
   code, membership, AI) — large nested JSON configs; the portal validates
   them much better. Readable via `norbix integrations <module>`; writable via
   `norbix api` if ever needed.
-- **code/marketplace (17)** — new surface; candidate for a future `norbix fx`
-  topic (list/invoke marketplace function bindings could be very useful).
+- **code/marketplace token mappings, function catalog, secret reveal, token
+  lists (5 of 23)** — the other 18 marketplace routes have commands under
+  `norbix code marketplace` (`docs/code.md`); these five are reached with
+  `norbix hub code marketplace …`.
 - **email preferences page, one-click unsubscribe, Mailgun webhook** — called
   by a recipient's browser, a recipient's mail client and Mailgun, never by a
   developer (`docs/email.md`, "No command on purpose").
