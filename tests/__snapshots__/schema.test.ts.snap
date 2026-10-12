@@ -420,6 +420,206 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "code marketplace connections delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "code marketplace connections disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "[id]",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "listing:string",
+      "name:string",
+      "config:string",
+      "secret:string",
+      "description:string",
+      "id:string",
+    ],
+    "id": "code marketplace connections enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "code marketplace connections get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "code marketplace connections list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "secret:string",
+    ],
+    "id": "code marketplace connections secrets set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "code marketplace connections validate",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "connection:string",
+      "key:string",
+      "name:string",
+      "description:string",
+      "arguments:string",
+      "arg:string",
+      "input:string",
+      "template:string",
+      "disabled:boolean",
+    ],
+    "id": "code marketplace functions add",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "connection:string",
+    ],
+    "id": "code marketplace functions delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "connection:string",
+    ],
+    "id": "code marketplace functions disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "connection:string",
+    ],
+    "id": "code marketplace functions enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "connection:string",
+    ],
+    "id": "code marketplace functions get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "payload:string",
+      "payload-file:string",
+    ],
+    "id": "code marketplace functions invoke",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "connection:string",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "code marketplace functions list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[id]",
+    ],
+    "destructive": false,
+    "flags": [
+      "search:string",
+      "tags:string",
+      "category:option",
+      "transport:option",
+      "official:boolean",
+      "page-size:string",
+      "after:string",
+    ],
+    "id": "code marketplace listings",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "trigger:string",
+      "task:string",
+      "limit:string",
+    ],
+    "id": "code marketplace runs",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [
