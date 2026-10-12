@@ -41,3 +41,98 @@ norbix code runs --trigger trg_1p4R3gTobGZpD6fXvHT4rd --limit 10
 
 The envelope your function receives and the SDK helper that parses it
 (`parseFunctionEvent` in `@norbix.ai/ts`): [Cloud functions](https://docs.norbix.ai/cloud/concepts/code-functions).
+
+## `norbix code marketplace`
+
+The marketplace from the terminal: browse the listings (connectors), enable one
+as a **connection** (`int_…`), run its validation steps, add **functions**
+(`func_…`) to it, call one by hand, and read the last runs of a trigger or task
+that calls marketplace functions. Concepts and the full contract:
+[Marketplace](https://docs.norbix.ai/cloud/code/marketplace).
+
+Every command is covered by `tests/code-marketplace-routes.test.ts` (same seam
+as above: the real SDK, `fetch` replaced; the verb, path, query and body are
+checked). No test calls a vendor.
+
+All paths below are under `/{version}/code/marketplace`.
+
+| command | what it does | endpoint |
+|---|---|---|
+| `norbix code marketplace listings [--search <text>] [--tags <tag>]… [--category <Category>]… [--transport <Rest\|Mcp\|Code\|Internal\|Sdk>]… [--official]` | the catalog this host shows | `GET /listings` |
+| `norbix code marketplace listings <ml_…>` | one listing in full: install form (config and secret fields), validation steps, functions with key, form kind, parameters and inputs | `GET /listings/{id}` |
+| `norbix code marketplace connections list` | the project's connections in the current environment | `GET /integrations` |
+| `norbix code marketplace connections get <int_…>` | one connection: listing, config, on/off, `lastValidationSteps` (never secrets) | `GET /integrations/{id}` |
+| `norbix code marketplace connections enable --listing <ml_…> [--name <text>] [--config k=v]… [--secret k=v]… [--id <int_…>]` | enables the listing as a new connection and prints the minted id; `--id` saves an existing one again (no `--secret` keeps the stored secrets) | `POST /integrations` |
+| `norbix code marketplace connections enable <int_…>` | turns a turned-off connection back on | `POST /integrations/{id}/enable` |
+| `norbix code marketplace connections disable <int_…> [--yes]` | turns it off | `POST /integrations/{id}/disable` |
+| `norbix code marketplace connections delete <int_…> [--yes]` | deletes it with its secrets and functions | `DELETE /integrations/{id}` |
+| `norbix code marketplace connections validate <int_…>` | runs the listing's steps; prints each step (`ok` / `failed` / `skipped`, required or not, message) and whether functions can be added | `POST /integrations/{id}/test` |
+| `norbix code marketplace connections secrets set <int_…> --secret k=v…` | replaces **all** stored secrets of the connection | `PUT /integrations/{id}/secrets` |
+| `norbix code marketplace functions list --connection <int_…>` | the functions added to a connection | `GET /integrations/{id}/functions` |
+| `norbix code marketplace functions get <func_…> --connection <int_…>` | one function: key, arguments, inputs, template, mappings | `GET /integrations/{id}/functions/{func}` |
+| `norbix code marketplace functions add --connection <int_…> --key <key> [--name <text>] [--arguments '<json>'] [--arg k=v]… [--input name[:type[:required]]]…` | adds a function and prints the minted id | `POST /integrations/{id}/functions` |
+| `norbix code marketplace functions enable\|disable\|delete <func_…> --connection <int_…>` | turns it on / off, deletes it | `POST …/enable`, `POST …/disable`, `DELETE …` |
+| `norbix code marketplace functions invoke <func_…> [--payload '<json>' \| --payload-file <file>]` | calls it as you; prints `isSuccess`, `output`, `vendorRequestId` | `POST /functions/{func}/invoke` |
+| `norbix code marketplace runs --trigger <trg_…> \| --task <tsk_…> [--limit <1-50>]` | the last runs, newest first; a Fake-vendor run also its `input` (secrets `***`), pretty-printed under the row | `GET /functions/runs` |
+
+Notes:
+
+- `--arguments` takes inline JSON, `@file` or `-`. The wire stores every
+  argument as text, so a non-string JSON value is sent as its JSON text
+  (`"filter": {"status":"paid"}` → `filter = '{"status":"paid"}'`,
+  `"pageSize": 20` → `"20"`). `--arg key=value` sets one argument and wins over
+  `--arguments`.
+- Razor tokens are allowed inside argument values: `@Model.Request.<name>`
+  reads the caller's payload (declare it with `--input <name>`; a `required`
+  input missing from the payload is refused before the vendor is called),
+  `@Model.Project.Id` the project.
+- `functions add` is refused (`CM-ERRORS-MARKETPLACE-013`) until every step the
+  listing marks required has passed — run `connections validate` first; its
+  last line says whether functions can be added.
+- `delete` and `disable` ask first; pass `--yes` in a script. Every command
+  that changes something takes `--dry-run`. `--json` prints the raw answer.
+- Token mappings, the function catalog and revealing a stored secret are not
+  commands here; use plain-word access (see the README):
+  `norbix hub code marketplace integration token mappings set --integrationViewId <int_…> --tokenMappings:json '[…]'`,
+  `norbix hub code marketplace function catalog get --integrationViewId <int_…>`,
+  `norbix hub code marketplace integration secrets reveal --integrationViewId <int_…>`.
+
+### Recipe: query your own database through a marketplace function
+
+Norbix Database is a built-in listing: enabling it picks the project's
+database integration on its own (when there is exactly one) and validates at
+once.
+
+```sh
+# 1. What does the listing offer? (functions, parameters, validation steps)
+norbix code marketplace listings ml_norbix_database_v1
+
+# 2. Enable it — prints the new connection id
+norbix code marketplace connections enable --listing ml_norbix_database_v1
+#   Connection int_6rBACnEaxQ0x1jTiHtAuWV created.
+#   Next: norbix code marketplace connections validate int_6rBACnEaxQ0x1jTiHtAuWV
+
+# 3. Validate — the database must open before functions can be added
+norbix code marketplace connections validate int_6rBACnEaxQ0x1jTiHtAuWV
+#   ok      database.connect  Database opens (required)
+#
+#   Functions: can be added.
+
+# 4. Add db.find: paid orders of the customer the caller names
+norbix code marketplace functions add --connection int_6rBACnEaxQ0x1jTiHtAuWV --key db.find --name "Paid orders" \
+  --arguments '{"collection":"orders","filter":{"status":"paid","customerId":"@Model.Request.customerId"},"sort":{"createdAt":-1},"pageSize":20}' \
+  --input customerId:string:required
+#   Function func_4hT8rW2nQ6xLmP0vZ3kJ1c added.
+
+# 5. Call it by hand
+norbix code marketplace functions invoke func_4hT8rW2nQ6xLmP0vZ3kJ1c --payload '{"customerId":"6ac54a59212c29912eaddd81"}'
+#   { "isSuccess": true, "output": { … the records … }, "vendorRequestId": … }
+
+# 6. After a trigger or a scheduler task calls it (cloud: the trigger's
+#    Marketplace action, with a run-as service user), read its last runs
+norbix code marketplace runs --trigger trg_1p4R3gTobGZpD6fXvHT4rd --limit 10
+```
+
+The function runs as the caller: a manual `invoke` as you, a trigger or a
+scheduler task as its run-as user. That user's roles decide which collections
+`db.find` may read.
