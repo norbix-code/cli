@@ -111,7 +111,25 @@
         }
       },
       "code": {
-        "description": "Cloud functions: the functions a code integration may call, their aliases, a call by hand, a sample envelope, the last runs"
+        "description": "Cloud functions: the functions a code integration may call, their aliases, a call by hand, a sample envelope, the last runs; the marketplace",
+        "subtopics": {
+          "marketplace": {
+            "description": "Marketplace: browse listings, enable and validate connections, add and call functions, the last runs",
+            "subtopics": {
+              "connections": {
+                "description": "Enable a listing as a connection, validate it, turn it on/off, replace its secrets, delete it",
+                "subtopics": {
+                  "secrets": {
+                    "description": "Replace the stored secrets of a connection"
+                  }
+                }
+              },
+              "functions": {
+                "description": "Add a function to a connection, show, call, turn on/off or delete it"
+              }
+            }
+          }
+        }
       },
       "config": {
         "description": "Read and write the local CLI configuration"
