@@ -20,7 +20,7 @@ the integration (`code:execute` for `invoke`).
 | `norbix code qualifiers --integration <int_…> --function <id>` | the aliases and versions: name, kind (Alias / Version), the version an alias points at | `GET /qualifiers` |
 | `norbix code invoke --integration <int_…> --function <id> [--qualifier <alias\|version>] [--payload '<json>' \| --payload-file <file>] [--async] [--run-as <usr_…>] [--config '<json>'] [--dry-run]` | Sync (default): the status code, the duration in ms, the function's output and the provider's request id. `--async`: that the call was accepted | `POST /invoke` |
 | `norbix code event-sample --source <database\|membership\|files\|payments\|ai\|scheduler\|manual> [--event <name>] [--schema <sch_…>]` | the full envelope with sample data — the fixture for `sam local invoke`, `func start` or the Functions Framework | `GET /event-sample` |
-| `norbix code runs --trigger <trg_…> \| --task <tsk_…> [--limit <1-50>]` | the last runs, newest first: fired at, event, succeeded, status code, duration, error, request id | `GET /runs` |
+| `norbix code runs --trigger <trg_…> \| --task <tsk_…> [--limit <1-50>]` | the last runs, newest first: fired at, event, succeeded, status code, duration, error, request id — a run through the Fake provider also its `input`, the envelope the function received (`context.runAs.accessToken` masked, cut at 64 KB), pretty-printed under the row | `GET /runs` |
 
 `--json` on any of them prints the raw answer. `invoke` sends the function a
 `manual.invoke` envelope with the payload in `data.payload`; `context.runAs` is

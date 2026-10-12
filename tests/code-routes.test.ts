@@ -4,6 +4,8 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
+import {formatRunInput, formatRuns} from '../src/lib/code.js'
+
 /**
  * Every `norbix code` command, run the way a user types it, through oclif and
  * the real `@norbix.ai/ts` transport, with `fetch` replaced: the verb, the
@@ -197,5 +199,51 @@ describe('norbix code runs', () => {
     const neither = await runCommand(['code', 'runs', ...globalArgs])
     expect(neither.error).toBeDefined()
     expect(calls).toHaveLength(1)
+  })
+
+  it('returns input as it came (a Fake-provider run: the envelope received, token masked)', async () => {
+    answer = {runs: [RUN_WITH_INPUT, RUN_PLAIN]}
+    const {error, result} = await runCommand<{runs: Array<{input?: string}>}>(['code', 'runs', '--task', 'tsk_1', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(result?.runs[0]?.input).toBe(RUN_WITH_INPUT.input)
+    expect(result?.runs[1]?.input).toBeUndefined()
+  })
+})
+
+const RUN_WITH_INPUT = {
+  firedAt: '2026-10-12T09:00:00Z',
+  event: 'scheduler.task.fired',
+  source: 'scheduler',
+  succeeded: true,
+  statusCode: 200,
+  durationMs: 12,
+  input: '{"specVersion":"1","event":"scheduler.task.fired","context":{"runAs":{"accessToken":"***"}}}',
+}
+const RUN_PLAIN = {firedAt: '2026-10-11T09:00:00Z', event: 'scheduler.task.fired', source: 'scheduler', succeeded: false, error: 'config-not-json'}
+
+describe('code runs output', () => {
+  it('prints input as pretty JSON under its row, the row without it', () => {
+    const text = formatRuns({runs: [RUN_WITH_INPUT, RUN_PLAIN]})
+    const [first, second] = text.split('\n\n')
+
+    expect(first).toContain('"durationMs": 12')
+    expect(first).toContain('\ninput:\n')
+    expect(first).toContain('  "accessToken": "***"')
+    expect(first).not.toContain('"input":')
+    expect(second).toBe(JSON.stringify(RUN_PLAIN, null, 2))
+    expect(second).not.toContain('input:')
+  })
+
+  it('prints the answer as it is when no run carries input', () => {
+    const res = {runs: [RUN_PLAIN]}
+    expect(formatRuns(res)).toBe(JSON.stringify(res, null, 2))
+    expect(formatRuns({runs: []})).toBe(JSON.stringify({runs: []}, null, 2))
+  })
+
+  it('leaves an input the 64 KB cut broke as it came', () => {
+    const cut = '{"specVersion":"1","event":"database.record.updated","data":{"database":{"new":{"na'
+    expect(formatRunInput(cut)).toBe(cut)
+    expect(formatRunInput('{"a":1}')).toBe('{\n  "a": 1\n}')
   })
 })
