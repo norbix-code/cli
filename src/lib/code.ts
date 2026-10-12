@@ -59,3 +59,42 @@ export async function readPayload(flags: {payload?: string; 'payload-file'?: str
   }
   return parsed as Record<string, unknown>
 }
+
+/**
+ * `code runs` for the terminal. A run through the Fake provider carries
+ * `input` — the envelope the function received, `context.runAs.accessToken`
+ * masked, cut at 64 KB. It is printed under the run's row as pretty JSON (as
+ * it came when the cut left it unparsable); every other field stays in the
+ * row. Without any `input` the answer prints as it is. `--json` prints the
+ * raw answer, `input` a string.
+ */
+export function formatRuns(res: unknown): string {
+  const runs = (res as {runs?: unknown} | null | undefined)?.runs
+  if (!Array.isArray(runs) || !runs.some((run) => typeof (run as {input?: unknown} | null)?.input === 'string')) {
+    return JSON.stringify(res, null, 2)
+  }
+
+  return runs
+    .map((run) => {
+      const {input, ...row} = run as {input?: unknown} & Record<string, unknown>
+      const text = JSON.stringify(row, null, 2)
+      return typeof input === 'string' ? `${text}\ninput:\n${indent(formatRunInput(input))}` : text
+    })
+    .join('\n\n')
+}
+
+/** The `input` of one run, pretty-printed when it parses as JSON, as it came otherwise. */
+export function formatRunInput(input: string): string {
+  try {
+    return JSON.stringify(JSON.parse(input), null, 2)
+  } catch {
+    return input
+  }
+}
+
+function indent(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => `  ${line}`)
+    .join('\n')
+}
