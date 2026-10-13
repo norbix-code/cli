@@ -547,6 +547,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "id",
     ],
     "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "code marketplace connections sign-out",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
     "flags": [],
     "id": "code marketplace connections tools",
     "supportsDryRun": false,
@@ -675,6 +686,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "function:string",
       "trigger:string",
       "task:string",
+      "connection:string",
       "limit:string",
       "details:boolean",
     ],
