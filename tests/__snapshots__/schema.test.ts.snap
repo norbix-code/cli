@@ -612,9 +612,11 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [],
     "destructive": false,
     "flags": [
+      "function:string",
       "trigger:string",
       "task:string",
       "limit:string",
+      "details:boolean",
     ],
     "id": "code marketplace runs",
     "supportsDryRun": false,

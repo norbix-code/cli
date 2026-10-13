@@ -368,6 +368,64 @@ describe('norbix code marketplace runs', () => {
     expect(neither.error).toBeDefined()
     expect(calls).toHaveLength(1)
   })
+
+  it('→ GET /code/marketplace/functions/runs for a function: only functionId and limit on the query, no body', async () => {
+    const {error} = await runCommand(['code', 'marketplace', 'runs', '--function', FUNCTION, '--limit', '50', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('GET')
+    expect(calls[0]?.path).toBe(`${M}/functions/runs`)
+    expect(Object.fromEntries([...calls[0]!.query.entries()].filter(([k]) => k !== 'env'))).toEqual({functionId: FUNCTION, limit: '50'})
+    expect(calls[0]?.body).toBeUndefined()
+
+    const two = await runCommand(['code', 'marketplace', 'runs', '--function', FUNCTION, '--trigger', 'trg_1', ...globalArgs])
+    expect(two.error).toBeDefined()
+    expect(calls).toHaveLength(1)
+  })
+
+  it('--details reads the log lines of a run with hasDetails by targetCorrelationId; a run without says the logs must be on', async () => {
+    const CORRELATION = '0f8e2c9a4b7d4e1f9a3c5b6d7e8f9012'
+    const runs = {
+      runs: [
+        {firedAt: '2026-10-13T08:01:00Z', event: 'invoke', source: 'api-key', functionId: FUNCTION, succeeded: true, status: 'ok', durationMs: 42, correlationId: CORRELATION, hasDetails: true},
+        {firedAt: '2026-10-13T08:00:00Z', event: 'invoke', source: 'user', functionId: FUNCTION, succeeded: true, status: 'ok', durationMs: 40, correlationId: 'aa11bb22cc33dd44ee55ff6677889900', hasDetails: false},
+      ],
+    }
+    const lines = {
+      items: [
+        {timestamp: '2026-10-13T08:01:00.010Z', level: 'Information', eventCode: 'marketplace:run:started', title: 'Marketplace function run started', meta: {input: '{"text":"hi"}'}},
+        {timestamp: '2026-10-13T08:01:00.052Z', level: 'Information', eventCode: 'marketplace:run:completed', title: 'Marketplace function run completed', meta: {durationMs: '42'}},
+      ],
+    }
+    const realFake = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      answer = url.pathname.endsWith('/logs/audit') ? lines : runs
+      return realFake(input, init)
+    }) as typeof globalThis.fetch
+
+    const {error} = await runCommand(['code', 'marketplace', 'runs', '--function', FUNCTION, '--details', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(['GET /v3/code/marketplace/functions/runs', 'GET /v3/logs/audit'])
+    expect(Object.fromEntries([...calls[1]!.query.entries()].filter(([k]) => k !== 'env'))).toEqual({targetCorrelationId: CORRELATION})
+    expect(calls[1]?.body).toBeUndefined()
+    expect(out()).toContain('marketplace:run:started  Marketplace function run started')
+    expect(out()).toContain('"input": "{\\"text\\":\\"hi\\"}"')
+    expect(out()).toContain("details: details need the project's logs on")
+  })
+
+  it('--details --json: each row gains details (the lines, or null with detailsNote)', async () => {
+    answer = {runs: [{firedAt: '2026-10-13T08:00:00Z', event: 'invoke', source: 'ai', functionId: FUNCTION, succeeded: false, status: 'failed', hasDetails: false}]}
+    const {error, result} = await runCommand(['code', 'marketplace', 'runs', '--function', FUNCTION, '--details', '--json', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(result).toEqual({
+      runs: [{firedAt: '2026-10-13T08:00:00Z', event: 'invoke', source: 'ai', functionId: FUNCTION, succeeded: false, status: 'failed', hasDetails: false, details: null, detailsNote: "details need the project's logs on"}],
+    })
+  })
 })
 
 const STEP_OK = {key: 'secrets.present', label: 'Secrets saved', requiredForFunctions: true, succeeded: true, skipped: false}

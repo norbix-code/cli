@@ -134,3 +134,77 @@ function stepsOf(res: unknown): StepResult[] | undefined {
   const steps = (res as {steps?: unknown} | null | undefined)?.steps
   return Array.isArray(steps) ? (steps as StepResult[]) : undefined
 }
+
+/** What `runs --details` says for a row whose run wrote no log lines. */
+export const RUN_DETAILS_NEED_LOGS = "details need the project's logs on"
+
+/** One log line of a run's details (a `TenantLogEntryDto` from GET /logs/audit). */
+export interface RunDetailLine {
+  timestamp?: string
+  level?: string
+  eventCode?: string
+  title?: string
+  message?: string
+  meta?: Record<string, string>
+}
+
+/** A run row with its details: the log lines, or `null` plus the note when the run has none. */
+export type RunWithDetails = Record<string, unknown> & {details: RunDetailLine[] | null; detailsNote?: string}
+
+/**
+ * Only a row with `hasDetails: true` and a `correlationId` has log lines: they
+ * are written only while the environment's Norbix Logging is on.
+ */
+export function runCorrelationWithDetails(run: unknown): string | undefined {
+  const row = run as {hasDetails?: unknown; correlationId?: unknown} | null | undefined
+  return row?.hasDetails === true && typeof row.correlationId === 'string' && row.correlationId !== ''
+    ? row.correlationId
+    : undefined
+}
+
+/**
+ * `runs --details` for the terminal: each row as JSON (a Fake-vendor `input`
+ * pretty-printed under it, as without --details), then its log lines — one line
+ * each (time, level, event code, title) with `meta` indented — or the note.
+ */
+export function formatRunsWithDetails(runs: RunWithDetails[]): string {
+  if (runs.length === 0) return 'No runs.'
+  return runs
+    .map((run) => {
+      const {details, detailsNote, input, ...row} = run
+      const parts = [JSON.stringify(row, null, 2)]
+      if (typeof input === 'string') parts.push(`input:\n${indentText(prettyJson(input))}`)
+      if (details === null) {
+        parts.push(`details: ${detailsNote ?? RUN_DETAILS_NEED_LOGS}`)
+      } else if (details.length === 0) {
+        parts.push('details: no log lines under this correlation id')
+      } else {
+        parts.push(
+          'details:',
+          ...details.map((line) => {
+            const head = `  ${line.timestamp ?? ''} ${line.level ?? ''} ${line.eventCode ?? ''}  ${line.title ?? ''}`.trimEnd()
+            const meta = line.meta && Object.keys(line.meta).length > 0 ? `\n${indentText(JSON.stringify(line.meta, null, 2), '    ')}` : ''
+            return `${head}${meta}`
+          }),
+        )
+      }
+
+      return parts.join('\n')
+    })
+    .join('\n\n')
+}
+
+function prettyJson(text: string): string {
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2)
+  } catch {
+    return text
+  }
+}
+
+function indentText(text: string, pad = '  '): string {
+  return text
+    .split('\n')
+    .map((line) => `${pad}${line}`)
+    .join('\n')
+}

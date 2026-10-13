@@ -73,7 +73,7 @@ All paths below are under `/{version}/code/marketplace`.
 | `norbix code marketplace functions add --connection <int_…> --key <key> [--name <text>] [--arguments '<json>'] [--arg k=v]… [--input name[:type[:required]]]…` | adds a function and prints the minted id | `POST /integrations/{id}/functions` |
 | `norbix code marketplace functions enable\|disable\|delete <func_…> --connection <int_…>` | turns it on / off, deletes it | `POST …/enable`, `POST …/disable`, `DELETE …` |
 | `norbix code marketplace functions invoke <func_…> [--payload '<json>' \| --payload-file <file>]` | calls it as you; prints `isSuccess`, `output`, `vendorRequestId` | `POST /functions/{func}/invoke` |
-| `norbix code marketplace runs --trigger <trg_…> \| --task <tsk_…> [--limit <1-50>]` | the last runs, newest first; a Fake-vendor run also its `input` (secrets `***`), pretty-printed under the row | `GET /functions/runs` |
+| `norbix code marketplace runs --function <func_…> \| --trigger <trg_…> \| --task <tsk_…> [--limit <1-50>] [--details]` | the last runs, newest first: `--function` every run of one function from every source (invoke, trigger, scheduler; 50 kept), `--trigger` / `--task` the runs it started (20 kept). A row has `status` (`ok` / `failed` / `skipped`), `durationMs`, `source`, `correlationId`, `hasDetails`; a Fake-vendor run also its `input` (secrets `***`), pretty-printed under the row. `--details` adds each run's log lines (input, steps, answer or error) for rows with `hasDetails: true`; any other row says "details need the project's logs on" | `GET /functions/runs`; `--details`: `GET /logs/audit?targetCorrelationId=…` per row |
 
 Notes:
 
@@ -131,6 +131,16 @@ norbix code marketplace functions invoke func_4hT8rW2nQ6xLmP0vZ3kJ1c --payload '
 # 6. After a trigger or a scheduler task calls it (cloud: the trigger's
 #    Marketplace action, with a run-as service user), read its last runs
 norbix code marketplace runs --trigger trg_1p4R3gTobGZpD6fXvHT4rd --limit 10
+
+# 7. Every run of the function — your invoke in step 5 too — with what it
+#    received and answered. Details exist only while the project's logs are on
+#    in that environment; other rows say so. One run's lines alone:
+#    norbix logs trail <correlationId>
+norbix code marketplace runs --function func_4hT8rW2nQ6xLmP0vZ3kJ1c --limit 5 --details
+#   { "event": "invoke", "source": "user", "status": "ok", "durationMs": 42, "hasDetails": true, … }
+#   details:
+#     2026-10-13T08:01:00.010Z Information marketplace:run:started  …
+#     2026-10-13T08:01:00.052Z Information marketplace:run:completed  …
 ```
 
 The function runs as the caller: a manual `invoke` as you, a trigger or a
