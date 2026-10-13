@@ -67,6 +67,7 @@ All paths below are under `/{version}/code/marketplace`.
 | `norbix code marketplace connections disable <int_…> [--yes]` | turns it off | `POST /integrations/{id}/disable` |
 | `norbix code marketplace connections delete <int_…> [--yes]` | deletes it with its secrets and functions | `DELETE /integrations/{id}` |
 | `norbix code marketplace connections validate <int_…>` | runs the listing's steps; prints each step (`ok` / `failed` / `skipped`, required or not, message) and whether functions can be added | `POST /integrations/{id}/test` |
+| `norbix code marketplace connections tools <int_…>` | an MCP connection's tool catalog, stored at its last `validate`: a table of name, access (`read-only` / `writes` / `writes (destructive)`, from the server's own hints) and the first line of the description, then when it was listed and its hash; `--json` the full catalog with every tool's `inputSchema` (JSON Schema as text), `listedAt`, `catalogHash`, `truncated`. No catalog (never validated, not an MCP connection) → `CM-ERRORS-MARKETPLACE-020` | `GET /integrations/{id}/tools` |
 | `norbix code marketplace connections secrets set <int_…> --secret k=v…` | replaces **all** stored secrets of the connection | `PUT /integrations/{id}/secrets` |
 | `norbix code marketplace functions list --connection <int_…>` | the functions added to a connection | `GET /integrations/{id}/functions` |
 | `norbix code marketplace functions get <func_…> --connection <int_…>` | one function: key, arguments, inputs, template, mappings | `GET /integrations/{id}/functions/{func}` |
@@ -86,6 +87,12 @@ Notes:
   reads the caller's payload (declare it with `--input <name>`; a `required`
   input missing from the payload is refused before the vendor is called),
   `@Model.Project.Id` the project.
+- On an MCP connection (the generic MCP server listing or a preset such as
+  GitHub) the functions are the server's tools: `--key` is a tool name from
+  `connections tools`, and `--arg` / `--arguments` bind the tool's arguments
+  (tokens allowed). The server checks the values against the tool's input
+  schema on Add (unknown tool, missing required argument, unknown argument,
+  wrong type are refused). Invoke answers `{ text, json, content }`.
 - `functions add` is refused (`CM-ERRORS-MARKETPLACE-013`) until every step the
   listing marks required has passed — run `connections validate` first; its
   last line says whether functions can be added.

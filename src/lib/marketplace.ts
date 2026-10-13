@@ -208,3 +208,50 @@ function indentText(text: string, pad = '  '): string {
     .map((line) => `${pad}${line}`)
     .join('\n')
 }
+
+/** One tool of an MCP connection's stored catalog (`MarketplaceMcpToolDto`, route 24). */
+export interface McpToolRow {
+  name?: string
+  title?: string
+  description?: string
+  inputSchema?: string
+  readOnlyHint?: boolean
+  destructiveHint?: boolean
+}
+
+/**
+ * What a tool may do, from the server's own hints: `read-only` when it says
+ * readOnlyHint, else `writes` (the MCP default), `writes (destructive)` when it
+ * also says destructiveHint. Hints are the server's claims, not a guarantee.
+ */
+export function toolAccess(tool: McpToolRow): string {
+  if (tool.readOnlyHint === true) return 'read-only'
+  return tool.destructiveHint === true ? 'writes (destructive)' : 'writes'
+}
+
+/**
+ * `connections tools` for the terminal: a table of name, access and the first
+ * line of the description (cut at 80 characters), then when the catalog was
+ * listed, its hash, and a note when the gateway cut it at its limit.
+ */
+export function formatToolCatalog(res: unknown): string {
+  const catalog = (res ?? {}) as {tools?: unknown; listedAt?: string; catalogHash?: string; truncated?: boolean}
+  const tools = Array.isArray(catalog.tools) ? (catalog.tools as McpToolRow[]) : []
+  if (tools.length === 0) return 'No tools in the stored catalog.'
+
+  const rows = tools.map((t) => {
+    const first = (t.description ?? t.title ?? '').split('\n')[0]!.trim()
+    return {name: t.name ?? '?', access: toolAccess(t), description: first.length > 80 ? `${first.slice(0, 79)}…` : first}
+  })
+  const nameWidth = Math.max(4, ...rows.map((r) => r.name.length))
+  const accessWidth = Math.max(6, ...rows.map((r) => r.access.length))
+  const lines = [
+    `${'NAME'.padEnd(nameWidth)}  ${'ACCESS'.padEnd(accessWidth)}  DESCRIPTION`,
+    ...rows.map((r) => `${r.name.padEnd(nameWidth)}  ${r.access.padEnd(accessWidth)}  ${r.description}`.trimEnd()),
+    '',
+    `${tools.length} tool${tools.length === 1 ? '' : 's'}${catalog.listedAt ? `, listed ${catalog.listedAt}` : ''}${catalog.catalogHash ? `, catalog ${catalog.catalogHash}` : ''}.`,
+  ]
+  if (catalog.truncated) lines.push('The server offered more tools than the gateway keeps; the list is cut.')
+  lines.push('Add one as a function: norbix code marketplace functions add --connection <int_id> --key <tool name> --arg <name>=<value>')
+  return lines.join('\n')
+}

@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 
-import {formatValidation, functionsGate, parseInputs, parseKeyValues, readArguments} from '../src/lib/marketplace.js'
+import {formatToolCatalog, formatValidation, functionsGate, parseInputs, parseKeyValues, readArguments, toolAccess} from '../src/lib/marketplace.js'
 
 /**
  * Every `norbix code marketplace` command, run the way a user types it,
@@ -17,6 +17,23 @@ import {formatValidation, functionsGate, parseInputs, parseKeyValues, readArgume
 const LISTING = 'ml_norbix_database_v1'
 const CONNECTION = 'int_6rBACnEaxQ0x1jTiHtAuWV'
 const FUNCTION = 'func_4hT8rW2nQ6xLmP0vZ3kJ1c'
+const MCP_CONNECTION = 'int_7Hq2mcpServerGh1Xz9Lw'
+const MCP_CATALOG = {
+  tools: [
+    {name: 'get_me', title: 'Me', description: 'Details of the signed-in user', inputSchema: '{"type":"object"}', readOnlyHint: true},
+    {
+      name: 'create_issue',
+      description: 'Open a new issue in a repository\nMarkdown body allowed.',
+      inputSchema: '{"type":"object","properties":{"title":{"type":"string"},"body":{"type":"string"}},"required":["title"]}',
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+    {name: 'delete_file', description: 'Delete a file from a repository', inputSchema: '{"type":"object"}', destructiveHint: true},
+  ],
+  listedAt: '2026-10-13T08:00:00Z',
+  catalogHash: '4ce4259bec02f283',
+  truncated: false,
+}
 
 interface Call {
   method: string
@@ -228,6 +245,31 @@ describe('norbix code marketplace connections', () => {
     expect(out()).not.toContain('xoxb-9')
   })
 
+  it('tools → GET …/{id}/tools (no query, no body), a table of name, access and description', async () => {
+    answer = MCP_CATALOG
+    const {error} = await runCommand(['code', 'marketplace', 'connections', 'tools', MCP_CONNECTION, ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('GET')
+    expect(calls[0]?.path).toBe(`${C}/${MCP_CONNECTION}/tools`)
+    expect([...calls[0]!.query.keys()].filter((k) => k !== 'env')).toEqual([])
+    expect(calls[0]?.body).toBeUndefined()
+    expect(out()).toContain('NAME          ACCESS                DESCRIPTION')
+    expect(out()).toContain('get_me        read-only             Details of the signed-in user')
+    expect(out()).toContain('create_issue  writes                Open a new issue in a repository')
+    expect(out()).toContain('delete_file   writes (destructive)  Delete a file from a repository')
+    expect(out()).toContain('3 tools, listed 2026-10-13T08:00:00Z, catalog 4ce4259bec02f283.')
+    expect(out()).not.toContain('inputSchema')
+  })
+
+  it('tools --json returns the full catalog, input schemas included', async () => {
+    answer = MCP_CATALOG
+    const {result} = await runCommand(['code', 'marketplace', 'connections', 'tools', MCP_CONNECTION, '--json', ...globalArgs])
+
+    expect(result).toEqual(MCP_CATALOG)
+  })
+
   it('secrets set needs --secret', async () => {
     const {error} = await runCommand(['code', 'marketplace', 'connections', 'secrets', 'set', CONNECTION, ...globalArgs])
 
@@ -274,6 +316,30 @@ describe('norbix code marketplace functions', () => {
         isEnabled: true,
         arguments: {collection: 'orders', filter: '{"status":"paid","customerId":"@Model.Request.customerId"}', pageSize: '20'},
         inputs: [{name: 'customerId', type: 'string', isRequired: true}],
+      },
+    })
+    expect(out()).toContain(`Function ${FUNCTION} added.`)
+  })
+
+  it('add on an MCP connection: --key is the tool name, --arg binds its arguments (same route as any function)', async () => {
+    answer = {id: FUNCTION}
+    const {error} = await runCommand([
+      'code', 'marketplace', 'functions', 'add', '--connection', MCP_CONNECTION, '--key', 'create_issue', '--name', 'Open-issue',
+      '--arg', 'title=@Model.Request.title', '--arg', 'body=Reported-by-Norbix', '--input', 'title:string:required', ...globalArgs,
+    ])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('POST')
+    expect(calls[0]?.path).toBe(`${C}/${MCP_CONNECTION}/functions`)
+    expect(calls[0]?.body).toEqual({
+      function: {
+        integrationViewId: MCP_CONNECTION,
+        functionKey: 'create_issue',
+        displayName: 'Open-issue',
+        isEnabled: true,
+        arguments: {title: '@Model.Request.title', body: 'Reported-by-Norbix'},
+        inputs: [{name: 'title', type: 'string', isRequired: true}],
       },
     })
     expect(out()).toContain(`Function ${FUNCTION} added.`)
@@ -433,6 +499,16 @@ const STEP_FAILED = {key: 'slack.auth', label: 'Slack accepts the token', requir
 const STEP_SKIPPED = {key: 'web.fetch', label: 'Fetch a page', requiredForFunctions: false, succeeded: false, skipped: true, message: "the required step 'slack.auth' failed"}
 
 describe('marketplace helpers', () => {
+  it('toolAccess and formatToolCatalog: hints decide the access column; empty and cut catalogs say so', () => {
+    expect(toolAccess({readOnlyHint: true, destructiveHint: true})).toBe('read-only')
+    expect(toolAccess({})).toBe('writes')
+    expect(toolAccess({destructiveHint: true})).toBe('writes (destructive)')
+    expect(formatToolCatalog({tools: []})).toBe('No tools in the stored catalog.')
+    const long = formatToolCatalog({tools: [{name: 'x', description: 'a'.repeat(100)}], truncated: true})
+    expect(long).toContain(`${'a'.repeat(79)}…`)
+    expect(long).toContain('the list is cut')
+  })
+
   it('functionsGate: open only when every required step ran green', () => {
     expect(functionsGate({steps: [STEP_OK]})).toEqual({open: true, blocking: []})
     expect(functionsGate({steps: [STEP_OK, STEP_FAILED, STEP_SKIPPED]})).toEqual({open: false, blocking: ['slack.auth']})

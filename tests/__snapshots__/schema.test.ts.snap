@@ -497,6 +497,15 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "destructive": false,
     "flags": [],
+    "id": "code marketplace connections tools",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
     "id": "code marketplace connections validate",
     "supportsDryRun": false,
   },
