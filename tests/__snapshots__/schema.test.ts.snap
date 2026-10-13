@@ -423,6 +423,46 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [
       "id",
     ],
+    "destructive": false,
+    "flags": [],
+    "id": "code marketplace connections access",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "role:string",
+      "from:string",
+      "tool:string",
+      "function:string",
+      "manage:boolean",
+      "new-policy:boolean",
+    ],
+    "id": "code marketplace connections access custom",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "role:string",
+      "package:string",
+      "manage:boolean",
+    ],
+    "id": "code marketplace connections access set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
     "destructive": true,
     "flags": [
       "yes:boolean",
@@ -490,6 +530,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "code marketplace connections secrets set",
     "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "open:boolean",
+    ],
+    "id": "code marketplace connections sign-in",
+    "supportsDryRun": false,
   },
   {
     "args": [

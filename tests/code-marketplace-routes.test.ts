@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 
-import {formatToolCatalog, formatValidation, functionsGate, parseInputs, parseKeyValues, readArguments, toolAccess} from '../src/lib/marketplace.js'
+import {accessCell, formatAccessMatrix, formatToolCatalog, formatValidation, functionsGate, parseAccessPackage, parseInputs, parseKeyValues, readArguments, toolAccess} from '../src/lib/marketplace.js'
 
 /**
  * Every `norbix code marketplace` command, run the way a user types it,
@@ -278,6 +278,152 @@ describe('norbix code marketplace connections', () => {
   })
 })
 
+const ROLE = 'acc_6Qp1dW2kRm8NsT4vYc0Hb_nr_3kLm9QwErTyU'
+const MATRIX = {
+  roles: [
+    {roleId: 'acc_6Qp1dW2kRm8NsT4vYc0Hb_nr_root', name: 'Account Administrator', scope: 'account', isSystem: true, fixed: true, package: 'FullAccess', manage: true, custom: []},
+    {
+      roleId: ROLE,
+      name: 'Projects Developer',
+      scope: 'account',
+      isSystem: true,
+      package: 'None',
+      custom: [],
+      defaultNotApplied: 'The person who enabled the connection may not manage policies, so Read-only was not given.',
+    },
+    {roleId: 'pr_1_nr_2', name: 'Support', scope: 'project', package: 'ReadOnly', isCustom: true, custom: [{policyId: 'pol_9', name: 'GitHub — Support', usedByRoles: 2}]},
+  ],
+  packages: [
+    {kind: 'Viewer', policyId: 'pol_1', name: 'GitHub — Viewer', exists: true},
+    {kind: 'ReadOnly', policyId: 'pol_3', name: 'GitHub — Read-only', exists: true},
+    {kind: 'Manage', policyId: 'pol_5', name: 'GitHub — Manage', exists: false},
+  ],
+  tools: [
+    {name: 'get_me', readOnly: true, grantable: true},
+    {name: 'create_issue', readOnly: false, grantable: true},
+    {name: 'bad name', readOnly: false, grantable: false},
+  ],
+  functions: [{functionId: FUNCTION, name: 'Create issue', functionKey: 'create_issue'}],
+}
+
+describe('norbix code marketplace connections access and sign-in', () => {
+  it('access → GET …/{id}/access (no query, no body), a matrix of role, scope, access and role id', async () => {
+    answer = MATRIX
+    const {error} = await runCommand(['code', 'marketplace', 'connections', 'access', MCP_CONNECTION, ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('GET')
+    expect(calls[0]?.path).toBe(`${C}/${MCP_CONNECTION}/access`)
+    expect([...calls[0]!.query.keys()].filter((k) => k !== 'env')).toEqual([])
+    expect(calls[0]?.body).toBeUndefined()
+    expect(out()).toContain('ROLE                   SCOPE    ACCESS')
+    expect(out()).toContain('Account Administrator  account  Full access + Manage (fixed)')
+    expect(out()).toContain(`Projects Developer     account  —`)
+    expect(out()).toContain('Support                project  Read-only + Custom (GitHub — Support)')
+    expect(out()).toContain('Projects Developer: The person who enabled the connection may not manage policies')
+    expect(out()).toContain('Packages: Viewer, Read-only, Manage (not written yet).')
+    expect(out()).toContain('3 tools (1 read-only), 1 function.')
+    expect(out()).toContain('Only through Full access (the name cannot be granted alone): bad name.')
+  })
+
+  it('access --json returns the whole matrix', async () => {
+    answer = MATRIX
+    const {result} = await runCommand(['code', 'marketplace', 'connections', 'access', MCP_CONNECTION, '--json', ...globalArgs])
+
+    expect(result).toEqual(MATRIX)
+  })
+
+  it('access set → PUT …/{id}/access/roles with roleId, package and manage in the body', async () => {
+    answer = {id: ROLE}
+    const {error} = await runCommand([
+      'code', 'marketplace', 'connections', 'access', 'set', CONNECTION,
+      '--role', ROLE, '--package', 'read-only', '--manage', ...globalArgs,
+    ])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('PUT')
+    expect(calls[0]?.path).toBe(`${C}/${CONNECTION}/access/roles`)
+    expect([...calls[0]!.query.keys()]).toEqual([])
+    expect(calls[0]?.body).toMatchObject({roleId: ROLE, package: 'ReadOnly', manage: true})
+    expect(calls[0]?.body).not.toHaveProperty('integrationViewId')
+    expect(out()).toContain(`Role ${ROLE} now holds Read-only + Manage on connection ${CONNECTION}.`)
+  })
+
+  it('access set without --manage sends manage: false (takes Manage away); a wrong package is refused before any call', async () => {
+    answer = {id: ROLE}
+    await runCommand(['code', 'marketplace', 'connections', 'access', 'set', CONNECTION, '--role', ROLE, '--package', 'None', ...globalArgs])
+    expect(calls[0]?.body).toMatchObject({roleId: ROLE, package: 'None', manage: false})
+
+    calls = []
+    const {error} = await runCommand(['code', 'marketplace', 'connections', 'access', 'set', CONNECTION, '--role', ROLE, '--package', 'admin', ...globalArgs])
+    expect(error?.message).toContain('--package must be one of None, Viewer, FunctionsOnly, ReadOnly, FullAccess')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('access custom → POST …/{id}/access/roles/custom with the ticks in the body', async () => {
+    answer = {policyId: 'pol_9', created: false, usedByRoles: 2}
+    const {error} = await runCommand([
+      'code', 'marketplace', 'connections', 'access', 'custom', MCP_CONNECTION,
+      '--role', ROLE, '--from', 'ReadOnly', '--tool', 'create_issue', '--tool', 'get_me',
+      '--function', FUNCTION, '--manage', '--new-policy', ...globalArgs,
+    ])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('POST')
+    expect(calls[0]?.path).toBe(`${C}/${MCP_CONNECTION}/access/roles/custom`)
+    expect(calls[0]?.body).toMatchObject({
+      roleId: ROLE,
+      basePackage: 'ReadOnly',
+      tools: ['create_issue', 'get_me'],
+      functions: [FUNCTION],
+      manage: true,
+      newPolicyForThisRoleOnly: true,
+    })
+    expect(calls[0]?.body).not.toHaveProperty('integrationViewId')
+    expect(out()).toContain(`Custom policy pol_9 updated for role ${ROLE} on connection ${MCP_CONNECTION} (held by 2 roles).`)
+  })
+
+  it('access custom defaults: --from None, no tools, no functions, manage and new-policy false', async () => {
+    answer = {policyId: 'pol_10', created: true, usedByRoles: 1}
+    await runCommand(['code', 'marketplace', 'connections', 'access', 'custom', MCP_CONNECTION, '--role', ROLE, ...globalArgs])
+
+    expect(calls[0]?.body).toMatchObject({
+      roleId: ROLE, basePackage: 'None', tools: [], functions: [], manage: false, newPolicyForThisRoleOnly: false,
+    })
+    expect(out()).toContain(`Custom policy pol_10 created for role ${ROLE}`)
+  })
+
+  it('sign-in → POST …/{id}/oauth/start with no fields, prints the link, the expiry and the redirect URL', async () => {
+    answer = {
+      authorizeUrl: 'https://slack.com/oauth/v2/authorize?client_id=1&state=s1',
+      redirectUrl: 'https://hub.norbix.ai/v3/code/marketplace/oauth/callback',
+      expiresAt: '2026-10-13T08:10:00Z',
+    }
+    const {error} = await runCommand(['code', 'marketplace', 'connections', 'sign-in', MCP_CONNECTION, ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('POST')
+    expect(calls[0]?.path).toBe(`${C}/${MCP_CONNECTION}/oauth/start`)
+    expect([...calls[0]!.query.keys()]).toEqual([])
+    expect(calls[0]?.body ?? {}).not.toHaveProperty('integrationViewId')
+    expect(out()).toContain('Open this link to sign in:\nhttps://slack.com/oauth/v2/authorize?client_id=1&state=s1')
+    expect(out()).toContain('The link works once, until 2026-10-13T08:10:00Z.')
+    expect(out()).toContain('Redirect URL (the vendor app must allow it): https://hub.norbix.ai/v3/code/marketplace/oauth/callback')
+    expect(out()).toContain(`Then check it: norbix code marketplace connections get ${MCP_CONNECTION}`)
+  })
+
+  it('sign-in --json returns the gateway answer as it is', async () => {
+    answer = {authorizeUrl: 'https://slack.com/oauth/v2/authorize?state=s2', redirectUrl: 'https://hub.norbix.ai/v3/code/marketplace/oauth/callback', expiresAt: '2026-10-13T08:10:00Z'}
+    const {result} = await runCommand(['code', 'marketplace', 'connections', 'sign-in', MCP_CONNECTION, '--json', ...globalArgs])
+
+    expect(result).toEqual(answer)
+  })
+})
+
 describe('norbix code marketplace functions', () => {
   const F = `${C}/${CONNECTION}/functions`
 
@@ -499,6 +645,19 @@ const STEP_FAILED = {key: 'slack.auth', label: 'Slack accepts the token', requir
 const STEP_SKIPPED = {key: 'web.fetch', label: 'Fetch a page', requiredForFunctions: false, succeeded: false, skipped: true, message: "the required step 'slack.auth' failed"}
 
 describe('marketplace helpers', () => {
+  it('parseAccessPackage ignores case, dashes and spaces; refuses anything else', () => {
+    expect(parseAccessPackage('read-only', 'package')).toBe('ReadOnly')
+    expect(parseAccessPackage('FULL_ACCESS', 'package')).toBe('FullAccess')
+    expect(parseAccessPackage('functions only', 'from')).toBe('FunctionsOnly')
+    expect(() => parseAccessPackage('Manage', 'package')).toThrow('--package must be one of')
+  })
+
+  it('accessCell joins the package, Manage, Custom and fixed', () => {
+    expect(accessCell({package: 'Viewer'})).toBe('Viewer')
+    expect(accessCell({package: 'None', isCustom: true, custom: [{policyId: 'pol_1'}]})).toBe('— + Custom (pol_1)')
+    expect(formatAccessMatrix({roles: []})).toBe('No roles in the access matrix.')
+  })
+
   it('toolAccess and formatToolCatalog: hints decide the access column; empty and cut catalogs say so', () => {
     expect(toolAccess({readOnlyHint: true, destructiveHint: true})).toBe('read-only')
     expect(toolAccess({})).toBe('writes')

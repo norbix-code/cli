@@ -255,3 +255,103 @@ export function formatToolCatalog(res: unknown): string {
   lines.push('Add one as a function: norbix code marketplace functions add --connection <int_id> --key <tool name> --arg <name>=<value>')
   return lines.join('\n')
 }
+
+/** The packages a role can hold on a connection (`MarketplaceAccessLevel` without `Manage`, which is a flag). */
+export const ACCESS_PACKAGES = ['None', 'Viewer', 'FunctionsOnly', 'ReadOnly', 'FullAccess']
+
+/**
+ * `--package` / `--from` → the gateway's `MarketplaceAccessLevel` name. Case,
+ * dashes, underscores and spaces are ignored, so `read-only`, `ReadOnly` and
+ * `readonly` all mean `ReadOnly`.
+ */
+export function parseAccessPackage(value: string, flagName: string): string {
+  const key = value.replace(/[\s_-]/g, '').toLowerCase()
+  const match = ACCESS_PACKAGES.find((p) => p.toLowerCase() === key)
+  if (!match) {
+    throw usageError(
+      `--${flagName} must be one of ${ACCESS_PACKAGES.join(', ')}, got "${value}".`,
+      `e.g. --${flagName} read-only`,
+    )
+  }
+
+  return match
+}
+
+interface AccessRoleRow {
+  roleId?: string
+  name?: string
+  scope?: string
+  isSystem?: boolean
+  fixed?: boolean
+  package?: string
+  isCustom?: boolean
+  manage?: boolean
+  custom?: Array<{policyId?: string; name?: string; usedByRoles?: number}>
+  defaultNotApplied?: string
+}
+
+/** A package name for people: `FunctionsOnly` → `Functions only`, `ReadOnly` → `Read-only`. */
+export function accessPackageLabel(value: string | undefined): string {
+  switch (value) {
+    case 'Viewer': return 'Viewer'
+    case 'FunctionsOnly': return 'Functions only'
+    case 'ReadOnly': return 'Read-only'
+    case 'FullAccess': return 'Full access'
+    case 'Manage': return 'Manage'
+    default: return '—'
+  }
+}
+
+/** What one role holds, in one cell: the package, `+ Manage`, `Custom`, `fixed`. */
+export function accessCell(role: AccessRoleRow): string {
+  const parts = [accessPackageLabel(role.package)]
+  if (role.manage) parts.push('+ Manage')
+  if (role.isCustom) parts.push(`+ Custom (${(role.custom ?? []).map((c) => c.name ?? c.policyId ?? '?').join(', ')})`)
+  if (role.fixed) parts.push('(fixed)')
+  return parts.join(' ')
+}
+
+/**
+ * `connections access` for the terminal: one row per role (name, scope,
+ * access, role id), then a note per row whose safe default was not applied,
+ * then the packages that exist and the tools that cannot be granted alone.
+ */
+export function formatAccessMatrix(res: unknown): string {
+  const matrix = (res ?? {}) as {
+    roles?: AccessRoleRow[]
+    packages?: Array<{kind?: string; policyId?: string; name?: string; exists?: boolean}>
+    tools?: Array<{name?: string; readOnly?: boolean; grantable?: boolean}>
+    functions?: Array<{functionId?: string; name?: string; functionKey?: string}>
+  }
+  const roles = Array.isArray(matrix.roles) ? matrix.roles : []
+  if (roles.length === 0) return 'No roles in the access matrix.'
+
+  const rows = roles.map((r) => ({
+    name: r.name ?? '?', scope: r.scope ?? 'account', access: accessCell(r), id: r.roleId ?? '',
+  }))
+  const w = {
+    name: Math.max(4, ...rows.map((r) => r.name.length)),
+    scope: Math.max(5, ...rows.map((r) => r.scope.length)),
+    access: Math.max(6, ...rows.map((r) => r.access.length)),
+  }
+  const lines = [
+    `${'ROLE'.padEnd(w.name)}  ${'SCOPE'.padEnd(w.scope)}  ${'ACCESS'.padEnd(w.access)}  ROLE ID`,
+    ...rows.map((r) => `${r.name.padEnd(w.name)}  ${r.scope.padEnd(w.scope)}  ${r.access.padEnd(w.access)}  ${r.id}`),
+  ]
+  for (const r of roles) {
+    if (r.defaultNotApplied) lines.push('', `${r.name ?? r.roleId}: ${r.defaultNotApplied}`)
+  }
+
+  const packages = Array.isArray(matrix.packages) ? matrix.packages : []
+  if (packages.length > 0) {
+    lines.push('', `Packages: ${packages.map((p) => `${accessPackageLabel(p.kind)}${p.exists ? '' : ' (not written yet)'}`).join(', ')}.`)
+  }
+
+  const tools = Array.isArray(matrix.tools) ? matrix.tools : []
+  const functions = Array.isArray(matrix.functions) ? matrix.functions : []
+  lines.push(`${tools.length} tool${tools.length === 1 ? '' : 's'} (${tools.filter((t) => t.readOnly).length} read-only), ${functions.length} function${functions.length === 1 ? '' : 's'}.`)
+  const notGrantable = tools.filter((t) => t.grantable === false).map((t) => t.name ?? '?')
+  if (notGrantable.length > 0) lines.push(`Only through Full access (the name cannot be granted alone): ${notGrantable.join(', ')}.`)
+  lines.push('Change a role: norbix code marketplace connections access set <int_id> --role <role id> --package read-only [--manage]')
+  return lines.join('\n')
+}
