@@ -117,10 +117,13 @@
             "description": "Marketplace: browse listings, enable and validate connections, add and call functions, the last runs",
             "subtopics": {
               "connections": {
-                "description": "Enable a listing as a connection, validate it, turn it on/off, replace its secrets, delete it",
+                "description": "Enable a listing as a connection, validate it, sign in, turn it on/off, replace its secrets, set who may use it, delete it",
                 "subtopics": {
                   "secrets": {
                     "description": "Replace the stored secrets of a connection"
+                  },
+                  "access": {
+                    "description": "Who may use a connection: the access matrix, a role's package, a custom policy"
                   }
                 }
               },
