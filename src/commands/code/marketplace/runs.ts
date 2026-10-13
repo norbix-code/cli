@@ -10,12 +10,12 @@ import {
   type RunWithDetails,
 } from '../../../lib/marketplace.js'
 
-const ONE_OF = ['function', 'trigger', 'task']
+const ONE_OF = ['function', 'trigger', 'task', 'connection']
 
 export default class CodeMarketplaceRuns extends BaseCommand {
-  static description = `The last runs of a marketplace function, of a trigger or of a scheduler task
+  static description = `The last runs of a marketplace function, of a trigger, of a scheduler task or of an MCP connection's AI tool calls
 
-Newest first: when it ran, the event (invoke for a call by a user, an API key or the AI), the source (user, api-key, ai, database, membership, files, payments, scheduler), the function, the run-as user, the status (ok, failed, skipped), the duration in ms, the error, the vendor's request id and the correlation id. --function lists every run of one function from every source (up to 50 kept); --trigger and --task list the runs that trigger or task started (20 kept). A run through the Fake vendor also carries input — what the vendor received, secrets masked — printed as JSON under its row (a string with --json).
+Newest first: when it ran, the event (invoke for a call by a user, an API key or the AI), the source (user, api-key, ai, database, membership, files, payments, scheduler), the function, the run-as user, the status (ok, failed, skipped), the duration in ms, the error, the vendor's request id and the correlation id. --function lists every run of one function from every source (up to 50 kept); --trigger and --task list the runs that trigger or task started (20 kept). --connection lists the tool calls an AI chat made on an MCP connection without a saved function (each row names the toolName). A run through the Fake vendor also carries input — what the vendor received, secrets masked — printed as JSON under its row (a string with --json).
 
 --details also reads each run's log lines — input, steps, the answer or the error — by its correlation id (GET /logs/audit). They exist only for a run made while the project's logs were on in that environment (hasDetails: true); any other row says "${RUN_DETAILS_NEED_LOGS}". With --json each row gains "details" (the lines, or null) and, when null, "detailsNote".`
 
@@ -24,12 +24,14 @@ Newest first: when it ran, the event (invoke for a call by a user, an API key or
     '<%= config.bin %> code marketplace runs --function func_4hT8rW2nQ6xLmP0vZ3kJ1c --limit 5 --details',
     '<%= config.bin %> code marketplace runs --trigger trg_1p4R3gTobGZpD6fXvHT4rd',
     '<%= config.bin %> code marketplace runs --task tsk_3kQ9mZ2vXc8LpR4wT7yH1n --limit 50 --json',
+    '<%= config.bin %> code marketplace runs --connection int_7Hq2mcpServerGh1Xz9Lw',
   ]
 
   static flags = {
     function: Flags.string({description: 'Marketplace function ID (func_…) whose runs to list, from every source', exactlyOne: ONE_OF}),
     trigger: Flags.string({description: 'Trigger ID (trg_…) whose runs to list', exactlyOne: ONE_OF}),
     task: Flags.string({description: 'Scheduler task ID (tsk_…) whose runs to list', exactlyOne: ONE_OF}),
+    connection: Flags.string({description: 'MCP connection ID (int_…): the AI tool calls made on it without a saved function', exactlyOne: ONE_OF}),
     limit: Flags.integer({description: 'How many runs, newest first: 1-50 (default 20)', min: 1, max: 50}),
     details: Flags.boolean({description: "Also read each run's log lines (input, steps, answer) — only runs made while the project's logs were on have them", default: false}),
   }
@@ -42,6 +44,7 @@ Newest first: when it ran, the event (invoke for a call by a user, an API key or
       functionId: flags.function,
       triggerId: flags.trigger,
       taskId: flags.task,
+      integrationId: flags.connection,
       limit: flags.limit,
     })
 

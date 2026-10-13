@@ -288,6 +288,7 @@ interface AccessRoleRow {
   manage?: boolean
   custom?: Array<{policyId?: string; name?: string; usedByRoles?: number}>
   defaultNotApplied?: string
+  canChange?: boolean
 }
 
 /** A package name for people: `FunctionsOnly` → `Functions only`, `ReadOnly` → `Read-only`. */
@@ -312,32 +313,43 @@ export function accessCell(role: AccessRoleRow): string {
 }
 
 /**
- * `connections access` for the terminal: one row per role (name, scope,
- * access, role id), then a note per row whose safe default was not applied,
- * then the packages that exist and the tools that cannot be granted alone.
+ * `connections access` for the terminal: whether you may change access at all
+ * (`canManage`), one row per role (name, scope, access, role id; `(not by you)`
+ * on a row you may not change), a note per row whose safe default was not
+ * applied, the packages that exist, the tools that cannot be granted alone, the
+ * tools whose class comes from the preset's own list (`curated`) and the tools
+ * the preset keeps out of Full access (`excludedFromFullAccess`).
  */
 export function formatAccessMatrix(res: unknown): string {
   const matrix = (res ?? {}) as {
+    canManage?: boolean
     roles?: AccessRoleRow[]
     packages?: Array<{kind?: string; policyId?: string; name?: string; exists?: boolean}>
-    tools?: Array<{name?: string; readOnly?: boolean; grantable?: boolean}>
+    tools?: Array<{name?: string; readOnly?: boolean; grantable?: boolean; curated?: boolean; excludedFromFullAccess?: boolean}>
     functions?: Array<{functionId?: string; name?: string; functionKey?: string}>
   }
   const roles = Array.isArray(matrix.roles) ? matrix.roles : []
   if (roles.length === 0) return 'No roles in the access matrix.'
 
+  // A row you may not change says so — only when you may change some rows (otherwise the line above the table says it once).
+  const notByYou = (r: AccessRoleRow) => matrix.canManage === true && r.canChange === false && !r.fixed
   const rows = roles.map((r) => ({
-    name: r.name ?? '?', scope: r.scope ?? 'account', access: accessCell(r), id: r.roleId ?? '',
+    name: r.name ?? '?', scope: r.scope ?? 'account', access: `${accessCell(r)}${notByYou(r) ? ' (not by you)' : ''}`, id: r.roleId ?? '',
   }))
   const w = {
     name: Math.max(4, ...rows.map((r) => r.name.length)),
     scope: Math.max(5, ...rows.map((r) => r.scope.length)),
     access: Math.max(6, ...rows.map((r) => r.access.length)),
   }
-  const lines = [
+  const lines: string[] = []
+  if (matrix.canManage === false) {
+    lines.push('You cannot change access on this connection (it needs marketplace:manage on the connection and membership:managePolicies).', '')
+  }
+
+  lines.push(
     `${'ROLE'.padEnd(w.name)}  ${'SCOPE'.padEnd(w.scope)}  ${'ACCESS'.padEnd(w.access)}  ROLE ID`,
     ...rows.map((r) => `${r.name.padEnd(w.name)}  ${r.scope.padEnd(w.scope)}  ${r.access.padEnd(w.access)}  ${r.id}`),
-  ]
+  )
   for (const r of roles) {
     if (r.defaultNotApplied) lines.push('', `${r.name ?? r.roleId}: ${r.defaultNotApplied}`)
   }
@@ -352,6 +364,20 @@ export function formatAccessMatrix(res: unknown): string {
   lines.push(`${tools.length} tool${tools.length === 1 ? '' : 's'} (${tools.filter((t) => t.readOnly).length} read-only), ${functions.length} function${functions.length === 1 ? '' : 's'}.`)
   const notGrantable = tools.filter((t) => t.grantable === false).map((t) => t.name ?? '?')
   if (notGrantable.length > 0) lines.push(`Only through Full access (the name cannot be granted alone): ${notGrantable.join(', ')}.`)
-  lines.push('Change a role: norbix code marketplace connections access set <int_id> --role <role id> --package read-only [--manage]')
+  const curated = tools.filter((t) => t.curated === true).map((t) => `${t.name ?? '?'} (${t.readOnly ? 'read-only' : 'writes'})`)
+  if (curated.length > 0) lines.push(`Classed by the preset's own list, not the server's hint: ${curated.join(', ')}.`)
+  const excluded = tools.filter((t) => t.excludedFromFullAccess === true).map((t) => t.name ?? '?')
+  if (excluded.length > 0) lines.push(`Kept out of Full access and Functions only (tick them in a custom policy): ${excluded.join(', ')}.`)
+  if (matrix.canManage !== false) lines.push('Change a role: norbix code marketplace connections access set <int_id> --role <role id> --package read-only [--manage]')
   return lines.join('\n')
+}
+
+/** What the gateway did with the vendor token, in words (route 30 `revoke`). */
+export function revokeOutcome(revoke: string | null | undefined): string {
+  switch (revoke) {
+    case 'Revoked': return 'the vendor revoked the token'
+    case 'NoRevocationEndpoint': return 'the vendor has no way to revoke it, so it was only deleted here'
+    case 'Failed': return 'the vendor did not confirm the revoke; the token was deleted here anyway'
+    default: return 'there was no token to revoke'
+  }
 }

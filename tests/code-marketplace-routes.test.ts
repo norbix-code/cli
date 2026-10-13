@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 
-import {accessCell, formatAccessMatrix, formatToolCatalog, formatValidation, functionsGate, parseAccessPackage, parseInputs, parseKeyValues, readArguments, toolAccess} from '../src/lib/marketplace.js'
+import {accessCell, formatAccessMatrix, revokeOutcome, formatToolCatalog, formatValidation, functionsGate, parseAccessPackage, parseInputs, parseKeyValues, readArguments, toolAccess} from '../src/lib/marketplace.js'
 
 /**
  * Every `norbix code marketplace` command, run the way a user types it,
@@ -307,6 +307,63 @@ const MATRIX = {
 }
 
 describe('norbix code marketplace connections access and sign-in', () => {
+  it('sign-out → POST …/{id}/oauth/sign-out with no fields; says what happened to the token', async () => {
+    answer = {wasSignedIn: true, revoke: 'NoRevocationEndpoint'}
+    const {error} = await runCommand(['code', 'marketplace', 'connections', 'sign-out', MCP_CONNECTION, ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('POST')
+    expect(calls[0]?.path).toBe(`${C}/${MCP_CONNECTION}/oauth/sign-out`)
+    expect([...calls[0]!.query.keys()]).toEqual([])
+    expect(calls[0]?.body ?? {}).not.toHaveProperty('integrationViewId')
+    expect(out()).toContain(`Connection ${MCP_CONNECTION} signed out: the vendor has no way to revoke it, so it was only deleted here.`)
+  })
+
+  it('sign-out of a connection that was not signed in says so; --json returns the answer', async () => {
+    answer = {wasSignedIn: false, revoke: null}
+    const {result} = await runCommand(['code', 'marketplace', 'connections', 'sign-out', MCP_CONNECTION, '--json', ...globalArgs])
+    expect(result).toEqual({wasSignedIn: false, revoke: null})
+
+    printed = []
+    await runCommand(['code', 'marketplace', 'connections', 'sign-out', MCP_CONNECTION, ...globalArgs])
+    expect(out()).toContain(`Connection ${MCP_CONNECTION} was not signed in; nothing to sign out.`)
+  })
+
+  it('access shows rows you may not change, curated tool classes and tools kept out of Full access', async () => {
+    answer = {
+      ...MATRIX,
+      canManage: true,
+      roles: [
+        {...MATRIX.roles[0], canChange: false},
+        {...MATRIX.roles[1], canChange: true},
+        {...MATRIX.roles[2], canChange: false},
+      ],
+      tools: [
+        {name: 'get_me', readOnly: true, grantable: true, curated: true},
+        {name: 'delete_repo', readOnly: false, grantable: true, curated: true, excludedFromFullAccess: true},
+      ],
+    }
+    await runCommand(['code', 'marketplace', 'connections', 'access', MCP_CONNECTION, ...globalArgs])
+
+    expect(out()).toContain('Account Administrator  account  Full access + Manage (fixed)  ')
+    expect(out()).not.toContain('(fixed) (not by you)')
+    expect(out()).toContain('Read-only + Custom (GitHub — Support) (not by you)')
+    expect(out()).not.toMatch(/Projects Developer .*not by you/)
+    expect(out()).toContain("Classed by the preset's own list, not the server's hint: get_me (read-only), delete_repo (writes).")
+    expect(out()).toContain('Kept out of Full access and Functions only (tick them in a custom policy): delete_repo.')
+    expect(out()).toContain('Change a role:')
+  })
+
+  it('access with canManage false says once that you cannot change it, and drops the hint', async () => {
+    answer = {...MATRIX, canManage: false, roles: MATRIX.roles.map((r) => ({...r, canChange: false}))}
+    await runCommand(['code', 'marketplace', 'connections', 'access', MCP_CONNECTION, ...globalArgs])
+
+    expect(out()).toContain('You cannot change access on this connection (it needs marketplace:manage on the connection and membership:managePolicies).')
+    expect(out()).not.toContain('(not by you)')
+    expect(out()).not.toContain('Change a role:')
+  })
+
   it('access → GET …/{id}/access (no query, no body), a matrix of role, scope, access and role id', async () => {
     answer = MATRIX
     const {error} = await runCommand(['code', 'marketplace', 'connections', 'access', MCP_CONNECTION, ...globalArgs])
@@ -557,6 +614,26 @@ describe('norbix code marketplace functions', () => {
 })
 
 describe('norbix code marketplace runs', () => {
+  it('--connection → GET …/functions/runs with integrationId only (an MCP connection\'s AI tool calls), toolName in the rows', async () => {
+    answer = {runs: [{firedAt: '2026-10-13T09:00:00Z', event: 'ai.tool.called', integrationId: MCP_CONNECTION, toolName: 'create_issue', succeeded: true}]}
+    const {error, result} = await runCommand(['code', 'marketplace', 'runs', '--connection', MCP_CONNECTION, '--limit', '5', '--json', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.method).toBe('GET')
+    expect(calls[0]?.path).toBe(`${M}/functions/runs`)
+    expect(Object.fromEntries([...calls[0]!.query.entries()].filter(([k]) => k !== 'env'))).toEqual({integrationId: MCP_CONNECTION, limit: '5'})
+    expect(calls[0]?.body).toBeUndefined()
+    expect((result as {runs: Array<{toolName?: string}>}).runs[0]?.toolName).toBe('create_issue')
+  })
+
+  it('--connection with --function is refused before any call (exactly one source)', async () => {
+    const {error} = await runCommand(['code', 'marketplace', 'runs', '--connection', MCP_CONNECTION, '--function', FUNCTION, ...globalArgs])
+
+    expect(error).toBeDefined()
+    expect(calls).toHaveLength(0)
+  })
+
   it('→ GET /code/marketplace/functions/runs for a trigger', async () => {
     const {error} = await runCommand(['code', 'marketplace', 'runs', '--trigger', 'trg_1p4R3gTobGZpD6fXvHT4rd', '--limit', '10', ...globalArgs])
 
@@ -645,6 +722,12 @@ const STEP_FAILED = {key: 'slack.auth', label: 'Slack accepts the token', requir
 const STEP_SKIPPED = {key: 'web.fetch', label: 'Fetch a page', requiredForFunctions: false, succeeded: false, skipped: true, message: "the required step 'slack.auth' failed"}
 
 describe('marketplace helpers', () => {
+  it('revokeOutcome names each revoke result in words', () => {
+    expect(revokeOutcome('Revoked')).toBe('the vendor revoked the token')
+    expect(revokeOutcome('Failed')).toContain('deleted here anyway')
+    expect(revokeOutcome(null)).toBe('there was no token to revoke')
+  })
+
   it('parseAccessPackage ignores case, dashes and spaces; refuses anything else', () => {
     expect(parseAccessPackage('read-only', 'package')).toBe('ReadOnly')
     expect(parseAccessPackage('FULL_ACCESS', 'package')).toBe('FullAccess')
