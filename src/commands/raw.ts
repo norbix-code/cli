@@ -13,7 +13,7 @@ export default class Raw extends BaseCommand {
 
 Prefer \`norbix hub ...\` / \`norbix api ...\` — they take plain words.
 Use this only for endpoints the SDK does not know yet. Sends your auth token
-plus project/account/env/region headers automatically. Use {version} in the
+plus project/account/env/region (and --language as Accept-Language) headers automatically. Use {version} in the
 path and it becomes v3.`
 
   static examples = [
@@ -63,6 +63,8 @@ path and it becomes v3.`
     if (ctx.accountId) headers['norbix-account-id'] = ctx.accountId
     if (ctx.env && ctx.env !== 'PROD') headers['norbix-env'] = ctx.env
     if (ctx.region) headers['nb-region'] = ctx.region
+    const language = this.acceptLanguage(flags)
+    if (language) headers['Accept-Language'] = language
 
     let body: string | undefined
     if (flags.body) {
