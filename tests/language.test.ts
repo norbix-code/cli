@@ -1,5 +1,6 @@
 import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {envListAnswer} from './_env.js'
 
 /**
  * `--language` / NORBIX_LANGUAGE: the gateway's only language input is the
@@ -14,7 +15,9 @@ let realFetch: typeof globalThis.fetch
 beforeEach(() => {
   headers = []
   realFetch = globalThis.fetch
-  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
     headers.push(new Headers(init?.headers ?? {}))
     return new Response('{}', {status: 200, headers: {'Content-Type': 'application/json'}})
   }) as typeof globalThis.fetch

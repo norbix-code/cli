@@ -2,11 +2,15 @@ import {Norbix} from '@norbix.ai/ts'
 import {Command, Flags, ux} from '@oclif/core'
 
 import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
+import {checkEnv, envsOf, type EnvSource} from './lib/env-rule.js'
 import {EXIT} from './lib/exit-codes.js'
 import {
   DEFAULT_HOST,
   cachedHost,
+  cachedProjectEnvs,
   cachedProjectRegion,
+  forgetProjectEnvs,
+  saveProjectEnvs,
   fetchProjectRegion,
   saveProjectRegion,
   forgetHost,
@@ -88,6 +92,7 @@ export interface GlobalFlags {
   host?: string
   project?: string
   env?: string
+  prod?: boolean
   region?: string
   language?: string
   'api-key'?: string
@@ -101,6 +106,8 @@ export interface ResolvedContext {
   projectId?: string
   accountId?: string
   env?: string
+  /** Where `env` came from (the env rule: src/lib/env-rule.ts). */
+  envSource: EnvSource
   region?: string
   apiKey?: string
   bearerToken?: string
@@ -215,8 +222,13 @@ export abstract class BaseCommand extends Command {
       helpGroup: 'GLOBAL',
     }),
     env: Flags.string({
-      description: 'Project environment (e.g. PROD, TEST)',
+      description:
+        'Project environment (e.g. PROD, TEST). Required when the project has more than one (`norbix env list`); optional when it has only PROD',
       env: 'NORBIX_ENV',
+      helpGroup: 'GLOBAL',
+    }),
+    prod: Flags.boolean({
+      description: 'Short for --env PROD',
       helpGroup: 'GLOBAL',
     }),
     region: Flags.string({
@@ -556,11 +568,19 @@ export abstract class BaseCommand extends Command {
 
     const usesDefaultEndpoints = apiUrlBase === DEFAULT_API_URL || hubUrlBase === DEFAULT_HUB_URL
 
+    const {env, envSource} = this.resolveEnv(flags, {
+      profile: prof.env,
+      profileName,
+      session: session?.env,
+      legacy: fromLegacy(legacy.env),
+    })
+
     return {
       usesDefaultEndpoints,
       projectId,
       accountId: flags.account ?? prof.account_id ?? session?.accountId ?? fromLegacy(legacy.accountId),
-      env: flags.env ?? prof.env ?? session?.env ?? fromLegacy(legacy.env),
+      env,
+      envSource,
       region,
       apiKey,
       bearerToken,
@@ -587,6 +607,80 @@ export abstract class BaseCommand extends Command {
       apiVersion: apiUrlVersion ?? (target.apiOverride ? undefined : info?.apiVersion),
       stored: legacy,
     }
+  }
+
+  /**
+   * The env of this run and where it came from: --prod, --env, NORBIX_ENV,
+   * then a saved one (profile, `norbix env use` in the session, old config).
+   */
+  private resolveEnv(
+    flags: GlobalFlags,
+    saved: {profile?: string; profileName?: string; session?: string; legacy?: string},
+  ): {env?: string; envSource: EnvSource} {
+    const typedEnv = this.argv.some((a) => a === '--env' || a.startsWith('--env='))
+    if (flags.prod) {
+      if (typedEnv && flags.env && flags.env.trim().toUpperCase() !== 'PROD') {
+        throw usageError(`--prod and --env ${flags.env} name different environments.`, 'Pass one of them.', 'norbix env list --help')
+      }
+
+      return {env: 'PROD', envSource: '--prod'}
+    }
+
+    const clean = (v?: string) => v?.trim().toUpperCase() || undefined
+    if (clean(flags.env)) {
+      const fromVariable = !typedEnv && clean(process.env.NORBIX_ENV) === clean(flags.env)
+      return {env: clean(flags.env), envSource: fromVariable ? 'NORBIX_ENV' : '--env'}
+    }
+
+    if (clean(saved.profile)) return {env: clean(saved.profile), envSource: `profile [${saved.profileName ?? 'default'}]`}
+    if (clean(saved.session)) return {env: clean(saved.session), envSource: 'saved by norbix env use'}
+    if (clean(saved.legacy)) return {env: clean(saved.legacy), envSource: 'old config.json'}
+    return {envSource: 'none'}
+  }
+
+  /** The context of the last client built — `catch` uses it to drop a stale env list. */
+  private lastCtx?: ResolvedContext
+
+  /** Drop the cached environment list of the project (env commands, env errors). */
+  protected forgetEnvs(ctx: ResolvedContext | undefined = this.lastCtx): void {
+    if (ctx?.projectId) forgetProjectEnvs(ctx.hubKey, ctx.projectId)
+  }
+
+  /** Remember a freshly read environment list of the project (`env list`). */
+  protected rememberEnvs(ctx: ResolvedContext, response: unknown): void {
+    const envs = envsOf(response)
+    if (ctx.projectId && envs) saveProjectEnvs(ctx.hubKey, ctx.projectId, envs)
+  }
+
+  /** The env rule ran once in this process (one check per command). */
+  private envChecked?: Promise<void>
+
+  /**
+   * The env rule (src/lib/env-rule.ts) for a project-scoped call: read the
+   * project's environments (cache, else the Hub — through the same client),
+   * refuse when there are several and none is named, print a saved env on
+   * stderr. A dry run sends nothing, so it uses the cache only.
+   */
+  private checkProjectEnv(ctx: ResolvedContext, client: () => Norbix, dryRun: boolean): Promise<void> {
+    this.envChecked ??= (async () => {
+      if (!ctx.projectId) return
+      let envs = cachedProjectEnvs(ctx.hubKey, ctx.projectId)
+      if (!envs && !dryRun) {
+        try {
+          envs = envsOf(await client().hub.environments.list())
+          if (envs) saveProjectEnvs(ctx.hubKey, ctx.projectId, envs)
+        } catch (error) {
+          // The sign-in ended, the Hub is down: let the command itself report it.
+          const raw = (error as {raw?: unknown}).raw
+          if (error instanceof CliError || raw instanceof CliError) throw error
+          envs = undefined
+        }
+      }
+
+      const verdict = checkEnv(dryRun && !envs ? ['PROD'] : envs, {env: ctx.env, source: ctx.envSource})
+      if (verdict.notice) process.stderr.write(verdict.notice + '\n')
+    })()
+    return this.envChecked
   }
 
   /** One warning per deprecated setting and run, on stderr (stdout stays one JSON document). */
@@ -675,6 +769,7 @@ export abstract class BaseCommand extends Command {
     opts: {requireAuth?: boolean; requireProject?: boolean; account?: boolean} = {},
   ): Norbix {
     const ctx = this.resolveContext(flags)
+    this.lastCtx = ctx
     const noProject = !ctx.projectId && opts.requireProject === false
     // No project first: on norbix.ai the region comes from the project, so
     // "Region is required" would hide the real cause (and its project list).
@@ -694,13 +789,22 @@ export abstract class BaseCommand extends Command {
       })
     }
 
-    // The last middleware runs first: a dry run stops before any refresh.
+    // The last middleware runs first: a dry run stops before any refresh,
+    // and the env rule runs before both (a dry run must fail like the real call).
     const middleware: NorbixMiddleware[] = noProject ? [dropProjectHeaders] : []
     const refresher = this.sessionRefresher(ctx)
     if (refresher) middleware.push(sessionMiddleware(refresher))
     if (flags['dry-run']) middleware.push(dryRunMiddleware)
+    if (!noProject && opts.account !== true) {
+      middleware.push(async (call) => {
+        if (!isEnvManagementCall(call.url)) await this.checkProjectEnv(ctx, () => client, Boolean(flags['dry-run']))
+        return call.next()
+      })
+    }
 
-    const client = new Norbix(
+    // eslint-disable-next-line prefer-const -- the env-rule middleware above reads it later
+    let client: Norbix
+    client = new Norbix(
       {
         projectId: noProject ? NO_PROJECT_PLACEHOLDER : ctx.projectId,
         middleware,
@@ -887,6 +991,8 @@ export abstract class BaseCommand extends Command {
     const raw = (error as {raw?: unknown}).raw
     const reported = error instanceof NoProjectError ? await this.explainNoProject(error) : raw instanceof CliError ? raw : error
     const envelope = toEnvelope(reported, {command: this.commandName})
+    // The project lost (or never had) that environment: read its list again next time.
+    if (envelope.code === ENV_NOT_FOUND_CODE) this.forgetEnvs()
     // A Hub that cannot be reached may have moved: discover it again next time.
     if (envelope.exit === EXIT.NETWORK) for (const origin of this.hostInfos.keys()) forgetHost(origin)
     if (this.jsonEnabled()) {
@@ -902,6 +1008,22 @@ export abstract class BaseCommand extends Command {
     marked.oclif = {...marked.oclif, exit: envelope.exit}
     marked.skipOclifErrorHandling = true
     throw marked
+  }
+}
+
+/** The gateway's "environment does not exist on this project" error. */
+const ENV_NOT_FOUND_CODE = 'CM-ERRORS-ENVIRONMENTS-001'
+
+/**
+ * The project's environment list and environment management (list, create,
+ * delete, rank, promote) are not checked by the env rule: they are how the
+ * caller learns and changes which environments exist.
+ */
+export function isEnvManagementCall(url: string): boolean {
+  try {
+    return /\/account\/projects\/environments(\/|$)/.test(new URL(url).pathname)
+  } catch {
+    return false
   }
 }
 

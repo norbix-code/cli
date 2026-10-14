@@ -8,7 +8,10 @@ export default class EnvUse extends BaseCommand {
 
 Written to the browser session of the host when you are signed in there; with --profile it is
 written into that profile in ~/.norbix/config; otherwise to the [default]
-profile (created when missing). Override per command with --env.`
+profile (created when missing). Override per command with --env.
+
+On a project with more than one environment, a saved default counts as naming the env,
+and every project-scoped command prints it on stderr ("env: TEST (saved by norbix env use)").`
 
   static examples = [
     '<%= config.bin %> env use TEST',
@@ -27,6 +30,8 @@ profile (created when missing). Override per command with --env.`
 
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(EnvUse)
+    // The next command reads the project's environment list again.
+    if (!flags['dry-run']) this.forgetEnvs(this.resolveContext(flags))
     const dry = (target: string, file: string) =>
       this.dryRun({method: 'env.use', request: {env: args.name, target, file}})
 

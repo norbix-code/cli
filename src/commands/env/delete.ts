@@ -25,6 +25,8 @@ export default class EnvDelete extends BaseCommand {
     await this.confirmOrFail(`Delete environment "${args.name}" and everything inside it?`, flags)
 
     const res = await client.hub.environments.delete({environmentName: args.name})
+    // The project has one environment less: read the list again next time.
+    this.forgetEnvs(this.resolveContext(flags))
     this.print(`Environment ${args.name} deleted.`)
     return res
   }

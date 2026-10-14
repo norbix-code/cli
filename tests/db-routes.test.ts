@@ -6,6 +6,7 @@ import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 import DbSchemaDelete from '../src/commands/db/schema/delete.js'
+import {envListAnswer} from './_env.js'
 
 /**
  * One row per `db` command: run it the way a user types it, through oclif and
@@ -35,6 +36,8 @@ beforeEach(() => {
   calls = []
   realFetch = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
     calls.push({
       method: init?.method ?? 'GET',

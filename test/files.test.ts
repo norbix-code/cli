@@ -3,6 +3,7 @@ import {mkdtempSync, readFileSync, writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
+import {envListAnswer} from '../tests/_env.js'
 
 /**
  * The `norbix files` commands.
@@ -38,6 +39,8 @@ let realFetch: typeof globalThis.fetch
  */
 function fakeFetch(responses: Array<[string, unknown]> = []): void {
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     const method = init?.method ?? 'GET'
     let body: unknown
@@ -330,6 +333,8 @@ describe('norbix files publish / unpublish', () => {
   it('sends the session as a bearer token, as every other command does', async () => {
     const seen: Array<Record<string, string>> = []
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       calls.push({method: init?.method ?? 'GET', url})
       const headers = new Headers(init?.headers ?? {})
@@ -403,6 +408,8 @@ describe('norbix files publish / unpublish', () => {
     // The real case: a file cannot be made private on its own while a folder
     // above it is public (CM-ERRORS-FILES-021).
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       calls.push({method: init?.method ?? 'GET', url})
       return new Response(
@@ -437,6 +444,8 @@ describe('norbix files publish / unpublish', () => {
 
   function answer403(): void {
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       calls.push({method: init?.method ?? 'GET', url})
       return new Response(JSON.stringify(forbidden), {status: 403, headers: {'Content-Type': 'application/json'}})
@@ -490,6 +499,8 @@ describe('norbix files integrations test', () => {
   function answer(payload: unknown, status = 200): Array<Record<string, string>> {
     const seen: Array<Record<string, string>> = []
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       calls.push({method: init?.method ?? 'GET', url, body: init?.body})
       seen.push(Object.fromEntries(new Headers(init?.headers ?? {}).entries()))
