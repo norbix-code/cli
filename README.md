@@ -123,6 +123,14 @@ URLs), and caches the answer for 24 hours in `~/.norbix/hosts`. Give it with
 http only for localhost and `*.test` names — local development is
 `--host localhost:5001`, a local Norbix stack `--host <item>.norbix.test:5001`.
 
+**Language.** `--language lt` (or `NORBIX_LANGUAGE`, a weighted list such as
+`"lt-LT, en;q=0.8"` works too) is sent as the standard `Accept-Language`
+header on every call, `norbix raw` included — the gateway's only language
+input. Without it the project's default language applies. Commands that
+create content in a language (`email|sms|push campaign create`,
+`scheduler save`, `email template attach`) keep their own `--language` for
+that content.
+
 **Profiles (AWS-style)** — one INI file at `~/.norbix/config`:
 
 ```ini

@@ -89,6 +89,7 @@ export interface GlobalFlags {
   project?: string
   env?: string
   region?: string
+  language?: string
   'api-key'?: string
   account?: string
   profile?: string
@@ -219,6 +220,11 @@ export abstract class BaseCommand extends Command {
     region: Flags.string({
       description: 'Region code (e.g. nb-eu-germany)',
       env: 'NORBIX_REGION',
+      helpGroup: 'GLOBAL',
+    }),
+    language: Flags.string({
+      description: 'Language to read translated content in, sent as Accept-Language (e.g. lt, or "lt-LT, en;q=0.8"); the project default when unset',
+      env: 'NORBIX_LANGUAGE',
       helpGroup: 'GLOBAL',
     }),
     'api-key': Flags.string({
@@ -701,6 +707,9 @@ export abstract class BaseCommand extends Command {
         bearerToken: ctx.bearerToken,
         env: ctx.env,
         region: ctx.region,
+        // Accept-Language is the gateway's only language input (cultureCode
+        // and the norbix-language header are gone).
+        ...(this.acceptLanguage(flags) ? {defaultHeaders: {'Accept-Language': this.acceptLanguage(flags)!}} : {}),
         // Always explicit: CLI defaults are api/hub.norbix.ai (the SDK's own
         // defaults still point at .dev — tracked as an SDK bug).
         baseUrl: {api: ctx.apiUrl, hub: accountHub ? ctx.authHubUrl : ctx.hubUrl},
@@ -718,6 +727,18 @@ export abstract class BaseCommand extends Command {
     )
 
     return flags['dry-run'] ? this.recordingClient(client) : client
+  }
+
+  /**
+   * The global `--language` (or NORBIX_LANGUAGE), sent as Accept-Language.
+   * A few commands have their own `--language` that names the content
+   * language of what they create (a campaign, a task); there the flag keeps
+   * that meaning and is not sent as Accept-Language.
+   */
+  protected acceptLanguage(flags: GlobalFlags): string | undefined {
+    const own = (this.constructor as {flags?: Record<string, unknown>}).flags?.language
+    if (own && own !== BaseCommand.baseFlags.language) return undefined
+    return flags.language || undefined
   }
 
   /** Wrap `client.api.*` / `client.hub.*` so a dry run knows which SDK method was called. */
