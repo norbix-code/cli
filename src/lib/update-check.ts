@@ -22,7 +22,7 @@ import {fileURLToPath} from 'node:url'
  */
 
 export const PACKAGE = '@norbix.ai/cli'
-export const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE.replace('/', '%2f')}/latest`
+export const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE.replaceAll('/', '%2f')}/latest`
 export const CHECK_EVERY_MS = 24 * 60 * 60 * 1000
 const COMMANDS_THAT_ALWAYS_SHOW = new Set(['login', 'ai:init', 'whoami'])
 
