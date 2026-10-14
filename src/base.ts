@@ -829,6 +829,18 @@ export abstract class BaseCommand extends Command {
   }
 
   /**
+   * The files integration a `files` command uses: --integration /
+   * NORBIX_FILES_INTEGRATION_ID → the profile's files_integration_id → the
+   * project's default files integration in this environment (one Hub read).
+   */
+  protected async filesIntegration(flags: GlobalFlags & {integration?: string}): Promise<string> {
+    const known = flags.integration ?? this.resolveContext(flags).filesIntegrationId
+    if (known) return known
+    const {DRY_RUN_FILES_INTEGRATION, defaultFilesIntegration} = await import('./lib/files.js')
+    return this.lookup(flags, DRY_RUN_FILES_INTEGRATION, (c) => defaultFilesIntegration(c.hub, this.resolveContext(flags).env))
+  }
+
+  /**
    * The account's projects (Hub `account/projects`) with their primary
    * region, or undefined when they cannot be read. An account-level call: on
    * norbix.ai it needs no region (see `client`, option `account`).

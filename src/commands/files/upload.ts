@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises'
 import {basename} from 'node:path'
 
 import {BaseCommand} from '../../base.js'
-import {guessContentType, integrationFlag, resolveIntegration} from '../../lib/files.js'
+import {guessContentType, integrationFlag} from '../../lib/files.js'
 
 export default class FilesUpload extends BaseCommand {
   static description = `Upload a local file (three steps: get signed URL, PUT bytes, commit).`
@@ -31,10 +31,7 @@ export default class FilesUpload extends BaseCommand {
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesUpload)
     const client = this.client(flags)
-    const integration = resolveIntegration(flags.integration, this.resolveContext(flags).filesIntegrationId)
-    if (!integration) {
-      this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
-    }
+    const integration = await this.filesIntegration(flags)
 
     const data = await readFile(args.file)
     const fileName = basename(args.file)

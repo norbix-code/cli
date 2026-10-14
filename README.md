@@ -381,17 +381,21 @@ Commands live in `src/commands/<topic>/<name>.ts` — one file per command
 (oclif convention). Shared logic (auth resolution, config store, output) is in
 `src/base.ts` and `src/lib/`.
 
-## Files: pick your integration once
+## Files: which integration
 
-File commands need a files integration ID. Set it once:
+File commands use the project's **default files integration** of the current
+environment (`--env`), like the database commands use the default database
+integration — one read of the Hub's integration list. When the environment has
+none, they exit 5 (`NO_FILES_INTEGRATION`, "This project has no files
+integration in environment TEST"); several with no default exit 2 and list
+them. To pick another one, pass `--integration <id>` (env var:
+`NORBIX_FILES_INTEGRATION_ID`) or save it:
 
 ```sh
 norbix config set files_integration_id <id>
 norbix files upload ./invoice.pdf invoices/2026/invoice.pdf
 norbix files download invoices/2026/invoice.pdf
 ```
-
-Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 
 ### The file commands
 

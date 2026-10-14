@@ -1,7 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
-import {integrationFlag, resolveIntegration} from '../../lib/files.js'
+import {integrationFlag} from '../../lib/files.js'
 
 export default class FilesSign extends BaseCommand {
   static description = 'Get a temporary signed download URL for a file'
@@ -20,10 +20,7 @@ export default class FilesSign extends BaseCommand {
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesSign)
     const client = this.client(flags)
-    const integration = resolveIntegration(flags.integration, this.resolveContext(flags).filesIntegrationId)
-    if (!integration) {
-      this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
-    }
+    const integration = await this.filesIntegration(flags)
 
     const res = await client.api.files.getSignedUrl({
       filesIntegrationId: integration,

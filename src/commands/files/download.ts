@@ -3,7 +3,7 @@ import {writeFile} from 'node:fs/promises'
 import {basename} from 'node:path'
 
 import {BaseCommand} from '../../base.js'
-import {integrationFlag, resolveIntegration} from '../../lib/files.js'
+import {integrationFlag} from '../../lib/files.js'
 
 export default class FilesDownload extends BaseCommand {
   static description = 'Download a file to disk (via a signed URL)'
@@ -28,10 +28,7 @@ export default class FilesDownload extends BaseCommand {
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesDownload)
     const client = this.client(flags)
-    const integration = resolveIntegration(flags.integration, this.resolveContext(flags).filesIntegrationId)
-    if (!integration) {
-      this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
-    }
+    const integration = await this.filesIntegration(flags)
 
     const {url} = await client.api.files.getSignedUrl({
       filesIntegrationId: integration,

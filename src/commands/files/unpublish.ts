@@ -1,7 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
-import {integrationFlag, resolveIntegration} from '../../lib/files.js'
+import {integrationFlag} from '../../lib/files.js'
 import {callPublicFiles} from '../../lib/publicFiles.js'
 
 export default class FilesUnpublish extends BaseCommand {
@@ -30,10 +30,7 @@ export default class FilesUnpublish extends BaseCommand {
     const ctx = await this.freshContext(flags)
     const client = this.client(flags)
 
-    const integration = resolveIntegration(flags.integration, ctx.filesIntegrationId)
-    if (!integration) {
-      this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
-    }
+    const integration = await this.filesIntegration(flags)
 
     const operation = flags.folder ? 'makeFolderPrivate' : 'makeFilePrivate'
     const body = {filesIntegrationId: integration, path: args.remote}
