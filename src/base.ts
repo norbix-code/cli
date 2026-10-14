@@ -5,7 +5,7 @@ import {Norbix} from '@norbix.ai/ts'
 import {Command, Flags, ux} from '@oclif/core'
 
 import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
-import {EXIT} from './lib/exit-codes.js'
+import {EXIT, exitForStatus} from './lib/exit-codes.js'
 import {
   DEFAULT_HOST,
   cachedHost,
@@ -181,6 +181,14 @@ export interface DryRunValidation {
   note?: string
 }
 
+/** A `hubRequest` dry run already printed its report: `catch` exits 0 quietly. */
+export class DryRunDone extends Error {
+  constructor() {
+    super('dry run')
+    this.name = 'DryRunDone'
+  }
+}
+
 /** Thrown by the dry-run middleware instead of sending; caught in `catch`. */
 class DryRunStop extends Error {
   constructor(readonly http: DryRunRequest) {
@@ -273,6 +281,8 @@ export abstract class BaseCommand extends Command {
 
   /** The SDK call captured by a dry run, filled by the client proxy. */
   private dryRunCall?: {method: string; request: unknown}
+  /** The last report `dryRun` printed (a `hubRequest` dry run returns it from `catch`). */
+  private lastDryRun?: DryRunReport
   /** A dry run's input check, set by the command before the stopped call. */
   protected dryRunValidation?: DryRunValidation
 
@@ -325,6 +335,7 @@ export abstract class BaseCommand extends Command {
     const report: DryRunReport = {dryRun: true, method: call.method, request: call.request}
     if (call.http) report.http = call.http
     this.printDryRun(report)
+    this.lastDryRun = report
     return report
   }
 
@@ -916,6 +927,73 @@ export abstract class BaseCommand extends Command {
   }
 
   /**
+   * A Hub call the installed SDK has no typed method for yet (new gateway
+   * routes before the next `@norbix.ai/ts` release). Same headers as the SDK
+   * and `norbix raw` (auth, project, account, env, region, language), the
+   * session refreshed first. A dry run prints the request — with the fields
+   * named in `redact` masked — and sends nothing. A gateway refusal becomes the
+   * usual error envelope. Switch the caller to the typed SDK method once the
+   * SDK has it.
+   */
+  protected async hubRequest<T>(
+    flags: GlobalFlags,
+    call: {method: 'POST' | 'GET' | 'PUT' | 'DELETE'; path: string; body?: unknown; name: string; redact?: (body: unknown) => unknown},
+  ): Promise<T> {
+    const ctx = await this.freshContext(flags)
+    if (!ctx.projectId) throw new NoProjectError(flags)
+    this.assertEndpoints(ctx)
+    const token = ctx.bearerToken ?? ctx.apiKey
+    if (!token && !flags['dry-run']) {
+      throw new CliError({exit: EXIT.AUTH, code: 'UNAUTHENTICATED', message: 'Not authenticated.', hint: 'Run `norbix login`, or pass --api-key.', docs: 'norbix login --help'})
+    }
+
+    const url = `${ctx.hubUrl.replace(/\/$/, '')}/${ctx.hubVersion ?? 'v3'}${call.path}`
+    const headers: Record<string, string> = {Accept: 'application/json', 'norbix-project-id': ctx.projectId, Authorization: `Bearer ${token ?? ''}`}
+    if (ctx.accountId) headers['norbix-account-id'] = ctx.accountId
+    if (ctx.env) headers['norbix-env'] = ctx.env.toUpperCase()
+    if (ctx.region) headers['nb-region'] = ctx.region
+    const language = this.acceptLanguage(flags)
+    if (language) headers['Accept-Language'] = language
+    if (call.body !== undefined) headers['Content-Type'] = 'application/json'
+
+    if (flags['dry-run']) {
+      const shown = call.redact ? call.redact(call.body) : call.body
+      this.dryRun({method: call.name, request: shown ?? {}, http: {method: call.method, url, headers: {...headers, Authorization: 'Bearer ***'}, body: shown}})
+      throw new DryRunDone()
+    }
+
+    let res: Response
+    try {
+      res = await fetch(url, {method: call.method, headers, body: call.body === undefined ? undefined : JSON.stringify(call.body)})
+    } catch (error) {
+      throw new CliError({exit: EXIT.NETWORK, code: 'NETWORK_ERROR', message: `Could not reach ${url}: ${error instanceof Error ? error.message : String(error)}`, url})
+    }
+
+    const text = await res.text()
+    let data: unknown
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      data = text
+    }
+
+    const status = (data as {responseStatus?: {errorCode?: string; message?: string; isSuccess?: boolean; errors?: Array<{errorCode?: string; message?: string}>}})?.responseStatus
+    const refused = !res.ok || status?.isSuccess === false || Boolean(status?.errorCode)
+    if (refused) {
+      const first = status?.errors?.[0]
+      throw new CliError({
+        exit: res.status === 404 && !status ? EXIT.NOT_FOUND : exitForStatus(res.status),
+        code: status?.errorCode ?? first?.errorCode ?? `HTTP_${res.status}`,
+        message: status?.message ?? first?.message ?? (res.status === 404 ? `This Hub has no ${call.method} ${call.path} — it is older than this command.` : `HTTP ${res.status}`),
+        status: res.status,
+        url,
+      })
+    }
+
+    return data as T
+  }
+
+  /**
    * The files integration a `files` command uses: --integration /
    * NORBIX_FILES_INTEGRATION_ID → the profile's files_integration_id → the
    * project's default files integration in this environment (one Hub read).
@@ -1037,6 +1115,10 @@ export abstract class BaseCommand extends Command {
 
     // `this.exit(n)` — already decided, nothing to print.
     if ((error as {code?: string}).code === 'EEXIT') throw error
+    if (error instanceof DryRunDone) {
+      if (this.jsonEnabled() && this.lastDryRun) this.logJson(this.lastDryRun)
+      return this.lastDryRun
+    }
 
     // A CLI error raised inside the SDK's middleware (an ended sign-in)
     // arrives wrapped as a network error: report the CLI error itself.

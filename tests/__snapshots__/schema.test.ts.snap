@@ -3504,6 +3504,19 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "file",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "apply:boolean",
+      "ignore-default-roles:boolean",
+    ],
+    "id": "users import",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
       "email",
     ],
     "destructive": false,
@@ -3531,6 +3544,26 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [],
     "id": "users policies",
     "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "apply:boolean",
+    ],
+    "id": "users repair-logins",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "apply:boolean",
+    ],
+    "id": "users repair-roles",
+    "supportsDryRun": true,
   },
   {
     "args": [],
