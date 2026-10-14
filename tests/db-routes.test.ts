@@ -3,9 +3,10 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 
 import {runCommand} from '@oclif/test'
-import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 import DbSchemaDelete from '../src/commands/db/schema/delete.js'
+import {dryRunTaxonomyId, dryRunTaxonomyName, isTaxonomyId} from '../src/lib/taxonomy.js'
 
 /**
  * One row per `db` command: run it the way a user types it, through oclif and
@@ -17,7 +18,7 @@ import DbSchemaDelete from '../src/commands/db/schema/delete.js'
  */
 
 const ID = '66b2f0a1'
-const TAX = 't4x0n0my'
+const TAX = 'txn_T4x0n0my'
 const COL = 'orders'
 const USER = 'u5e7'
 
@@ -187,6 +188,77 @@ describe('db taxonomy create', () => {
   it('--terms-meta-schema sends the file as a JSON string', async () => {
     const body = await bodyOf(['taxonomy', 'create', 'Symptoms', '--terms-meta-schema', SCHEMA_FILE])
     expect(JSON.parse(body.termsMetaDataSchema as string)).toEqual(dataSchema)
+  })
+})
+
+describe('the taxonomy key: id or name in every term command (N10)', () => {
+  /** The Hub's taxonomy list and one taxonomy, for the lookups. */
+  function answerTaxonomies(): void {
+    const fake = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await fake(input, init)
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      const json = (body: unknown) => new Response(JSON.stringify(body), {status: 200, headers: {'Content-Type': 'application/json'}})
+      if (url.pathname === `${P}/taxonomies`) {
+        return json({list: {items: [{viewId: 'txn_Allerg', taxonomyName: 'Allergens', taxonomySlug: 'allergens'}, {viewId: 'txn_Sympt', taxonomyName: 'Symptoms', taxonomySlug: 'symptoms'}], hasMore: false}})
+      }
+
+      if (url.pathname === `${P}/taxonomies/txn_Allerg`) return json({item: {viewId: 'txn_Allerg', name: 'Allergens', slug: 'allergens'}})
+      return res
+    }) as typeof globalThis.fetch
+  }
+
+  const paths = () => calls.map((c) => `${c.method} ${c.path}`)
+
+  it('term create by name: looks the id up, then posts to /taxonomies/{id}/terms', async () => {
+    answerTaxonomies()
+    const {error} = await runCommand(['db', 'term', 'create', 'allergens', '--doc', '{"name":"Milk"}', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(paths()).toEqual([`GET ${P}/taxonomies`, `POST ${P}/taxonomies/txn_Allerg/terms`])
+  })
+
+  it('the title in any case matches too', async () => {
+    answerTaxonomies()
+    await runCommand(['db', 'term', 'delete', 'ALLERGENS', ID, '--yes', ...globalArgs])
+    expect(paths().at(-1)).toBe(`DELETE ${P}/taxonomies/txn_Allerg/terms/${ID}`)
+  })
+
+  it('terms by id: looks the name up, then lists by name (the id used to answer 404)', async () => {
+    answerTaxonomies()
+    const {error} = await runCommand(['db', 'terms', 'txn_Allerg', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(paths()).toEqual([`GET ${P}/taxonomies/txn_Allerg`, `GET ${P}/taxonomies/allergens/terms`])
+  })
+
+  it('term tree by id: the same', async () => {
+    answerTaxonomies()
+    await runCommand(['db', 'term', 'tree', 'txn_Allerg', ...globalArgs])
+    expect(paths().at(-1)).toBe(`GET ${P}/taxonomies/allergens/terms/tree`)
+  })
+
+  it('an id where the route takes an id, a name where it takes a name: no lookup', async () => {
+    expect((await callOf(['term', 'create', 'txn_Allerg', '--doc', '{"name":"Milk"}'])).path).toBe(`${P}/taxonomies/txn_Allerg/terms`)
+    calls.length = 0
+    expect((await callOf(['terms', 'allergens'])).path).toBe(`${P}/taxonomies/allergens/terms`)
+  })
+
+  it('an unknown name: exit 5 TAXONOMY_NOT_FOUND naming the taxonomies there are, nothing written', async () => {
+    answerTaxonomies()
+    const {error} = await runCommand(['db', 'term', 'create', 'spices', '--doc', '{"name":"Salt"}', ...globalArgs])
+    expect(error?.message).toContain('No taxonomy named "spices"')
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(5)
+    expect(paths()).toEqual([`GET ${P}/taxonomies`])
+  })
+
+  it('--dry-run by name sends nothing, not even the lookup; the request shows a placeholder for the id', async () => {
+    const {error} = await runCommand(['db', 'term', 'create', 'allergens', '--doc', '{"name":"Milk"}', '--dry-run', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+    expect(dryRunTaxonomyId('allergens')).toBe('<id of taxonomy "allergens">')
+    expect(dryRunTaxonomyId('txn_Allerg')).toBe('txn_Allerg')
+    expect(dryRunTaxonomyName('txn_Allerg')).toBe('<name of taxonomy txn_Allerg>')
+    expect(isTaxonomyId('txn_5BBS25C3IKHRfzVABMjMiM')).toBe(true)
+    expect(isTaxonomyId('66b2f0a1c3d4e5f6a7b8c9d0')).toBe(false)
   })
 })
 

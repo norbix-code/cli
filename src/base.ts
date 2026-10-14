@@ -819,6 +819,16 @@ export abstract class BaseCommand extends Command {
   }
 
   /**
+   * A read a command needs before its real call — the id behind a name, the
+   * default integration. A dry run sends nothing, so it gets `placeholder`
+   * (a readable stand-in that shows up in the printed request) instead.
+   */
+  protected async lookup<T>(flags: GlobalFlags, placeholder: T, read: (client: Norbix) => Promise<T>): Promise<T> {
+    if (flags['dry-run']) return placeholder
+    return read(this.client(flags))
+  }
+
+  /**
    * The account's projects (Hub `account/projects`) with their primary
    * region, or undefined when they cannot be read. An account-level call: on
    * norbix.ai it needs no region (see `client`, option `account`).

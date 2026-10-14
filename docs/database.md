@@ -239,20 +239,24 @@ module alike.
 | command | what it does | endpoint |
 |---|---|---|
 | `norbix db taxonomies` | list taxonomies | `GET /taxonomies` |
-| `norbix db taxonomy <id>` | show one taxonomy | `GET /taxonomies/{id}` |
+| `norbix db taxonomy <taxonomy>` | show one taxonomy | `GET /taxonomies/{id}` |
 | `norbix db taxonomy create <name> [--description <text>] [--terms-meta-schema <file>] [--terms-ui-schema <file>] [--parent <taxonomyId>] [--dependency <taxonomyId>…]` | create a taxonomy | `POST /taxonomies` |
-| `norbix db terms <taxonomyName> [--filter <json>] [--page-size <n>] [--after <cursor>] [--desc]` | list the terms of a taxonomy | `GET /taxonomies/{taxonomyName}/terms` |
-| `norbix db terms <taxonomyName> --parent <termId>` | only the children of one term | `GET /taxonomies/{taxonomyName}/terms/{parentId}/children` |
-| `norbix db term <taxonomyId> <id>` | show one term | `GET /taxonomies/{TaxonomyId}/terms/{Id}` |
-| `norbix db term tree <taxonomyName> [--root <termId>] [--depth <n>]` | the terms as a tree | `GET /taxonomies/{TaxonomyName}/terms/tree` |
-| `norbix db term tree <taxonomyName> --merged` | one tree across the parent taxonomies | `GET /taxonomies/{TaxonomyName}/merged-tree` |
-| `norbix db term create <taxonomyId> --doc <json>` | add a term | `POST /taxonomies/{TaxonomyId}/terms` |
-| `norbix db term update <taxonomyId> <id> --set <json>` | change some fields of a term | `PUT /taxonomies/{TaxonomyId}/terms/{Id}` |
-| `norbix db term delete <taxonomyId> <id> [--yes]` | delete a term | `DELETE /taxonomies/{TaxonomyId}/terms/{Id}` |
+| `norbix db terms <taxonomy> [--filter <json>] [--page-size <n>] [--after <cursor>] [--desc]` | list the terms of a taxonomy | `GET /taxonomies/{taxonomyName}/terms` |
+| `norbix db terms <taxonomy> --parent <termId>` | only the children of one term | `GET /taxonomies/{taxonomyName}/terms/{parentId}/children` |
+| `norbix db term <taxonomy> <id>` | show one term | `GET /taxonomies/{TaxonomyId}/terms/{Id}` |
+| `norbix db term tree <taxonomy> [--root <termId>] [--depth <n>]` | the terms as a tree | `GET /taxonomies/{TaxonomyName}/terms/tree` |
+| `norbix db term tree <taxonomy> --merged` | one tree across the parent taxonomies | `GET /taxonomies/{TaxonomyName}/merged-tree` |
+| `norbix db term create <taxonomy> --doc <json>` | add a term | `POST /taxonomies/{TaxonomyId}/terms` |
+| `norbix db term update <taxonomy> <id> --set <json>` | change some fields of a term | `PUT /taxonomies/{TaxonomyId}/terms/{Id}` |
+| `norbix db term delete <taxonomy> <id> [--yes]` | delete a term | `DELETE /taxonomies/{TaxonomyId}/terms/{Id}` |
 
-Note the two kinds of key: listing and trees take the taxonomy **name**; a single
-term is addressed by the taxonomy **id** and the term id (that is how the
-gateway routes them). `--set` is applied with `$set`: only the fields you give
+`<taxonomy>` is the taxonomy **id** (`txn_…`) or its **name** (the title or
+its slug, any case) in every command. The gateway routes them with two kinds
+of key — listing and trees by name, a single term by the taxonomy id — so the
+CLI looks up the other one when needed (one extra read; a `--dry-run` sends
+nothing and shows `<id of taxonomy "…">` instead). The id is the stable key: a
+title can be renamed. An unknown name exits 5 (`TAXONOMY_NOT_FOUND`) with the
+taxonomies there are. `--set` is applied with `$set`: only the fields you give
 change — `name` (a string or a `{lang: value}` map), `description`, `order`
 (lower shows first), `parentId`, `multiParents`.
 
@@ -269,8 +273,8 @@ merged tree checks every parent taxonomy too. Errors you may meet:
 (a name longer than 40 characters).
 
 ```bash
-norbix db term create 66b2f0a1c3d4e5f6a7b8c9d0 --doc '{"name":"Lithuania","order":1}'
-norbix db term update 66b2f0a1c3d4e5f6a7b8c9d0 66b2f0a1c3d4e5f6a7b8c9d1 --set '{"order":2}'
+norbix db term create countries --doc '{"name":"Lithuania","order":1}'
+norbix db term update txn_5BBS25C3IKHRfzVABMjMiM 66b2f0a1c3d4e5f6a7b8c9d1 --set '{"order":2}'
 norbix db term tree countries --depth 2
 ```
 
