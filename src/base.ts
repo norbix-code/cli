@@ -168,6 +168,8 @@ export interface DryRunValidation {
   valid?: boolean
   issues?: Array<{where?: string; code?: string; message?: string}>
   collections?: string[]
+  /** Schema design warnings (bare-text email, link, language, currency, country, user id); never make it invalid. */
+  warnings?: string[]
   /** Why the input was not checked (no bundleJson, the check failed). */
   note?: string
 }

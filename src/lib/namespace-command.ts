@@ -5,6 +5,10 @@ import {usageError} from './cli-error.js'
 import {MODULE_ALIASES, camelSplit, isDestructive, matchMethods, parseArgv, typeFields} from './dispatch.js'
 import {readJsonInput} from './json.js'
 import {describeFields, fieldKinds, methodInfo, type FieldKind} from './request-fields.js'
+import {SCHEMA_RULES_POINTER, printSchemaWarnings, schemaWarnings} from './schema-rules.js'
+
+/** The SDK methods whose `warnings` are schema design warnings. */
+const SCHEMA_WARNING_METHODS = new Set(['saveDatabaseSchema', 'validateSchema'])
 
 type SdkModule = Record<string, (request: Record<string, unknown>) => Promise<unknown>>
 
@@ -113,6 +117,7 @@ export abstract class NamespaceCommand extends BaseCommand {
         `Add an ID as a plain value and request fields as flags:\n` +
         `  norbix ${this.target} ${moduleWord} ${this.wordForm(list[0], moduleName, hide)} <id> --someField value\n\n` +
         `${VALUE_RULES}\n\n` +
+        `${moduleName === 'database' ? `${SCHEMA_RULES_POINTER}\n\n` : ''}` +
         `Useful extras: --dry-run (preview the exact request), --yes (skip confirmation),\n` +
         `--json (machine output), --profile/--env/--region/--project (context).`,
     )
@@ -216,6 +221,10 @@ export abstract class NamespaceCommand extends BaseCommand {
     const liveModule = (client[this.target] as unknown as Record<string, SdkModule>)[moduleName]
     const res = await liveModule[method](request)
     this.print(res)
+    // save_database_schema / validate_schema answer with design warnings
+    // (bare-text email, link, language, currency, country, user id). Only
+    // those two: IdResponse.warnings is shared by every id-returning endpoint.
+    if (SCHEMA_WARNING_METHODS.has(method)) printSchemaWarnings(res)
     return res
   }
 
@@ -241,6 +250,8 @@ export abstract class NamespaceCommand extends BaseCommand {
         valid: Boolean(res.valid),
         issues: (res.issues ?? []).map((i) => ({where: i.where, code: i.code, message: i.message})),
         collections: res.collections ?? [],
+        // Only when the Hub sent design warnings, so a clean check keeps its shape.
+        ...(schemaWarnings(res).length > 0 ? {warnings: schemaWarnings(res)} : {}),
       }
     } catch (error) {
       return {checkedWith, checked: false, note: `the check failed: ${error instanceof Error ? error.message : String(error)}`}
