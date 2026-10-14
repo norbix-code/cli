@@ -102,6 +102,7 @@ describe('norbix ai init', () => {
       '- Pass `--json` to every command whose o',
       '- Discover, do not guess: `norbix schema',
       '- Before any change, run it with `--dry-',
+      '- Designing a database schema? Run `norb',
       '- Never print, paste or ask for API keys',
       '- Branch on the exit code: 0 ok · 2 usag',
       '- Full contract: `docs/agent-contract.md',
@@ -110,11 +111,15 @@ describe('norbix ai init', () => {
     expect(bullets[0]).toContain('pick the roles you get')
     expect(bullets[0]).toContain('Account → AI service users')
     expect(bullets[3]).toContain('show the user the request')
+    // ux-fixes item 13: the schema design rules reach the agent.
+    expect(bullets[4]).toContain('`norbix db schema rules`')
+    expect(bullets[4]).toContain('language / currency / country and every list people pick from are taxonomy pickers')
     expect(block).not.toMatch(/norbix login --api-key|nbk_/)
     expect(block.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(12)
 
     const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
     expect(skill).toContain('## Secrets\n\nNever print, echo, paste or ask for API keys, passwords or tokens')
+    expect(skill).toContain('Designing a database schema? Run `norbix db schema rules` first')
     expect(skill).toContain('`"auth": "none"` (or exit 4 from any other command) means not signed in: sign in in two steps (your shell commands time out; the code lives 10 minutes):')
     expect(skill).toContain('Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.')
     expect(skill).toContain('`norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user.')
