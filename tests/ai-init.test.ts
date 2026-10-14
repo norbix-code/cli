@@ -1,4 +1,4 @@
-import {existsSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs'
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 
@@ -6,7 +6,7 @@ import {beforeEach, describe, expect, it} from 'vitest'
 
 import {claudeSkill, recipeBlock} from '../src/lib/agent-files.js'
 import {seedDefaultHost} from '../test/seed.js'
-import {cli, makeHome, parseSingleJson} from './_cli.js'
+import {cli, makeHome, parseSingleJson, startFakeGateway} from './_cli.js'
 
 const home = makeHome(1)
 let project: string
@@ -28,15 +28,16 @@ describe('norbix ai init', () => {
     expect(r.code).toBe(0)
     const doc = parseSingleJson(r.stdout) as Report
     expect(doc.dryRun).toBe(true)
-    expect(doc.request?.files.map((f) => `${f.action} ${f.path}`)).toEqual(['create .claude/skills/norbix/SKILL.md', 'create CLAUDE.md'])
+    expect(doc.request?.files.map((f) => `${f.action} ${f.path}`)).toEqual(['create .claude/skills/norbix/SKILL.md', 'create CLAUDE.md', 'create .norbix/project.json'])
     expect(existsSync(join(project, '.claude'))).toBe(false)
     expect(existsSync(join(project, 'CLAUDE.md'))).toBe(false)
+    expect(existsSync(join(project, '.norbix'))).toBe(false)
   })
 
   it('writes the skill and the CLAUDE.md block, then refuses a second run without --force', async () => {
     const first = await cli(home, ['ai', 'init', '--dir', project, '--json'])
     expect(first.code).toBe(0)
-    expect((parseSingleJson(first.stdout) as Report).files?.map((f) => f.path)).toEqual(['.claude/skills/norbix/SKILL.md', 'CLAUDE.md'])
+    expect((parseSingleJson(first.stdout) as Report).files?.map((f) => f.path)).toEqual(['.claude/skills/norbix/SKILL.md', 'CLAUDE.md', '.norbix/project.json'])
 
     const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
     expect(skill).toMatch(/^---\nname: norbix\ndescription: Use when the task touches the Norbix backend/)
@@ -86,12 +87,13 @@ describe('norbix ai init', () => {
       'CLAUDE.md',
       'AGENTS.md',
       '.cursor/rules/norbix.mdc',
+      '.norbix/project.json',
     ])
     expect(readFileSync(join(project, '.cursor/rules/norbix.mdc'), 'utf8')).toMatch(/^---\ndescription: /)
   })
 
   it('the block and the skill carry the rules: two-step browser sign-in approved by the user, --json, --dry-run first, no secrets', async () => {
-    const r = await cli(home, ['ai', 'init', '--target', 'all', '--dir', project])
+    const r = await cli(home, ['ai', 'init', '--target', 'all', '--dir', project, '--no-project-file'])
     expect(r.code).toBe(0)
     expect(r.stdout).toContain('Signing in: the agent runs `norbix login --no-browser --json` itself and shows you a link')
 
@@ -128,6 +130,59 @@ describe('norbix ai init', () => {
   it('rejects an unknown target with exit 2', async () => {
     const r = await cli(home, ['ai', 'init', '--target', 'emacs', '--dir', project, '--json'])
     expect(r.code).toBe(2)
+  })
+})
+
+describe('ai init saves the repo\'s Norbix: .norbix/project.json (N3)', () => {
+  it('writes host + project + env the CLI resolves, names them in the block, and later commands in the repo use them before [default]', async () => {
+    // [default] is for another installation (the Happy Tummy case: hub.finlo.space).
+    writeFileSync(join(home, '.norbix', 'config'), readFileSync(join(home, '.norbix', 'config'), 'utf8') + '\n[default]\nhost=127.0.0.1:1\napi_key=other-key\nproject_id=pr_Other\n')
+    const gw = await startFakeGateway()
+    const host = `127.0.0.1:${gw.port}`
+    try {
+      const r = await cli(home, ['ai', 'init', '--dir', project, '--host', host, '--project', 'pr_HappyTummy', '--env', 'test', '--json'])
+      expect(r.code).toBe(0)
+      expect(JSON.parse(readFileSync(join(project, '.norbix/project.json'), 'utf8'))).toEqual({host, projectId: 'pr_HappyTummy', env: 'TEST'})
+      const claude = readFileSync(join(project, 'CLAUDE.md'), 'utf8')
+      expect(claude).toContain(`- This repo's Norbix: host \`${host}\`, project \`pr_HappyTummy\`, environment \`TEST\` — saved in \`.norbix/project.json\``)
+      expect(claude.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(12)
+      expect(readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')).toContain(`This repo's Norbix: host \`${host}\``)
+
+      // A command run inside the repo (a sub-folder) — no --host, no --project.
+      const sub = join(project, 'src', 'deep')
+      mkdirSync(sub, {recursive: true})
+      const who = await cli(home, ['whoami', '--json'], {NORBIX_PROJECT_CONFIG: undefined}, sub)
+      const doc = parseSingleJson(who.stdout) as Record<string, string>
+      expect(doc).toMatchObject({host, hostSource: 'project file', projectId: 'pr_HappyTummy', env: 'TEST', envSource: 'project file'})
+      expect(doc.profile).toBe('(none)') // the [default] of the other host is not used — its key is never sent here
+      expect(doc.auth).toBe('none')
+
+      // Outside the repo: the [default] profile as before.
+      const outside = await cli(home, ['whoami', '--json'], {NORBIX_PROJECT_CONFIG: undefined}, tmpdir())
+      // (that host does not answer — the error shows which host it tried)
+      expect(JSON.stringify(parseSingleJson(outside.stdout))).toContain('127.0.0.1:1')
+
+      // --host / --project still win.
+      const flags = await cli(home, ['whoami', '--json', '--project', 'pr_X'], {NORBIX_PROJECT_CONFIG: undefined}, sub)
+      expect(parseSingleJson(flags.stdout)).toMatchObject({projectId: 'pr_X', host})
+
+      // env use inside the repo writes the repo file.
+      const use = await cli(home, ['env', 'use', 'staging', '--json'], {NORBIX_PROJECT_CONFIG: undefined}, sub)
+      expect(use.code).toBe(0)
+      expect(JSON.parse(readFileSync(join(project, '.norbix/project.json'), 'utf8')).env).toBe('STAGING')
+    } finally {
+      await gw.close()
+      writeFileSync(join(home, '.norbix', 'config'), readFileSync(join(home, '.norbix', 'config'), 'utf8').split('\n[default]')[0])
+    }
+  })
+
+  it('an existing project.json is kept without --force (and named in the block)', async () => {
+    mkdirSync(join(project, '.norbix'), {recursive: true})
+    writeFileSync(join(project, '.norbix/project.json'), '{"host":"cloud.kept.example","projectId":"pr_Kept"}')
+    const r = await cli(home, ['ai', 'init', '--dir', project, '--host', 'cloud.example.com', '--json'])
+    expect(r.code).toBe(0)
+    expect(JSON.parse(readFileSync(join(project, '.norbix/project.json'), 'utf8'))).toEqual({host: 'cloud.kept.example', projectId: 'pr_Kept'})
+    expect(readFileSync(join(project, 'CLAUDE.md'), 'utf8')).toContain('host `cloud.kept.example`, project `pr_Kept`')
   })
 })
 

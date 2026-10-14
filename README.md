@@ -132,6 +132,24 @@ create content in a language (`email|sms|push campaign create`,
 `scheduler save`, `email template attach`) keep their own `--language` for
 that content.
 
+**The repo's Norbix — `.norbix/project.json`.** `norbix ai init` writes the
+host, project and (when set) environment this repo belongs to into
+`.norbix/project.json` (no secrets — commit it):
+
+```json
+{"host": "cloud.example.com", "projectId": "pr_6zbH6AJwyGylTFfs4B9bpC", "env": "TEST"}
+```
+
+Every command run in that folder or below uses it **before** the profiles:
+`--host` / `--project` / `--env` (and `NORBIX_*`) → `.norbix/project.json` →
+the profile → the sign-in. Its host acts like `--host`: a `[default]` profile
+for another installation is not used there (its API key is never sent), so a
+second installation on the same computer cannot be reached by accident. An
+explicit `--profile` for another host wins, and the file is ignored.
+`norbix env use <ENV>` inside the repo changes the file's `env`. `whoami`
+shows `hostSource: project file`. The home folder is never searched;
+`NORBIX_PROJECT_CONFIG=0` turns the lookup off.
+
 **Profiles (AWS-style)** — one INI file at `~/.norbix/config`:
 
 ```ini

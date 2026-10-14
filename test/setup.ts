@@ -26,6 +26,10 @@ for (const name of ['NORBIX_PROJECT_ID', 'NORBIX_API_KEY', 'NORBIX_REGION', 'NOR
 // child process); tests/update-check.test.ts turns it on where it is tested.
 process.env.NORBIX_NO_UPDATE_CHECK = '1'
 
+// No repo `.norbix/project.json` from the folder the tests run in; the
+// tests of that file turn the lookup on with their own folder.
+process.env.NORBIX_PROJECT_CONFIG = '0'
+
 // hub.norbix.ai is "already discovered": the default host's built-in
 // addresses are in the host cache, so no test asks the real Hub. A test of
 // discovery itself uses its own host and its own fake fetch.

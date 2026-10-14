@@ -33,6 +33,7 @@ import {
   type Session,
 } from './lib/profiles.js'
 import {CONTEXT_MD, syncContext, type ContextRequest} from './lib/agent-context.js'
+import {findProjectConfig, type FoundProjectConfig} from './lib/project-config.js'
 import {SessionRefresher} from './lib/session-auth.js'
 import {readStore, type StoredConfig} from './lib/store.js'
 
@@ -114,7 +115,11 @@ export interface ResolvedContext {
   /** The host the CLI was pointed at, as an origin: `https://cloud.finlo.space`. */
   host: string
   /** Where the host came from. */
-  hostSource: 'flag/env' | `profile [${string}]` | 'deprecated url' | 'default'
+  hostSource: 'flag/env' | 'project file' | `profile [${string}]` | 'deprecated url' | 'default'
+  /** The repo's `.norbix/project.json` in use (its host is this one), when there is one. */
+  projectFile?: FoundProjectConfig
+  /** Where the environment came from; 'none' means no norbix-env header — the server uses PROD. */
+  envSource: 'flag/env' | 'project file' | `profile [${string}]` | 'session' | 'legacy config' | 'none'
   /** The Hub's key — the name of its session file: `hub.finlo.space`. */
   hubKey: string
   /** What discovery learned about the Hub; undefined when nothing is known yet. */
@@ -431,22 +436,31 @@ export abstract class BaseCommand extends Command {
     hubOverride?: string
     apiOverride?: string
     deprecations: string[]
+    projectFile?: FoundProjectConfig
   } {
     let {prof, profileName, explicit} = this.selectProfile(flags)
-    const flagHost = flags.host?.trim() || undefined
+    const found = this.projectConfig()
+    const profOrigin = () =>
+      prof.host ? normalizeHost(prof.host) : prof.hub_url ? originOf(prof.hub_url) : normalizeHost(DEFAULT_HOST)
+    // The repo's file applies when nothing explicit names another host.
+    const fileOrigin = found?.config.host ? normalizeHost(found.config.host) : undefined
+    let projectFile: FoundProjectConfig | undefined
+    if (found) {
+      const flagOrigin = flags.host?.trim() ? normalizeHost(flags.host.trim()) : undefined
+      const against = flagOrigin ?? (explicit ? profOrigin() : undefined)
+      projectFile = !fileOrigin || !against || sameHub(fileOrigin, against) ? found : undefined
+    }
+
+    const flagHost = flags.host?.trim() || (projectFile && fileOrigin && !explicit ? projectFile.config.host : undefined)
+    const hostFromFile = !flags.host?.trim() && flagHost !== undefined
 
     if (flagHost) {
       const origin = normalizeHost(flagHost)
       if (profileName) {
-        const profOrigin = prof.host
-          ? normalizeHost(prof.host)
-          : prof.hub_url
-            ? originOf(prof.hub_url)
-            : normalizeHost(DEFAULT_HOST)
-        if (!sameHub(origin, profOrigin)) {
+        if (!sameHub(origin, profOrigin())) {
           if (explicit) {
             throw usageError(
-              `Profile "${profileName}" is for ${new URL(profOrigin).host}, but --host / NORBIX_HOST names ${new URL(origin).host}.`,
+              `Profile "${profileName}" is for ${new URL(profOrigin()).host}, but --host / NORBIX_HOST names ${new URL(origin).host}.`,
               `Drop one of them, or change the profile: norbix config set host ${new URL(origin).host} --profile ${profileName}.`,
               'norbix config --help',
             )
@@ -457,11 +471,11 @@ export abstract class BaseCommand extends Command {
         }
       }
 
-      return {origin, hostSource: 'flag/env', prof, profileName, explicit, deprecations: []}
+      return {origin, hostSource: hostFromFile ? 'project file' : 'flag/env', prof, profileName, explicit, deprecations: [], projectFile}
     }
 
     if (prof.host) {
-      return {origin: normalizeHost(prof.host), hostSource: `profile [${profileName}]`, prof, profileName, explicit, deprecations: []}
+      return {origin: normalizeHost(prof.host), hostSource: `profile [${profileName}]`, prof, profileName, explicit, deprecations: [], projectFile}
     }
 
     // Deprecated for one release: full Api / Hub URLs instead of a host.
@@ -493,7 +507,16 @@ export abstract class BaseCommand extends Command {
       hubOverride,
       apiOverride,
       deprecations,
+      projectFile,
     }
+  }
+
+  private foundProjectConfig?: {value?: FoundProjectConfig}
+
+  /** The repo's `.norbix/project.json` (lib/project-config.ts), read once per run. */
+  protected projectConfig(): FoundProjectConfig | undefined {
+    this.foundProjectConfig ??= {value: findProjectConfig()}
+    return this.foundProjectConfig.value
   }
 
   protected resolveContext(flags: GlobalFlags): ResolvedContext {
@@ -536,7 +559,16 @@ export abstract class BaseCommand extends Command {
     const {base: apiUrlBase, version: apiUrlVersion} = splitVersionedUrl(apiFull)
     const {base: hubUrlBase, version: hubUrlVersion} = splitVersionedUrl(hubFull)
 
-    const projectId = flags.project ?? prof.project_id ?? session?.projectId ?? fromLegacy(legacy.projectId)
+    const file = target.projectFile?.config
+    const projectId = flags.project ?? file?.projectId ?? prof.project_id ?? session?.projectId ?? fromLegacy(legacy.projectId)
+    const envPick: Array<[string | undefined, ResolvedContext['envSource']]> = [
+      [flags.env, 'flag/env'],
+      [file?.env, 'project file'],
+      [prof.env, `profile [${profileName ?? 'default'}]`],
+      [session?.env, 'session'],
+      [fromLegacy(legacy.env), 'legacy config'],
+    ]
+    const [env, envSource] = envPick.find(([value]) => value) ?? [undefined, 'none' as const]
     const region =
       flags.region ??
       prof.region ??
@@ -562,7 +594,9 @@ export abstract class BaseCommand extends Command {
       usesDefaultEndpoints,
       projectId,
       accountId: flags.account ?? prof.account_id ?? session?.accountId ?? fromLegacy(legacy.accountId),
-      env: flags.env ?? prof.env ?? session?.env ?? fromLegacy(legacy.env),
+      env,
+      envSource,
+      projectFile: target.projectFile,
       region,
       apiKey,
       bearerToken,

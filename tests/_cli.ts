@@ -131,14 +131,14 @@ export interface CliResult {
 }
 
 /** Run the built CLI with pipes for every stream (non-interactive). */
-export function cli(home: string, args: string[], env: Record<string, string | undefined> = {}): Promise<CliResult> {
+export function cli(home: string, args: string[], env: Record<string, string | undefined> = {}, cwd: string = home): Promise<CliResult> {
   return new Promise((resolve) => {
     const child = execFile(
       process.execPath,
       [CLI, ...args],
       {
         env: {...process.env, HOME: home, USERPROFILE: home, CI: undefined, NO_COLOR: undefined, FORCE_COLOR: undefined, ...env},
-        cwd: home,
+        cwd,
         maxBuffer: 10 * 1024 * 1024,
       },
       (error, stdout, stderr) => {

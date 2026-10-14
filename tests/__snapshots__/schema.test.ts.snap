@@ -97,6 +97,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "target:option",
       "force:boolean",
       "dir:string",
+      "project-file:boolean",
     ],
     "id": "ai init",
     "supportsDryRun": true,

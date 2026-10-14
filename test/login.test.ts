@@ -297,7 +297,8 @@ describe('norbix login (browser sign-in)', () => {
       expect(readFileSync(PROFILES_PATH, 'utf8')).toBe('[default]\nproject_id = p-norbix\n')
       expect(output.at(-1)!.split('\n').at(-1)).toBe(
         'Commands without --host still use profile [default] (hub.norbix.ai). ' +
-          'Use this sign-in with --host cloud.example.com or NORBIX_HOST=cloud.example.com, or make it the default: norbix config set host cloud.example.com',
+          'Use this sign-in with --host cloud.example.com or NORBIX_HOST=cloud.example.com; pin a repo to it with `norbix ai init --host cloud.example.com --project <id>` (writes .norbix/project.json there); ' +
+          'or make it the default for every folder: norbix config set host cloud.example.com',
       )
     })
 

@@ -18,14 +18,35 @@ export interface PlannedFile {
   content: string
 }
 
+/** The Norbix installation, project and environment this repo belongs to (`.norbix/project.json`). */
+export interface RepoTarget {
+  host?: string
+  projectId?: string
+  env?: string
+}
+
+/** One line naming the repo's target, or none when nothing is known. */
+export function targetLine(target?: RepoTarget): string[] {
+  if (!target?.host && !target?.projectId) return []
+  const parts = [
+    target.host ? `host \`${target.host}\`` : undefined,
+    target.projectId ? `project \`${target.projectId}\`` : undefined,
+    target.env ? `environment \`${target.env}\`` : undefined,
+  ].filter(Boolean)
+  return [
+    `- This repo's Norbix: ${parts.join(', ')} — saved in \`.norbix/project.json\`, which \`norbix\` reads by itself anywhere in this repo (\`whoami\` shows "project file"). Do not pass another \`--host\`, \`--project\` or \`--profile\` unless the user asks.`,
+  ]
+}
+
 /** The recipe every target shares (Markdown, ~10 lines). */
-export function recipeBlock(): string {
+export function recipeBlock(target?: RepoTarget): string {
   return [
     MARKER_START,
     '## Norbix backend — use the `norbix` CLI',
     '',
     'This project uses Norbix (database, users, files, templates, campaigns, scheduler, logs). Talk to it with the `norbix` CLI from the shell; never edit the backend by hand.',
     '',
+    ...targetLine(target),
     '- Start with `norbix whoami --json`. `"auth": "none"` there (or exit code 4 from any other command) means not signed in. Sign in yourself in two steps: run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode` (they open it, check the code and pick the roles you get — an AI service user, removable under Account → AI service users), then run `norbix login --wait --json` until it exits 0. Exit 4 with `AUTHORIZATION_PENDING` means not approved yet: run `--wait` again; `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over. Their Norbix is not norbix.ai? Add `--host <their dashboard address>` to both steps.',
     '- Pass `--json` to every command whose output you read: stdout is then exactly one JSON document (a result, or `{"error": {code, message, exit, fieldErrors, hint, docs}}`).',
     '- Project context (your projects, environments, regions, modules, integrations, CORS, languages — never secrets): read `.norbix-ai/context.md` when it is there; run `norbix ai context --write` at the start of a task and again after your context was compressed or summarized (`norbix login` refreshes it too).',
@@ -40,7 +61,7 @@ export function recipeBlock(): string {
 }
 
 /** Claude Code skill: frontmatter + the same rules as steps. */
-export function claudeSkill(): string {
+export function claudeSkill(target?: RepoTarget): string {
   return [
     '---',
     'name: norbix',
@@ -51,6 +72,7 @@ export function claudeSkill(): string {
     '',
     'Use the `norbix` command for everything on the Norbix backend. It is built for agents: one JSON document per call with `--json`, documented exit codes, `--dry-run` on every change, nothing destructive without `--yes`.',
     '',
+    ...(targetLine(target).length ? [...targetLine(target).map((l) => l.slice(2)), ''] : []),
     '## Steps',
     '',
     '1. `norbix whoami --json` — the host and Hub, who you are (with a browser sign-in: an AI service user and its expiry), the project, environment and region. `"auth": "none"` (or exit 4 from any other command) means not signed in: sign in in two steps (your shell commands time out; the code lives 10 minutes):',
@@ -82,22 +104,28 @@ export function claudeSkill(): string {
 }
 
 /** Cursor rule file (.mdc): frontmatter + the recipe. */
-export function cursorRule(): string {
-  return ['---', 'description: Use the norbix CLI for anything on the Norbix backend', 'alwaysApply: false', 'globs:', '---', '', recipeBlock()].join('\n')
+export function cursorRule(target?: RepoTarget): string {
+  return ['---', 'description: Use the norbix CLI for anything on the Norbix backend', 'alwaysApply: false', 'globs:', '---', '', recipeBlock(target)].join('\n')
 }
 
 /** Files one target needs, given what is already on disk. */
-export function planTarget(target: Target, exists: (path: string) => boolean, read: (path: string) => string, force: boolean): PlannedFile[] {
+export function planTarget(
+  target: Target,
+  exists: (path: string) => boolean,
+  read: (path: string) => string,
+  force: boolean,
+  repo?: RepoTarget,
+): PlannedFile[] {
   switch (target) {
     case 'claude':
       return [
-        fileOrReplace('.claude/skills/norbix/SKILL.md', claudeSkill(), exists, force),
-        blockIn('CLAUDE.md', exists, read, force),
+        fileOrReplace('.claude/skills/norbix/SKILL.md', claudeSkill(repo), exists, force),
+        blockIn('CLAUDE.md', exists, read, force, repo),
       ]
     case 'agents':
-      return [blockIn('AGENTS.md', exists, read, force)]
+      return [blockIn('AGENTS.md', exists, read, force, repo)]
     default:
-      return [fileOrReplace('.cursor/rules/norbix.mdc', cursorRule(), exists, force)]
+      return [fileOrReplace('.cursor/rules/norbix.mdc', cursorRule(repo), exists, force)]
   }
 }
 
@@ -106,8 +134,8 @@ function fileOrReplace(path: string, content: string, exists: (p: string) => boo
 }
 
 /** Append the block to a Markdown file, or replace the block between the markers with --force. */
-function blockIn(path: string, exists: (p: string) => boolean, read: (p: string) => string, force: boolean): PlannedFile {
-  const block = recipeBlock()
+function blockIn(path: string, exists: (p: string) => boolean, read: (p: string) => string, force: boolean, repo?: RepoTarget): PlannedFile {
+  const block = recipeBlock(repo)
   if (!exists(path)) return {path, action: 'create', content: block}
   const current = read(path)
   const start = current.indexOf(MARKER_START)

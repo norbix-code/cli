@@ -36,7 +36,9 @@ export default class Whoami extends BaseCommand {
       apiKey: ctx.apiKey ? redact(ctx.apiKey) : undefined,
       projectId: ctx.projectId,
       accountId: ctx.accountId,
-      env: ctx.env ?? 'PROD',
+      env: ctx.env ?? '(not set — the server uses PROD)',
+      envSource: ctx.envSource,
+      projectFile: ctx.projectFile?.path,
       region:
         ctx.region ??
         (ctx.usesDefaultEndpoints
@@ -81,7 +83,8 @@ export default class Whoami extends BaseCommand {
         ...(signIn ? signInLines(signIn) : []),
         `Project:  ${summary.projectId ?? '(not set)'}`,
         `Account:  ${summary.accountId ?? '(not set)'}`,
-        `Env:      ${summary.env}`,
+        `Env:      ${summary.env}${ctx.env ? ` (${ctx.envSource})` : ''}`,
+        ...(summary.projectFile ? [`Repo:     ${summary.projectFile}`] : []),
         `Region:   ${summary.region}`,
         verified
           ? `Server:   OK${environments?.length ? ` — environments: ${environments.join(', ')}` : ''}`

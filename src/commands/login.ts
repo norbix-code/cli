@@ -372,7 +372,8 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       state: 'other host',
       note:
         `Commands without --host still use profile [default] (${shown}). ` +
-        `Use this sign-in with --host ${host} or NORBIX_HOST=${host}, or make it the default: norbix config set host ${host}`,
+        `Use this sign-in with --host ${host} or NORBIX_HOST=${host}; pin a repo to it with \`norbix ai init --host ${host} --project <id>\` (writes .norbix/project.json there); ` +
+        `or make it the default for every folder: norbix config set host ${host}`,
     }
   }
 
