@@ -153,7 +153,8 @@ counts, the new ids, and any errors.
 |---|---|---|
 | `norbix db schemas [--page-size <n>] [--after <cursor>]` | list the schemas of one environment (`--env`, default PROD); each row carries `env` | `GET /schemas` |
 | `norbix db schema <id>` | show one schema | `GET /schemas/{id}` |
-| `norbix db schema create --name <name> --file <data-schema.json> [--ui-file <ui.json>] [--settings <json>]` | create a schema | `POST /schemas` |
+| `norbix db schema rules [--json]` | print the schema design rules (which field for which value, with the exact JSON shape); sends nothing | — |
+| `norbix db schema create --name <name> --file <data-schema.json> [--ui-file <ui.json>] [--settings <json>]` | create a schema; prints the Hub's design `warnings` on stderr | `POST /schemas` |
 | `norbix db schema update <id> [--file <data-schema.json>] [--ui-file <ui.json>]` | save a change as the draft | `PUT /schemas/{Id}/draft` |
 | `norbix db schema draft <id>` | show the unpublished draft | `GET /schemas/{Id}/draft` |
 | `norbix db schema discard <id> [--yes]` | throw the draft away | `DELETE /schemas/{Id}/draft` |
@@ -162,6 +163,23 @@ counts, the new ids, and any errors.
 | `norbix db schema diff <id> --from <n> --to <n>` | what changed between two versions | `GET /schemas/{Id}/versions/diff` |
 | `norbix db schema index-status <id>` | the last schema-index run: the indexes Norbix made (`idx_<field>` per reference, `uniq_<field>` per unique field, `idx_<field>__id` for the default sort, at most 8), state `building` / `ready` / `refused` / `partial` per database | `GET /schemas/{Id}/index-status` |
 | `norbix db schema delete <id> [--yes]` | delete the schema **and its records**: the collection (records and indexes) in the environment is dropped, and removed from the AI knowledge when AI embed is on; no undo. Refused while a schema trigger uses it (`CM-ERRORS-SCHEMA-017`) or a saved aggregate starts on / joins it (`CM-ERRORS-SCHEMA-018`, the aggregates are in `BlockerAggregateNames`); then nothing is dropped | `DELETE /schemas/{Id}` |
+
+**Design rules first.** Run `norbix db schema rules` before writing
+`--file`: an email is `{"type":"string","format":"email"}`, a link
+`{"type":"string","format":"uri"}`; language / locale, currency code,
+country and every list people pick from are a taxonomy picker
+(`{"source":"taxonomy","taxonomyId":"<id>"}`, an enum only for a
+developer-facing flag); a person is a user reference
+(`{"source":"user","displayField":"displayName"}`). When a field breaks one of
+these rules the Hub still saves the schema and answers with `warnings`, for
+example:
+
+```
+Warning: the schema was saved, but 2 fields break a design rule:
+  - app_link: 'app_link' looks like a link: use a string with "format": "uri" (UI widget website), not bare text.
+  - language: 'language' looks like a language: use a taxonomy-selection field (a language taxonomy, one term per language) so values are validated and translatable. Free text only when the value is deliberately not tied to any list.
+Fix them and save again. Rules: norbix db schema rules
+```
 
 `--file` is the data schema (the JSON Schema of one record); `--ui-file` is the
 UI schema the dashboard form uses. A change is a draft first: records keep the

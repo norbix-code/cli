@@ -80,6 +80,33 @@ norbix hub scheduler task save --body '{"name":"nightly","cron":"0 2 * * *","ini
 `--field` flags); `--field:str value` forces a string when a value looks
 like a number.
 
+## 3a. Design a database schema by the rules
+
+Before writing a data schema, print the rules and follow them:
+
+```sh
+norbix db schema rules           # which field for which value, with the exact JSON shape
+norbix db schema rules --json    # the same as data
+```
+
+- Email → `{"type":"string","format":"email"}`; link / website / app link →
+  `{"type":"string","format":"uri"}` — never bare text.
+- Language / locale, currency code, country, status, category — any list
+  people pick from → a taxonomy picker
+  (`{"source":"taxonomy","taxonomyId":"<id>"}`), never bare text and not an
+  inline enum. An enum is only for a developer-facing flag the app code
+  branches on.
+- A person (assignee, author, `*_user_id`) → a user reference
+  (`{"source":"user","displayField":"displayName"}`), never a text id.
+  Never add `createdBy` / `owner` / `createdAt`: the platform keeps them in
+  `_meta` (`settings.hasRecordOwner`).
+
+The Hub checks these rules when a schema is saved (`db schema create`,
+`hub database schema save`) and when `hub account schema validate` runs. A
+schema that breaks one is still saved; the answer carries `warnings` (on
+stderr as text, and in the JSON on stdout). Fix each named field and save
+again.
+
 ## 4. Change things in two steps
 
 ```sh
