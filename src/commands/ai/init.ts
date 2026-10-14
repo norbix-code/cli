@@ -70,7 +70,8 @@ written.`
     const read = (p: string) => readFileSync(join(root, p), 'utf8')
     // What the CLI resolves right now (cache only, no network): the repo's target.
     const ctx = this.resolveContext(flags)
-    const filePath = join(PROJECT_DIR, PROJECT_FILE)
+    // Always "/" — the path is reported to the caller and joined onto root later.
+    const filePath = `${PROJECT_DIR}/${PROJECT_FILE}`
     const kept = exists(filePath) && !flags.force ? readProjectConfig(join(root, filePath)) : undefined
     const repo: RepoTarget = kept ?? {host: storedHost(ctx.host), projectId: ctx.projectId, env: ctx.env?.toUpperCase()}
     const planned = targets.flatMap((t) => planTarget(t, exists, read, flags.force, flags['project-file'] ? repo : undefined))
