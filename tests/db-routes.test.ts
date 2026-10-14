@@ -130,6 +130,7 @@ const routes: Array<[string[], string, string]> = [
   // Taxonomies and terms
   [['taxonomies'], 'GET', `${P}/taxonomies`],
   [['taxonomy', TAX], 'GET', `${P}/taxonomies/${TAX}`],
+  [['taxonomy', 'create', 'Allergens'], 'POST', `${P}/taxonomies`],
   [['terms', 'countries'], 'GET', `${P}/taxonomies/countries/terms`],
   [['terms', 'countries', '--parent', ID], 'GET', `${P}/taxonomies/countries/terms/${ID}/children`],
   [['term', TAX, ID], 'GET', `${P}/taxonomies/${TAX}/terms/${ID}`],
@@ -153,10 +154,10 @@ describe('every db command reaches its route', () => {
   }
 })
 
-it('covers 48 distinct db routes', () => {
+it('covers 49 distinct db routes', () => {
   // `db distinct`/`db delete`/`db update`/`db aggregate` each have two shapes;
   // count distinct verb + path pairs so a duplicated row is caught.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(48)
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(49)
 })
 
 /** Run a command and return the one request it sent. */
@@ -176,6 +177,18 @@ async function sentOf(argv: string[]): Promise<Record<string, unknown>> {
   const call = await callOf(argv)
   return {...Object.fromEntries(call.query), ...call.body}
 }
+
+describe('db taxonomy create', () => {
+  it('sends the title and the optional fields, never a viewId (that would replace a taxonomy)', async () => {
+    const body = await bodyOf(['taxonomy', 'create', 'Allergens', '--description', 'Food', '--parent', 'txn_P', '--dependency', 'txn_A', '--dependency', 'txn_B'])
+    expect(body).toEqual({taxonomyName: 'Allergens', description: 'Food', parentId: 'txn_P', dependencies: ['txn_A', 'txn_B']})
+  })
+
+  it('--terms-meta-schema sends the file as a JSON string', async () => {
+    const body = await bodyOf(['taxonomy', 'create', 'Symptoms', '--terms-meta-schema', SCHEMA_FILE])
+    expect(JSON.parse(body.termsMetaDataSchema as string)).toEqual(dataSchema)
+  })
+})
 
 describe('db update / delete of many records', () => {
   it('update --many sends the filter and the plain fields, without allRecords', async () => {

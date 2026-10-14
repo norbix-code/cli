@@ -240,6 +240,7 @@ module alike.
 |---|---|---|
 | `norbix db taxonomies` | list taxonomies | `GET /taxonomies` |
 | `norbix db taxonomy <id>` | show one taxonomy | `GET /taxonomies/{id}` |
+| `norbix db taxonomy create <name> [--description <text>] [--terms-meta-schema <file>] [--terms-ui-schema <file>] [--parent <taxonomyId>] [--dependency <taxonomyId>…]` | create a taxonomy | `POST /taxonomies` |
 | `norbix db terms <taxonomyName> [--filter <json>] [--page-size <n>] [--after <cursor>] [--desc]` | list the terms of a taxonomy | `GET /taxonomies/{taxonomyName}/terms` |
 | `norbix db terms <taxonomyName> --parent <termId>` | only the children of one term | `GET /taxonomies/{taxonomyName}/terms/{parentId}/children` |
 | `norbix db term <taxonomyId> <id>` | show one term | `GET /taxonomies/{TaxonomyId}/terms/{Id}` |
@@ -295,7 +296,7 @@ state. `norbix hub database <words…>` reaches every one of them.
 
 | endpoint | why there is no command |
 |---|---|
-| `POST /taxonomies`, `DELETE /taxonomies/{Id}`, `GET /taxonomies/tree`, `DELETE /taxonomies/{TaxonomyId}/terms/many` | Taxonomy structure (dependencies, translatable names) is edited in the dashboard; terms — the data — have commands. |
+| `POST /taxonomies` with a `viewId` (replace), `DELETE /taxonomies/{Id}`, `GET /taxonomies/tree`, `DELETE /taxonomies/{TaxonomyId}/terms/many` | Changing a taxonomy's structure (dependencies, translatable names) is done in the dashboard; creating one is `db taxonomy create`, and terms — the data — have commands. |
 | `POST /schemas/apply-bundle` | Applies a whole generated bundle of schemas; it is the AI schema builder's step, not a hand-run one. |
 | `PUT /schemas/{Id}/rename`, `/embed`, `/list-settings`, `/settings` | Dashboard settings of one schema (title, embedding, list columns, soft delete / owner). |
 | `POST /integrations`, `DELETE /integrations/{Id}`, `PUT /integrations/{Id}/enable` / `disable`, `GET /integrations/flex-tiers`, `GET /integrations/{Id}/connection-string` | Creating or removing a database, and revealing its connection string, are account-level decisions taken in the dashboard; a connection string should not land in a shell history. |

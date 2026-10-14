@@ -1114,6 +1114,22 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "name",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "description:string",
+      "terms-meta-schema:string",
+      "terms-ui-schema:string",
+      "parent:string",
+      "dependency:string",
+    ],
+    "id": "db taxonomy create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
       "taxonomyId",
       "id",
     ],

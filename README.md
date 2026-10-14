@@ -39,7 +39,7 @@ norbix scheduler list
 | --- | --- |
 | `norbix login` / `logout` / `whoami` | Authenticate and inspect the current context |
 | `norbix config list/get/set/unset` | Read and change one profile in `~/.norbix/config` (`--profile`, default `[default]`) |
-| `norbix db ...` | Database records (find/get/count/insert/update/replace/delete/aggregate/change-owner), schemas (create/update/publish/delete/versions/diff), schema triggers, integrations, taxonomies and terms, indexes, test-data seed — see [docs/database.md](docs/database.md) |
+| `norbix db ...` | Database records (find/get/count/insert/update/replace/delete/aggregate/change-owner), schemas (create/update/publish/delete/versions/diff), schema triggers, integrations, taxonomies (list/show/create) and terms, indexes, test-data seed — see [docs/database.md](docs/database.md) |
 | `norbix files list/info/get-by-id/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
 | `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |

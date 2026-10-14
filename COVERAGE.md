@@ -23,7 +23,7 @@ out of reach.
 | --- | --- | --- |
 | database/collections | 13/15 | find, find-one, count, insert, insert-many, update(+many), replace, delete(+many), distinct, aggregate, execute-aggregate. Missing: find-own, change-responsibility |
 | database/schemas | 2/18 | read-only list/get. Schema editing is portal work |
-| database/taxonomies | 2/15 | read-only list/get |
+| database/taxonomies | 3/15 | list/get, create |
 | database/aggregates | 1/5 | list only |
 | files/* | 9/23 | upload, download, list, info, sign, delete. Missing: bulk delete, triggers, integration config |
 | logs/* | 6/14 | list, trail, settings, module toggle. Missing: clean, integration config |
