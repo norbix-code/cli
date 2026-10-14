@@ -19,8 +19,11 @@ export const DRY_RUN_FILES_INTEGRATION = '<default files integration>'
  * The project's default files integration in the current environment —
  * like the database commands, which use the default database integration
  * when no --integration is given (N6). One read of the Hub's integration list:
- * its `defaultIntegrationId`, else the only integration there is. None, or
- * several without a default, are two different errors.
+ * its `defaultIntegrationId` is resolved for the environment of the call
+ * (Hub.Files/Integrations/GetAll.cs). The list itself is project-wide (its
+ * items carry no environment), so an integration is never picked from it —
+ * it may belong to another environment. No integration at all, and no
+ * default here, are two different errors.
  */
 export async function defaultFilesIntegration(hub: Pick<Norbix['hub'], 'files'>, env: string | undefined): Promise<string> {
   const where = `environment ${env ?? 'PROD'}`
@@ -39,12 +42,11 @@ export async function defaultFilesIntegration(hub: Pick<Norbix['hub'], 'files'>,
 
   if (res.defaultIntegrationId) return res.defaultIntegrationId
   const items = (res.list?.items ?? []) as Array<{viewId: string; integrationName?: string}>
-  if (items.length === 1) return items[0].viewId
   if (items.length === 0) {
     throw new CliError({
       exit: EXIT.NOT_FOUND,
       code: 'NO_FILES_INTEGRATION',
-      message: `This project has no files integration in ${where}.`,
+      message: `This project has no files integration (looked up for ${where}).`,
       hint:
         `Add one in the dashboard (Files → Integrations) or with \`norbix hub files saveFilesIntegration --body '<json>'\`` +
         `${env && env !== 'PROD' ? `, or pass --env for the environment that has one` : ''}; then run the command again.`,
@@ -53,8 +55,8 @@ export async function defaultFilesIntegration(hub: Pick<Norbix['hub'], 'files'>,
   }
 
   throw usageError(
-    `This project has ${items.length} files integrations in ${where} and none is the default.`,
-    `Pass --integration <id> (or save one: norbix config set files_integration_id <id>):\n${items.map((i) => `  ${i.viewId}${i.integrationName ? `  ${i.integrationName}` : ''}`).join('\n')}`,
+    `No default files integration in ${where}.`,
+    `Pass --integration <id> (or save one: norbix config set files_integration_id <id>). The project's files integrations (all environments — the list does not say which):\n${items.map((i) => `  ${i.viewId}${i.integrationName ? `  ${i.integrationName}` : ''}`).join('\n')}`,
     'norbix integrations files --help',
   )
 }

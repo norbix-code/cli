@@ -433,10 +433,11 @@ Commands live in `src/commands/<topic>/<name>.ts` — one file per command
 
 File commands use the project's **default files integration** of the current
 environment (`--env`), like the database commands use the default database
-integration — one read of the Hub's integration list. When the environment has
-none, they exit 5 (`NO_FILES_INTEGRATION`, "This project has no files
-integration in environment TEST"); several with no default exit 2 and list
-them. To pick another one, pass `--integration <id>` (env var:
+integration — one read of the Hub's integration list (its default is per
+environment). With no files integration at all they exit 5
+(`NO_FILES_INTEGRATION`); with integrations but no default in this
+environment they exit 2 and list them (the list is project-wide, so none is
+picked for you). To pick another one, pass `--integration <id>` (env var:
 `NORBIX_FILES_INTEGRATION_ID`) or save it:
 
 ```sh

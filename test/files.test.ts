@@ -110,17 +110,17 @@ describe('norbix files list', () => {
       expect(paths()).toEqual(['GET /v3/files/integrations', 'GET /v3/files/fi_Default'])
     })
 
-    it('no default but exactly one integration: uses it', async () => {
-      fakeFetch([['/files/integrations', {list: {items: [{viewId: 'fi_Only'}]}}]])
-      const {error} = await runCommand(['files', 'delete', 'a.txt', '--yes', ...noIntegration])
-      expect(error).toBeUndefined()
-      expect(paths().at(-1)).toContain('/files/fi_Only')
+    it('no default here but one in the list: not picked — the list is project-wide, it may be another environment\'s', async () => {
+      fakeFetch([['/files/integrations', {list: {items: [{viewId: 'fi_Prod'}]}}]])
+      const {error} = await runCommand(['files', 'delete', 'a.txt', '--yes', '--env', 'TEST', ...noIntegration])
+      expect(error?.message).toBe('No default files integration in environment TEST.')
+      expect(paths()).toEqual(['GET /v3/files/integrations'])
     })
 
     it('none in the environment: exit 5 NO_FILES_INTEGRATION that names the environment', async () => {
       fakeFetch([['/files/integrations', {list: {items: []}}]])
       const {error} = await runCommand(['files', 'list', '--env', 'TEST', ...noIntegration])
-      expect(error?.message).toContain('This project has no files integration in environment TEST.')
+      expect(error?.message).toContain('This project has no files integration (looked up for environment TEST).')
       expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(5)
       expect(paths()).toEqual(['GET /v3/files/integrations'])
     })
@@ -128,7 +128,7 @@ describe('norbix files list', () => {
     it('several and no default: exit 2 listing them, so the caller picks one', async () => {
       fakeFetch([['/files/integrations', {list: {items: [{viewId: 'fi_A', integrationName: 'S3'}, {viewId: 'fi_B'}]}}]])
       const {error} = await runCommand(['files', 'list', ...noIntegration])
-      expect(error?.message).toContain('2 files integrations in environment PROD and none is the default')
+      expect(error?.message).toBe('No default files integration in environment PROD.')
       expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(2)
       expect(paths()).toHaveLength(1)
     })
@@ -178,7 +178,7 @@ describe('norbix files get-by-id', () => {
     const {error} = await runCommand(['files', 'get-by-id', 'nbfl_7hK2abc', '--project', PROJECT, '--api-key', API_KEY, '--region', REGION])
 
     // The Hub (fake) has no files integration: only the lookup was sent.
-    expect(error?.message).toContain('This project has no files integration in environment PROD.')
+    expect(error?.message).toContain('This project has no files integration (looked up for environment PROD).')
     expect(calls.map((c) => new URL(c.url).pathname)).toEqual(['/v3/files/integrations'])
   })
 })
@@ -427,7 +427,7 @@ describe('norbix files publish / unpublish', () => {
     ])
 
     // The Hub (fake) has no files integration: only the lookup was sent.
-    expect(error?.message).toContain('This project has no files integration in environment PROD.')
+    expect(error?.message).toContain('This project has no files integration (looked up for environment PROD).')
     expect(calls.map((c) => new URL(c.url).pathname)).toEqual(['/v3/files/integrations'])
   })
 
