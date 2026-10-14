@@ -44,9 +44,9 @@ export function recipeBlock(target?: RepoTarget): string {
     MARKER_START,
     '## Norbix backend — use the `norbix` CLI',
     '',
-    'This project uses Norbix (database, users, files, templates, campaigns, scheduler, logs). Talk to it with the `norbix` CLI from the shell; never edit the backend by hand.',
+    // The repo's target joins the intro line: the block stays at most 12 lines.
+    ['This project uses Norbix (database, users, files, templates, campaigns, scheduler, logs). Talk to it with the `norbix` CLI from the shell; never edit the backend by hand.', ...targetLine(target).map((l) => l.slice(2))].join(' '),
     '',
-    ...targetLine(target),
     '- Start with `norbix whoami --json`. `"auth": "none"` there (or exit code 4 from any other command) means not signed in. Sign in yourself in two steps: run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode` (they open it, check the code and pick the roles you get — an AI service user, removable under Account → AI service users), then run `norbix login --wait --json` until it exits 0. Exit 4 with `AUTHORIZATION_PENDING` means not approved yet: run `--wait` again; `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over. Their Norbix is not norbix.ai? Add `--host <their dashboard address>` to both steps.',
     '- Pass `--json` to every command whose output you read: stdout is then exactly one JSON document (a result, or `{"error": {code, message, exit, fieldErrors, hint, docs}}`).',
     '- Project context (your projects, environments, regions, modules, integrations, CORS, languages — never secrets): read `.norbix-ai/context.md` when it is there; run `norbix ai context --write` at the start of a task and again after your context was compressed or summarized (`norbix login` refreshes it too).',

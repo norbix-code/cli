@@ -144,7 +144,7 @@ describe('ai init saves the repo\'s Norbix: .norbix/project.json (N3)', () => {
       expect(r.code).toBe(0)
       expect(JSON.parse(readFileSync(join(project, '.norbix/project.json'), 'utf8'))).toEqual({host, projectId: 'pr_HappyTummy', env: 'TEST'})
       const claude = readFileSync(join(project, 'CLAUDE.md'), 'utf8')
-      expect(claude).toContain(`- This repo's Norbix: host \`${host}\`, project \`pr_HappyTummy\`, environment \`TEST\` — saved in \`.norbix/project.json\``)
+      expect(claude).toContain(`never edit the backend by hand. This repo's Norbix: host \`${host}\`, project \`pr_HappyTummy\`, environment \`TEST\` — saved in \`.norbix/project.json\``)
       expect(claude.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(12)
       expect(readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')).toContain(`This repo's Norbix: host \`${host}\``)
 
