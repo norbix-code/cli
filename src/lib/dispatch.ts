@@ -325,7 +325,10 @@ export function isDestructive(method: string): boolean {
 }
 
 /** Read-only verbs: no --dry-run needed, nothing changes. */
-const READ_VERBS = new Set(['get', 'list', 'find', 'count', 'search', 'preview', 'render', 'reveal', 'check', 'validate', 'export', 'download', 'ping', 'echo', 'test', 'verify'])
+// aggregate … run: every SDK method with that verb only reads (aggregates, distinct values,
+// diagnostics, waitForProjectActive, hasPasskey, analyzeImportFile) — the env rule for changes
+// (BaseCommand.assertWriteEnv) must not refuse them.
+const READ_VERBS = new Set(['get', 'list', 'find', 'count', 'search', 'preview', 'render', 'reveal', 'check', 'validate', 'export', 'download', 'ping', 'echo', 'test', 'verify', 'aggregate', 'distinct', 'execute', 'analyze', 'has', 'inspect', 'query', 'read', 'wait', 'run'])
 
 export function isReadOnly(method: string): boolean {
   return READ_VERBS.has(camelSplit(method)[0])

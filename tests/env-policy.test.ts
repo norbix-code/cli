@@ -98,6 +98,9 @@ describe('what is allowed', () => {
   it('reads keep the default (no env = the server default)', async () => {
     expect((await cli(home, ['db', 'find', 'orders', '--json', '--profile', 'x'], NO_ENV)).code).toBe(0)
     expect((await cli(home, ['hub', 'scheduler', 'tasks', 'get', '--json', '--profile', 'x'], NO_ENV)).code).toBe(0)
+    // POST reads through hub/api: aggregates and distinct values are not changes
+    expect((await cli(home, ['api', 'database', 'distinct', '--collectionName', 'orders', '--field', 'status', '--json', '--profile', 'x'], NO_ENV)).code).toBe(0)
+    expect((await cli(home, ['api', 'database', 'aggregate', '--collectionName', 'orders', '--pipeline', '[]', '--json', '--profile', 'x'], NO_ENV)).code).toBe(0)
   })
 
   it('a dry run sends nothing, so it is never refused', async () => {
