@@ -18,18 +18,40 @@ export interface PlannedFile {
   content: string
 }
 
+/** The Norbix installation, project and environment this repo belongs to (`.norbix/project.json`). */
+export interface RepoTarget {
+  host?: string
+  projectId?: string
+  env?: string
+}
+
+/** One line naming the repo's target, or none when nothing is known. */
+export function targetLine(target?: RepoTarget): string[] {
+  if (!target?.host && !target?.projectId) return []
+  const parts = [
+    target.host ? `host \`${target.host}\`` : undefined,
+    target.projectId ? `project \`${target.projectId}\`` : undefined,
+    target.env ? `environment \`${target.env}\`` : undefined,
+  ].filter(Boolean)
+  return [
+    `- This repo's Norbix: ${parts.join(', ')} — saved in \`.norbix/project.json\`, which \`norbix\` reads by itself anywhere in this repo (\`whoami\` shows "project file"). Do not pass another \`--host\`, \`--project\` or \`--profile\` unless the user asks.`,
+  ]
+}
+
 /** The recipe every target shares (Markdown, ~10 lines). */
-export function recipeBlock(): string {
+export function recipeBlock(target?: RepoTarget): string {
   return [
     MARKER_START,
     '## Norbix backend — use the `norbix` CLI',
     '',
-    'This project uses Norbix (database, users, files, templates, campaigns, scheduler, logs). Talk to it with the `norbix` CLI from the shell; never edit the backend by hand.',
+    // The repo's target joins the intro line: the block stays at most 12 lines.
+    ['This project uses Norbix (database, users, files, templates, campaigns, scheduler, logs). Talk to it with the `norbix` CLI from the shell; never edit the backend by hand.', ...targetLine(target).map((l) => l.slice(2))].join(' '),
     '',
     '- Start with `norbix whoami --json`. `"auth": "none"` there (or exit code 4 from any other command) means not signed in. Sign in yourself in two steps: run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode` (they open it, check the code and pick the roles you get — an AI service user, removable under Account → AI service users), then run `norbix login --wait --json` until it exits 0. Exit 4 with `AUTHORIZATION_PENDING` means not approved yet: run `--wait` again; `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over. Their Norbix is not norbix.ai? Add `--host <their dashboard address>` to both steps.',
     '- Pass `--json` to every command whose output you read: stdout is then exactly one JSON document (a result, or `{"error": {code, message, exit, fieldErrors, hint, docs}}`).',
+    '- Project context (your projects, environments, regions, modules, integrations, CORS, languages — never secrets): read `.norbix-ai/context.md` when it is there; run `norbix ai context --write` at the start of a task and again after your context was compressed or summarized (`norbix login` refreshes it too).',
     '- Discover, do not guess: `norbix schema --json` (every command, `destructive`, `supportsDryRun`), then `norbix <command> --help`. No named command? `norbix hub <module> --json` lists the SDK methods and their fields.',
-    '- Before any change, run it with `--dry-run --json` (sends nothing) and show the user the request. Then re-run without `--dry-run`, adding `--yes` only for a destructive command (without it the command exits 3 and sends nothing).',
+    '- Before any change, run it with `--dry-run --json` (sends nothing) and show the user the request. Then re-run without `--dry-run`, adding `--yes` only for a destructive command (without it the command exits 3 and sends nothing). A change needs an environment: `--env TEST`, or `--env PROD` only when the user means PROD (without one: exit 2 `ENV_REQUIRED` / `PROD_NOT_EXPLICIT`).',
     '- Never print, paste or ask for API keys, passwords or tokens, and never read `~/.norbix`. Credentials come from `norbix login`, a `--profile`, or `NORBIX_*` variables the user set (CI: `NORBIX_HOST` + `NORBIX_API_KEY` + `NORBIX_PROJECT_ID`).',
     '- Branch on the exit code: 0 ok · 2 usage (fix the call) · 3 needs `--yes` · 4 auth · 5 not found · 6 validation (`fieldErrors`) · 7 network · 8 server (retry with backoff) · 9 cancelled.',
     '- Full contract: `docs/agent-contract.md` in the norbix-code/cli repo; `error.hint` and `error.docs` name the next step.',
@@ -39,7 +61,7 @@ export function recipeBlock(): string {
 }
 
 /** Claude Code skill: frontmatter + the same rules as steps. */
-export function claudeSkill(): string {
+export function claudeSkill(target?: RepoTarget): string {
   return [
     '---',
     'name: norbix',
@@ -50,15 +72,17 @@ export function claudeSkill(): string {
     '',
     'Use the `norbix` command for everything on the Norbix backend. It is built for agents: one JSON document per call with `--json`, documented exit codes, `--dry-run` on every change, nothing destructive without `--yes`.',
     '',
+    ...(targetLine(target).length ? [...targetLine(target).map((l) => l.slice(2)), ''] : []),
     '## Steps',
     '',
     '1. `norbix whoami --json` — the host and Hub, who you are (with a browser sign-in: an AI service user and its expiry), the project, environment and region. `"auth": "none"` (or exit 4 from any other command) means not signed in: sign in in two steps (your shell commands time out; the code lives 10 minutes):',
     '   - `norbix login --no-browser --json` → `{userCode, verificationUriComplete, expiresIn}`. Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.',
     '   - `norbix login --wait --json` — waits up to 90 s. Exit 0: signed in. Exit 4 `AUTHORIZATION_PENDING`: not approved yet, run it again. `ACCESS_DENIED` or `EXPIRED_TOKEN`: start over with step one.',
     '   - Not on norbix.ai? Add `--host <their dashboard or Hub address>` (or `--profile <name>`) to both steps.',
+    '   Then load the project context: read `.norbix-ai/context.md` if it is there, else run `norbix ai context --write` (it writes that file: every project you may work on — environments, regions, modules, integrations with their default per environment, CORS origins, languages; no secrets). Read it again whenever your context was compressed or summarized; `norbix ai context --json` has a `version` that changes only when the summary does.',
     '2. Find the command: `norbix schema --json` lists every command with `destructive` and `supportsDryRun`; `norbix <command> --help` has a realistic example. No named command? `norbix hub <module> --json` (or `norbix api <module> --json`) lists the SDK methods with their fields; call one with plain words and `--body \'<json>\'`.',
     '3. Read with `--json` and parse the one document on stdout. Never parse the text output.',
-    '4. Change in two steps: `norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user. Then re-run without `--dry-run`, adding `--yes` only if the command is destructive. Never add `--yes` to a first attempt.',
+    '4. Change in two steps: `norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user. Then re-run without `--dry-run`, adding `--yes` only if the command is destructive. Never add `--yes` to a first attempt. Every change names its environment: `--env TEST`, or `--env PROD` only when the user asked for PROD — with none (or PROD only from a saved default) it exits 2 `ENV_REQUIRED` / `PROD_NOT_EXPLICIT`, never silently PROD.',
     '5. Branch on the exit code and read `error.hint` / `error.docs`: 0 ok · 2 usage · 3 add `--yes` after a dry run · 4 auth (sign in again as in step 1) · 5 not found (check id / `--env` / `--project`) · 6 validation (`error.fieldErrors`) · 7 network · 8 server (retry with backoff, keep `traceId`) · 9 cancelled.',
     '',
     '## Secrets',
@@ -80,22 +104,28 @@ export function claudeSkill(): string {
 }
 
 /** Cursor rule file (.mdc): frontmatter + the recipe. */
-export function cursorRule(): string {
-  return ['---', 'description: Use the norbix CLI for anything on the Norbix backend', 'alwaysApply: false', 'globs:', '---', '', recipeBlock()].join('\n')
+export function cursorRule(target?: RepoTarget): string {
+  return ['---', 'description: Use the norbix CLI for anything on the Norbix backend', 'alwaysApply: false', 'globs:', '---', '', recipeBlock(target)].join('\n')
 }
 
 /** Files one target needs, given what is already on disk. */
-export function planTarget(target: Target, exists: (path: string) => boolean, read: (path: string) => string, force: boolean): PlannedFile[] {
+export function planTarget(
+  target: Target,
+  exists: (path: string) => boolean,
+  read: (path: string) => string,
+  force: boolean,
+  repo?: RepoTarget,
+): PlannedFile[] {
   switch (target) {
     case 'claude':
       return [
-        fileOrReplace('.claude/skills/norbix/SKILL.md', claudeSkill(), exists, force),
-        blockIn('CLAUDE.md', exists, read, force),
+        fileOrReplace('.claude/skills/norbix/SKILL.md', claudeSkill(repo), exists, force),
+        blockIn('CLAUDE.md', exists, read, force, repo),
       ]
     case 'agents':
-      return [blockIn('AGENTS.md', exists, read, force)]
+      return [blockIn('AGENTS.md', exists, read, force, repo)]
     default:
-      return [fileOrReplace('.cursor/rules/norbix.mdc', cursorRule(), exists, force)]
+      return [fileOrReplace('.cursor/rules/norbix.mdc', cursorRule(repo), exists, force)]
   }
 }
 
@@ -104,8 +134,8 @@ function fileOrReplace(path: string, content: string, exists: (p: string) => boo
 }
 
 /** Append the block to a Markdown file, or replace the block between the markers with --force. */
-function blockIn(path: string, exists: (p: string) => boolean, read: (p: string) => string, force: boolean): PlannedFile {
-  const block = recipeBlock()
+function blockIn(path: string, exists: (p: string) => boolean, read: (p: string) => string, force: boolean, repo?: RepoTarget): PlannedFile {
+  const block = recipeBlock(repo)
   if (!exists(path)) return {path, action: 'create', content: block}
   const current = read(path)
   const start = current.indexOf(MARKER_START)

@@ -2,6 +2,7 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 import {databaseIntegrationFlag} from '../../../lib/database.js'
+import {TAXONOMY_KEY_DESCRIPTION, dryRunTaxonomyName, taxonomyNameOf} from '../../../lib/taxonomy.js'
 
 export default class DbTermTree extends BaseCommand {
   static description = `Show the terms of a taxonomy as a tree
@@ -16,7 +17,7 @@ the taxonomy chain).`
   ]
 
   static args = {
-    taxonomy: Args.string({required: true, description: 'Taxonomy name'}),
+    taxonomy: Args.string({required: true, description: TAXONOMY_KEY_DESCRIPTION}),
   }
 
   static flags = {
@@ -29,14 +30,15 @@ the taxonomy chain).`
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(DbTermTree)
     const client = this.client(flags)
+    const taxonomyName = await this.lookup(flags, dryRunTaxonomyName(args.taxonomy), (c) => taxonomyNameOf(c.hub, args.taxonomy))
 
     const res = flags.merged
       ? await client.hub.database.getDatabaseMergedTermTree({
-          taxonomyName: args.taxonomy,
+          taxonomyName,
           databaseIntegrationId: flags.integration,
         })
       : await client.hub.database.getDatabaseTaxonomyTermTree({
-          taxonomyName: args.taxonomy,
+          taxonomyName,
           rootTermId: flags.root,
           depth: flags.depth,
           databaseIntegrationId: flags.integration,

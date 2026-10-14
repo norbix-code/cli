@@ -3,11 +3,13 @@ import {Args, Flags} from '@oclif/core'
 import {BaseCommand} from '../../base.js'
 import {databaseIntegrationFlag} from '../../lib/database.js'
 import {readJsonInput} from '../../lib/json.js'
+import {TAXONOMY_KEY_DESCRIPTION, dryRunTaxonomyName, taxonomyNameOf} from '../../lib/taxonomy.js'
 
 export default class DbTerms extends BaseCommand {
   static description = `List the terms of a taxonomy
 
-Pass --parent to list only the children of one term.`
+Pass --parent to list only the children of one term. The taxonomy is its id
+(txn_…) or its name — the same key every term command takes.`
 
   static examples = [
     '<%= config.bin %> db terms countries',
@@ -16,7 +18,7 @@ Pass --parent to list only the children of one term.`
   ]
 
   static args = {
-    taxonomy: Args.string({required: true, description: 'Taxonomy name'}),
+    taxonomy: Args.string({required: true, description: TAXONOMY_KEY_DESCRIPTION}),
   }
 
   static flags = {
@@ -32,9 +34,10 @@ Pass --parent to list only the children of one term.`
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(DbTerms)
     const client = this.client(flags)
+    const taxonomyName = await this.lookup(flags, dryRunTaxonomyName(args.taxonomy), (c) => taxonomyNameOf(c.hub, args.taxonomy))
 
     const request = {
-      taxonomyName: args.taxonomy,
+      taxonomyName,
       databaseIntegrationId: flags.integration,
       filter: flags.filter ? await readJsonInput(flags.filter, 'filter') : undefined,
       pageSize: flags['page-size'],

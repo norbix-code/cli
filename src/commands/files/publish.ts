@@ -1,7 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
-import {integrationFlag, resolveIntegration} from '../../lib/files.js'
+import {integrationFlag} from '../../lib/files.js'
 import {callPublicFiles, publicUrlFor} from '../../lib/publicFiles.js'
 
 export default class FilesPublish extends BaseCommand {
@@ -33,10 +33,7 @@ export default class FilesPublish extends BaseCommand {
     // credentials; with --dry-run it stops the call just before it is sent.
     const client = this.client(flags)
 
-    const integration = resolveIntegration(flags.integration, ctx.filesIntegrationId)
-    if (!integration) {
-      this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
-    }
+    const integration = await this.filesIntegration(flags)
 
     const operation = flags.folder ? 'makeFolderPublic' : 'makeFilePublic'
     const body = {filesIntegrationId: integration, path: args.remote}

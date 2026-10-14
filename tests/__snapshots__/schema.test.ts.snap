@@ -83,10 +83,21 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [],
     "destructive": false,
     "flags": [
+      "write:boolean",
+      "dir:string",
+    ],
+    "id": "ai context",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
       "dry-run:boolean",
       "target:option",
       "force:boolean",
       "dir:string",
+      "project-file:boolean",
     ],
     "id": "ai init",
     "supportsDryRun": true,
@@ -1104,6 +1115,22 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "name",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "description:string",
+      "terms-meta-schema:string",
+      "terms-ui-schema:string",
+      "parent:string",
+      "dependency:string",
+    ],
+    "id": "db taxonomy create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
       "taxonomyId",
       "id",
     ],
@@ -1832,6 +1859,22 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "dry-run:boolean",
     ],
     "id": "email validation test",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "name",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "connection-string-env:string",
+      "database-name:string",
+      "managed:boolean",
+      "db-region:string",
+      "integration-name:string",
+    ],
+    "id": "env create",
     "supportsDryRun": true,
   },
   {
@@ -3461,6 +3504,19 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "file",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "apply:boolean",
+      "ignore-default-roles:boolean",
+    ],
+    "id": "users import",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
       "email",
     ],
     "destructive": false,
@@ -3488,6 +3544,26 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [],
     "id": "users policies",
     "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "apply:boolean",
+    ],
+    "id": "users repair-logins",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "apply:boolean",
+    ],
+    "id": "users repair-roles",
+    "supportsDryRun": true,
   },
   {
     "args": [],

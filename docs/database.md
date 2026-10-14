@@ -43,6 +43,7 @@ refactoringV2 (2026-10) has only the GET routes, so this CLI needs a current gat
 | `norbix db update <collection> --all --update <json> [--array-filters <json-array>] [--yes]` | update every record | `PUT /collections/{collectionName}/many` (`allRecords: true`) |
 | `norbix db replace <collection> --id <id> --doc <json>` | replace one record fully | `PUT /collections/{collectionName}/{id}/replace` |
 | `norbix db delete <collection> --id <id> [--yes]` | delete one | `DELETE /collections/{collectionName}/{id}` |
+| `norbix db delete <collection> --filter <json> [--yes]` | delete the ONE record the filter matches: reads up to 2 matches first; 0 → exit 5, 2+ → exit 2 (add `--many`) | `GET /collections/{collectionName}`, then `DELETE /collections/{collectionName}/{id}` |
 | `norbix db delete <collection> --many --filter <json> [--yes]` | delete many | `DELETE /collections/{collectionName}/many` |
 | `norbix db delete <collection> --all [--yes]` | delete every record | `DELETE /collections/{collectionName}/many` (`allRecords: true`) |
 | `norbix db aggregate <collection> --pipeline <json>` | run an inline aggregation | `POST /collections/{collectionName}/aggregate` |
@@ -165,16 +166,20 @@ counts, the new ids, and any errors.
 
 `--file` is the data schema (the JSON Schema of one record); `--ui-file` is the
 UI schema the dashboard form uses. A change is a draft first: records keep the
-published version until `schema publish`. `publish` asks first and sends the
-server's `confirmed: true`, so it also publishes a change the server calls
-breaking — read `schema draft` (or `schema diff` after a publish) before you
-answer yes.
+published version until `schema publish`. `publish` asks only when data is at
+risk, and lets the Hub decide that: it first sends `confirmed: false`, so a
+first publish or one that only adds or changes fields goes through without
+`--yes`. When the new version removes fields the published one has, the Hub
+answers `CM-ERRORS-SCHEMA-020`; the CLI names the fields and asks (without a
+terminal: exit 3, nothing published), and on yes — or with `--yes` up front —
+publishes with `confirmed: true`. Read `schema draft` (or `schema diff` after a
+publish) before you answer yes.
 
 ```bash
 norbix db schema create --name orders --file orders.schema.json --ui-file orders.ui.json
 norbix db schema update 66b2f0a1c3d4e5f6a7b8c9d0 --file orders.schema.json
 norbix db schema draft 66b2f0a1c3d4e5f6a7b8c9d0
-norbix db schema publish 66b2f0a1c3d4e5f6a7b8c9d0 --yes
+norbix db schema publish 66b2f0a1c3d4e5f6a7b8c9d0
 norbix db schema diff 66b2f0a1c3d4e5f6a7b8c9d0 --from 1 --to 2
 ```
 
@@ -239,19 +244,24 @@ module alike.
 | command | what it does | endpoint |
 |---|---|---|
 | `norbix db taxonomies` | list taxonomies | `GET /taxonomies` |
-| `norbix db taxonomy <id>` | show one taxonomy | `GET /taxonomies/{id}` |
-| `norbix db terms <taxonomyName> [--filter <json>] [--page-size <n>] [--after <cursor>] [--desc]` | list the terms of a taxonomy | `GET /taxonomies/{taxonomyName}/terms` |
-| `norbix db terms <taxonomyName> --parent <termId>` | only the children of one term | `GET /taxonomies/{taxonomyName}/terms/{parentId}/children` |
-| `norbix db term <taxonomyId> <id>` | show one term | `GET /taxonomies/{TaxonomyId}/terms/{Id}` |
-| `norbix db term tree <taxonomyName> [--root <termId>] [--depth <n>]` | the terms as a tree | `GET /taxonomies/{TaxonomyName}/terms/tree` |
-| `norbix db term tree <taxonomyName> --merged` | one tree across the parent taxonomies | `GET /taxonomies/{TaxonomyName}/merged-tree` |
-| `norbix db term create <taxonomyId> --doc <json>` | add a term | `POST /taxonomies/{TaxonomyId}/terms` |
-| `norbix db term update <taxonomyId> <id> --set <json>` | change some fields of a term | `PUT /taxonomies/{TaxonomyId}/terms/{Id}` |
-| `norbix db term delete <taxonomyId> <id> [--yes]` | delete a term | `DELETE /taxonomies/{TaxonomyId}/terms/{Id}` |
+| `norbix db taxonomy <taxonomy>` | show one taxonomy | `GET /taxonomies/{id}` |
+| `norbix db taxonomy create <name> [--description <text>] [--terms-meta-schema <file>] [--terms-ui-schema <file>] [--parent <taxonomyId>] [--dependency <taxonomyId>…]` | create a taxonomy | `POST /taxonomies` |
+| `norbix db terms <taxonomy> [--filter <json>] [--page-size <n>] [--after <cursor>] [--desc]` | list the terms of a taxonomy | `GET /taxonomies/{taxonomyName}/terms` |
+| `norbix db terms <taxonomy> --parent <termId>` | only the children of one term | `GET /taxonomies/{taxonomyName}/terms/{parentId}/children` |
+| `norbix db term <taxonomy> <id>` | show one term | `GET /taxonomies/{TaxonomyId}/terms/{Id}` |
+| `norbix db term tree <taxonomy> [--root <termId>] [--depth <n>]` | the terms as a tree | `GET /taxonomies/{TaxonomyName}/terms/tree` |
+| `norbix db term tree <taxonomy> --merged` | one tree across the parent taxonomies | `GET /taxonomies/{TaxonomyName}/merged-tree` |
+| `norbix db term create <taxonomy> --doc <json>` | add a term | `POST /taxonomies/{TaxonomyId}/terms` |
+| `norbix db term update <taxonomy> <id> --set <json>` | change some fields of a term | `PUT /taxonomies/{TaxonomyId}/terms/{Id}` |
+| `norbix db term delete <taxonomy> <id> [--yes]` | delete a term | `DELETE /taxonomies/{TaxonomyId}/terms/{Id}` |
 
-Note the two kinds of key: listing and trees take the taxonomy **name**; a single
-term is addressed by the taxonomy **id** and the term id (that is how the
-gateway routes them). `--set` is applied with `$set`: only the fields you give
+`<taxonomy>` is the taxonomy **id** (`txn_…`) or its **name** (the title or
+its slug, any case) in every command. The gateway routes them with two kinds
+of key — listing and trees by name, a single term by the taxonomy id — so the
+CLI looks up the other one when needed (one extra read; a `--dry-run` sends
+nothing and shows `<id of taxonomy "…">` instead). The id is the stable key: a
+title can be renamed. An unknown name exits 5 (`TAXONOMY_NOT_FOUND`) with the
+taxonomies there are. `--set` is applied with `$set`: only the fields you give
 change — `name` (a string or a `{lang: value}` map), `description`, `order`
 (lower shows first), `parentId`, `multiParents`.
 
@@ -268,8 +278,8 @@ merged tree checks every parent taxonomy too. Errors you may meet:
 (a name longer than 40 characters).
 
 ```bash
-norbix db term create 66b2f0a1c3d4e5f6a7b8c9d0 --doc '{"name":"Lithuania","order":1}'
-norbix db term update 66b2f0a1c3d4e5f6a7b8c9d0 66b2f0a1c3d4e5f6a7b8c9d1 --set '{"order":2}'
+norbix db term create countries --doc '{"name":"Lithuania","order":1}'
+norbix db term update txn_5BBS25C3IKHRfzVABMjMiM 66b2f0a1c3d4e5f6a7b8c9d1 --set '{"order":2}'
 norbix db term tree countries --depth 2
 ```
 
@@ -282,9 +292,11 @@ norbix db term tree countries --depth 2
   checked: `norbix hub database schema bundle apply --bundleJson '<IF json>'
   --dry-run` asks the Hub's read-only `account.validateSchema` and exits 6
   with the issues when the bundle is invalid.
-- `delete`, `discard`, `publish`, `seed`, `trigger disable`, `trigger delete`,
-  `term delete` and the `--many` / `--all` record writes ask first; `--yes` skips the
-  question, and without a terminal they exit 3 unless `--yes` is given.
+- `delete`, `discard`, `seed`, `trigger disable`, `trigger delete`,
+  `term delete` and the `--many` / `--all` record writes (and `delete --filter`)
+  ask first; `--yes` skips the question, and without a terminal they exit 3
+  unless `--yes` is given. `publish` asks only for a breaking change (see
+  above); `norbix schema` still lists it as destructive because it can be.
 - Exit codes are in the README ("Errors and exit codes").
 
 ## No command on purpose
@@ -295,7 +307,7 @@ state. `norbix hub database <words…>` reaches every one of them.
 
 | endpoint | why there is no command |
 |---|---|
-| `POST /taxonomies`, `DELETE /taxonomies/{Id}`, `GET /taxonomies/tree`, `DELETE /taxonomies/{TaxonomyId}/terms/many` | Taxonomy structure (dependencies, translatable names) is edited in the dashboard; terms — the data — have commands. |
+| `POST /taxonomies` with a `viewId` (replace), `DELETE /taxonomies/{Id}`, `GET /taxonomies/tree`, `DELETE /taxonomies/{TaxonomyId}/terms/many` | Changing a taxonomy's structure (dependencies, translatable names) is done in the dashboard; creating one is `db taxonomy create`, and terms — the data — have commands. |
 | `POST /schemas/apply-bundle` | Applies a whole generated bundle of schemas; it is the AI schema builder's step, not a hand-run one. |
 | `PUT /schemas/{Id}/rename`, `/embed`, `/list-settings`, `/settings` | Dashboard settings of one schema (title, embedding, list columns, soft delete / owner). |
 | `POST /integrations`, `DELETE /integrations/{Id}`, `PUT /integrations/{Id}/enable` / `disable`, `GET /integrations/flex-tiers`, `GET /integrations/{Id}/connection-string` | Creating or removing a database, and revealing its connection string, are account-level decisions taken in the dashboard; a connection string should not land in a shell history. |

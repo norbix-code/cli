@@ -10,8 +10,8 @@ export default class SmsIntegrationSave extends BaseCommand {
   static description = `Create or update an SMS integration
 
 --provider picks the body shape. Fake needs nothing else: it accepts every send
-and contacts no SMS service, so use it while you develop (one Fake per project,
-no update — delete and add it again). The real providers need their
+and contacts no SMS service, so use it while you develop (one Fake per environment —
+PROD and TEST each may have one; no update — delete and add it again). The real providers need their
 credentials — put the provider-specific fields in --config (inline JSON,
 @file.json, or - for stdin). Pass --id to update an existing integration.`
 

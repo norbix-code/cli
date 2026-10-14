@@ -1,7 +1,7 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
-import {integrationFlag, resolveIntegration} from '../../lib/files.js'
+import {integrationFlag} from '../../lib/files.js'
 
 export default class FilesGetById extends BaseCommand {
   static description = `Show one file by its stable id
@@ -24,10 +24,7 @@ path, isPublic and publicUrl. An id no storage of the integration holds is
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesGetById)
     const client = this.client(flags)
-    const integration = resolveIntegration(flags.integration, this.resolveContext(flags).filesIntegrationId)
-    if (!integration) {
-      this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
-    }
+    const integration = await this.filesIntegration(flags)
 
     const res = await client.api.files.getFileById({
       filesIntegrationId: integration,

@@ -39,11 +39,13 @@ norbix scheduler list
 | --- | --- |
 | `norbix login` / `logout` / `whoami` | Authenticate and inspect the current context |
 | `norbix config list/get/set/unset` | Read and change one profile in `~/.norbix/config` (`--profile`, default `[default]`) |
-| `norbix db ...` | Database records (find/get/count/insert/update/replace/delete/aggregate/change-owner), schemas (create/update/publish/delete/versions/diff), schema triggers, integrations, taxonomies and terms, indexes, test-data seed — see [docs/database.md](docs/database.md) |
+| `norbix db ...` | Database records (find/get/count/insert/update/replace/delete/aggregate/change-owner), schemas (create/update/publish/delete/versions/diff), schema triggers, integrations, taxonomies (list/show/create) and terms, indexes, test-data seed — see [docs/database.md](docs/database.md) |
 | `norbix files list/info/get-by-id/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
 | `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
-| `norbix env list/use/delete` | Manage project environments |
+| `norbix users import <file.json\|csv> [--apply]` | Import users with their existing password hashes (CodeMash V1 `servicestack-saltedhash`, Norbix `servicestack-pbkdf2`); checks every row by default, `--apply` writes; 1000 per request |
+| `norbix users repair-roles / repair-logins [--apply]` | Admin repairs: contacts left with `[null]` roles, logins stored without a project id; count by default, `--apply` repairs |
+| `norbix env list/create/use/delete` | Manage project environments; `env create TEST --connection-string-env VAR` (or `--managed`) creates one with its database |
 | `norbix logs list/trail` | Read project logs, follow one correlation ID |
 | `norbix scheduler list/get/save/enable/disable/delete` | Scheduler tasks — a cron that sends an email campaign; every scheduler endpoint, see [docs/scheduler.md](docs/scheduler.md) |
 | `norbix apikeys list/create/regenerate/revoke` | Service-user API keys for scripts, CI, SDKs and agents |
@@ -64,6 +66,7 @@ norbix scheduler list
 | `norbix raw <path>` | Low-level HTTP escape hatch (hub by default, `--api` for API) |
 | `norbix schema [command]` | Describe every command as data (`--json`) — for scripts and agents |
 | `norbix ai init` | Set up a project for Claude Code / Cursor / AGENTS.md agents |
+| `norbix ai context` | The project context for an AI agent: your projects, environments, modules, integrations — no secrets |
 
 ### Plain-word access to every endpoint
 
@@ -130,6 +133,45 @@ input. Without it the project's default language applies. Commands that
 create content in a language (`email|sms|push campaign create`,
 `scheduler save`, `email template attach`) keep their own `--language` for
 that content.
+
+**The repo's Norbix — `.norbix/project.json`.** `norbix ai init` writes the
+host, project and (when set) environment this repo belongs to into
+`.norbix/project.json` (no secrets — commit it):
+
+```json
+{"host": "cloud.example.com", "projectId": "pr_6zbH6AJwyGylTFfs4B9bpC", "env": "TEST"}
+```
+
+Every command run in that folder or below uses it **before** the profiles:
+`--host` / `--project` / `--env` (and `NORBIX_*`) → `.norbix/project.json` →
+the profile → the sign-in. Its host acts like `--host`: a `[default]` profile
+for another installation is not used there (its API key is never sent), so a
+second installation on the same computer cannot be reached by accident. An
+explicit `--profile` for another host wins, and the file is ignored.
+`norbix env use <ENV>` inside the repo changes the file's `env`. `whoami`
+shows `hostSource: project file`. The home folder is never searched;
+`NORBIX_PROJECT_CONFIG=0` turns the lookup off.
+
+**Environments: a change never lands in PROD by default.** Every call
+works in an environment: `--env` / `NORBIX_ENV`, else the repo's
+`.norbix/project.json`, the profile's `env`, the sign-in's (`norbix env use`).
+With none, no `norbix-env` header is sent and the server uses PROD. Reads keep
+that default. A **change** (every command with `--dry-run`, and every
+non-read `hub` / `api` / `raw` call) follows the same rule as the MCP tools
+(`AiToolEnvPolicy`):
+
+| environment of the change | result |
+| --- | --- |
+| named with `--env` / `NORBIX_ENV` (PROD included) | sent |
+| a saved default that is not PROD (repo file, profile, `env use`) | sent |
+| none at all — it would be PROD | refused: exit 2 `ENV_REQUIRED` |
+| PROD, but only from a saved default | refused: exit 2 `PROD_NOT_EXPLICIT` |
+
+At a terminal the CLI asks instead of refusing; `--yes` does not answer it —
+PROD is chosen per call with `--env PROD`. A `--dry-run` is never refused.
+Account- and project-wide settings (`account`, `project`, `module`, `env`,
+AI service users) are not inside an environment and are not affected.
+Scripts that deploy to PROD set `NORBIX_ENV=PROD`.
 
 **Profiles (AWS-style)** — one INI file at `~/.norbix/config`:
 
@@ -323,6 +365,21 @@ norbix ai init                 # writes .claude/skills/norbix/SKILL.md + a CLAUD
 norbix ai init --target all    # also AGENTS.md (Codex, OpenCode) and a Cursor rule
 ```
 
+The agent rebuilds what it knows about your projects from one summary —
+every project you may work on, with its environments, regions, enabled
+modules, integrations (id, name, kind, default per environment), CORS origins
+and languages; scoped to your roles and never holding a secret:
+
+```sh
+norbix ai context              # Markdown, for a prompt
+norbix ai context --json       # the structured summary, with a "version"
+norbix ai context --write      # also saves .norbix-ai/context.md (+ context.json, git-ignored)
+```
+
+In a folder set up with `norbix ai init`, `norbix login` writes that file and a
+token renewal refreshes it when the summary changed; the agent re-reads it
+after its own context was compressed.
+
 The agent signs in by itself, in two steps (its shell commands time out
 after ~2 minutes; the code lives 10 minutes):
 
@@ -343,6 +400,15 @@ or ask for keys or tokens. In CI, give the agent `NORBIX_HOST` +
 
 The recipe the agent follows is in [docs/AGENTS.md](docs/AGENTS.md); the
 guarantees it relies on are in [docs/agent-contract.md](docs/agent-contract.md).
+
+## Updates
+
+When a newer `@norbix.ai/cli` is on npm, the CLI says so in one line on
+**stderr** (never in `--json` stdout): at most once a day, and on every
+`login`, `ai init` and `whoami`. It never waits for the network: the latest
+version is read from `~/.norbix/update-check.json`, which a background process
+refreshes at most once a day (3 s timeout, failures ignored). Turn it off with
+`NORBIX_NO_UPDATE_CHECK=1` (`NO_UPDATE_NOTIFIER` and `CI` turn it off too).
 
 ## Versioning
 
@@ -365,17 +431,22 @@ Commands live in `src/commands/<topic>/<name>.ts` — one file per command
 (oclif convention). Shared logic (auth resolution, config store, output) is in
 `src/base.ts` and `src/lib/`.
 
-## Files: pick your integration once
+## Files: which integration
 
-File commands need a files integration ID. Set it once:
+File commands use the project's **default files integration** of the current
+environment (`--env`), like the database commands use the default database
+integration — one read of the Hub's integration list (its default is per
+environment). With no files integration at all they exit 5
+(`NO_FILES_INTEGRATION`); with integrations but no default in this
+environment they exit 2 and list them (the list is project-wide, so none is
+picked for you). To pick another one, pass `--integration <id>` (env var:
+`NORBIX_FILES_INTEGRATION_ID`) or save it:
 
 ```sh
 norbix config set files_integration_id <id>
 norbix files upload ./invoice.pdf invoices/2026/invoice.pdf
 norbix files download invoices/2026/invoice.pdf
 ```
-
-Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 
 ### The file commands
 

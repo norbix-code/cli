@@ -70,6 +70,8 @@ export function sessionExpiredError(reason?: string): CliError {
 export class SessionRefresher {
   private inFlight?: Promise<Session>
   private forced = false
+  /** True once this run renewed the access token (read by the agent-context refresh after the command). */
+  private renewedThisRun = false
   /** A refresh that ended the sign-in: every later call fails the same way, with no new request. */
   private ended?: CliError
   private readonly fetchFn: typeof fetch
@@ -90,6 +92,11 @@ export class SessionRefresher {
     this.read = deps.read ?? (key ? () => readSession(key) : none)
     this.write = deps.write ?? (key ? (s: Session) => writeSession(key, s) : () => {})
     this.clear = deps.clear ?? (key ? () => clearSession(key) : () => {})
+  }
+
+  /** True when this run renewed the sign-in's access token. */
+  get renewed(): boolean {
+    return this.renewedThisRun
   }
 
   /** The current access token (after any refresh this run made). */
@@ -168,6 +175,7 @@ export class SessionRefresher {
       }
       this.write(next)
       this.session = next
+      this.renewedThisRun = true
       return next
     }
 

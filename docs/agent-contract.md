@@ -138,6 +138,14 @@ command that makes several calls (`files upload`) shows the first.
   `enable`, `invite`, `unblock`, `upload`, `publish`, `unpublish`,
   `config set / unset`, `env use`, `logout`, `raw`.
 - **Read-only**: everything else; no `--yes`, no `--dry-run`.
+- **The environment of a change.** A destructive or mutating call inside an
+  environment needs one named: `--env` / `NORBIX_ENV` (PROD included), or a
+  saved non-PROD default (`.norbix/project.json`, the profile, `env use`).
+  With none — the server would use PROD — it exits 2 `ENV_REQUIRED`; with
+  PROD only from a saved default, exit 2 `PROD_NOT_EXPLICIT`. Nothing is
+  sent. `--yes` does not answer it; `--dry-run` is never refused. Reads,
+  `account`, `project`, `module`, `env` and AI service users are not
+  affected. Same rule as the MCP tools' `AiToolEnvPolicy`.
 
 ## 6. Shared code
 

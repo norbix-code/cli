@@ -3,6 +3,9 @@ import {Args} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class AiLlmTest extends BaseCommand {
+  /** A check, not a change: the env rule for writes does not apply. */
+  static envWrite = false
+
   static description = 'Check that an LLM integration works: a live call to the provider'
 
   static examples = [

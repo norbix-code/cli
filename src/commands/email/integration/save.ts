@@ -11,7 +11,8 @@ export default class EmailIntegrationSave extends BaseCommand {
 
 --provider picks the body shape. Fake needs nothing else: it accepts every send
 and contacts no mail service, so nothing reaches a real inbox — use it while you
-develop (one Fake per project, no update — delete and add it again). The real
+develop (one Fake per environment —
+PROD and TEST each may have one; no update — delete and add it again). The real
 providers need a sender (--from) and their credentials: put the
 provider-specific fields in --config (inline JSON, @file.json, or - for stdin).
 Pass --id to update an existing integration. The output of \`email integration

@@ -99,22 +99,52 @@ describe('norbix files list', () => {
     expect(calls[0].url).toContain('path=invoices')
   })
 
-  it('fails with a clear message when no integration is given', async () => {
-    fakeFetch()
+  describe('no --integration: the default files integration of the environment (N6)', () => {
+    const noIntegration = ['--project', PROJECT, '--api-key', API_KEY, '--region', REGION]
+    const paths = () => calls.map((c) => `${c.method} ${new URL(c.url).pathname}`)
 
-    const {error} = await runCommand([
-      'files',
-      'list',
-      '--project',
-      PROJECT,
-      '--api-key',
-      API_KEY,
-      '--region',
-      REGION,
-    ])
+    it('uses defaultIntegrationId from the Hub', async () => {
+      fakeFetch([['/files/integrations', {defaultIntegrationId: 'fi_Default', list: {items: [{viewId: 'fi_Default'}, {viewId: 'fi_Other'}]}}]])
+      const {error} = await runCommand(['files', 'list', ...noIntegration])
+      expect(error).toBeUndefined()
+      expect(paths()).toEqual(['GET /v3/files/integrations', 'GET /v3/files/fi_Default'])
+    })
 
-    expect(error?.message).toContain('No files integration ID')
-    expect(calls).toHaveLength(0)
+    it('no default here but one in the list: not picked — the list is project-wide, it may be another environment\'s', async () => {
+      fakeFetch([['/files/integrations', {list: {items: [{viewId: 'fi_Prod'}]}}]])
+      const {error} = await runCommand(['files', 'delete', 'a.txt', '--yes', '--env', 'TEST', ...noIntegration])
+      expect(error?.message).toBe('No default files integration in environment TEST.')
+      expect(paths()).toEqual(['GET /v3/files/integrations'])
+    })
+
+    it('none in the environment: exit 5 NO_FILES_INTEGRATION that names the environment', async () => {
+      fakeFetch([['/files/integrations', {list: {items: []}}]])
+      const {error} = await runCommand(['files', 'list', '--env', 'TEST', ...noIntegration])
+      expect(error?.message).toContain('This project has no files integration (looked up for environment TEST).')
+      expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(5)
+      expect(paths()).toEqual(['GET /v3/files/integrations'])
+    })
+
+    it('several and no default: exit 2 listing them, so the caller picks one', async () => {
+      fakeFetch([['/files/integrations', {list: {items: [{viewId: 'fi_A', integrationName: 'S3'}, {viewId: 'fi_B'}]}}]])
+      const {error} = await runCommand(['files', 'list', ...noIntegration])
+      expect(error?.message).toBe('No default files integration in environment PROD.')
+      expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(2)
+      expect(paths()).toHaveLength(1)
+    })
+
+    it('--integration, NORBIX_FILES_INTEGRATION_ID or the profile value: no lookup', async () => {
+      fakeFetch()
+      await runCommand(['files', 'list', ...globalArgs])
+      expect(paths()).toEqual([`GET /v3/files/${INTEGRATION}`])
+    })
+
+    it('--dry-run sends nothing, not even the lookup', async () => {
+      fakeFetch()
+      const {error} = await runCommand(['files', 'delete', 'a.txt', '--dry-run', ...noIntegration])
+      expect(error).toBeUndefined()
+      expect(calls).toHaveLength(0)
+    })
   })
 })
 
@@ -142,13 +172,14 @@ describe('norbix files get-by-id', () => {
     expect(new URL(calls[0].url).pathname).toBe(`/v3/files/${INTEGRATION}/by-id/nbfl_7hK2abc`)
   })
 
-  it('fails with a clear message when no integration is given', async () => {
+  it('no integration given and none in the project: a clear message after one lookup', async () => {
     fakeFetch()
 
     const {error} = await runCommand(['files', 'get-by-id', 'nbfl_7hK2abc', '--project', PROJECT, '--api-key', API_KEY, '--region', REGION])
 
-    expect(error?.message).toContain('No files integration ID')
-    expect(calls).toHaveLength(0)
+    // The Hub (fake) has no files integration: only the lookup was sent.
+    expect(error?.message).toContain('This project has no files integration (looked up for environment PROD).')
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual(['/v3/files/integrations'])
   })
 })
 
@@ -380,7 +411,7 @@ describe('norbix files publish / unpublish', () => {
     expect(calls).toHaveLength(0)
   })
 
-  it('fails with a clear message when no integration is given', async () => {
+  it('no integration given and none in the project: a clear message after one lookup', async () => {
     fakeFetch()
 
     const {error} = await runCommand([
@@ -395,8 +426,9 @@ describe('norbix files publish / unpublish', () => {
       REGION,
     ])
 
-    expect(error?.message).toContain('No files integration ID')
-    expect(calls).toHaveLength(0)
+    // The Hub (fake) has no files integration: only the lookup was sent.
+    expect(error?.message).toContain('This project has no files integration (looked up for environment PROD).')
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual(['/v3/files/integrations'])
   })
 
   it('reports what the gateway refused, instead of a blank success', async () => {

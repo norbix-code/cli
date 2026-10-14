@@ -1,14 +1,17 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
+import {writeProjectConfig} from '../../lib/project-config.js'
 import {PROFILES_PATH, isSessionUsable, readProfiles, readSession, sessionPath, writeProfile, writeSession} from '../../lib/profiles.js'
 
 export default class EnvUse extends BaseCommand {
   static description = `Set the default environment for future commands.
 
-Written to the browser session of the host when you are signed in there; with --profile it is
-written into that profile in ~/.norbix/config; otherwise to the [default]
-profile (created when missing). Override per command with --env.`
+Written, in this order of preference: with --profile into that profile in
+~/.norbix/config; inside a repo set up by \`norbix ai init\` into its
+.norbix/project.json (so the repo remembers it — commit it); else into the
+browser session of the host when you are signed in there; otherwise into the
+[default] profile (created when missing). Override per command with --env.`
 
   static examples = [
     '<%= config.bin %> env use TEST',
@@ -39,7 +42,14 @@ profile (created when missing). Override per command with --env.`
       return {env: args.name, profile: flags.profile}
     }
 
-    const {hubKey} = this.resolveContext(flags)
+    const {hubKey, projectFile} = this.resolveContext(flags)
+    if (projectFile) {
+      if (flags['dry-run']) return dry('project file', projectFile.path)
+      writeProjectConfig(projectFile.path, {...projectFile.config, env: args.name.toUpperCase()})
+      this.print(`This repo (${projectFile.path}) now targets environment ${args.name.toUpperCase()}.`)
+      return {env: args.name.toUpperCase(), target: 'project file', file: projectFile.path}
+    }
+
     const session = readSession(hubKey)
     if (isSessionUsable(session)) {
       if (flags['dry-run']) return dry('session', sessionPath(hubKey))

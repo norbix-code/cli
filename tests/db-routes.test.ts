@@ -3,9 +3,10 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 
 import {runCommand} from '@oclif/test'
-import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 import DbSchemaDelete from '../src/commands/db/schema/delete.js'
+import {dryRunTaxonomyId, dryRunTaxonomyName, isTaxonomyId} from '../src/lib/taxonomy.js'
 
 /**
  * One row per `db` command: run it the way a user types it, through oclif and
@@ -17,7 +18,7 @@ import DbSchemaDelete from '../src/commands/db/schema/delete.js'
  */
 
 const ID = '66b2f0a1'
-const TAX = 't4x0n0my'
+const TAX = 'txn_T4x0n0my'
 const COL = 'orders'
 const USER = 'u5e7'
 
@@ -130,6 +131,7 @@ const routes: Array<[string[], string, string]> = [
   // Taxonomies and terms
   [['taxonomies'], 'GET', `${P}/taxonomies`],
   [['taxonomy', TAX], 'GET', `${P}/taxonomies/${TAX}`],
+  [['taxonomy', 'create', 'Allergens'], 'POST', `${P}/taxonomies`],
   [['terms', 'countries'], 'GET', `${P}/taxonomies/countries/terms`],
   [['terms', 'countries', '--parent', ID], 'GET', `${P}/taxonomies/countries/terms/${ID}/children`],
   [['term', TAX, ID], 'GET', `${P}/taxonomies/${TAX}/terms/${ID}`],
@@ -153,10 +155,10 @@ describe('every db command reaches its route', () => {
   }
 })
 
-it('covers 48 distinct db routes', () => {
+it('covers 49 distinct db routes', () => {
   // `db distinct`/`db delete`/`db update`/`db aggregate` each have two shapes;
   // count distinct verb + path pairs so a duplicated row is caught.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(48)
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(49)
 })
 
 /** Run a command and return the one request it sent. */
@@ -176,6 +178,210 @@ async function sentOf(argv: string[]): Promise<Record<string, unknown>> {
   const call = await callOf(argv)
   return {...Object.fromEntries(call.query), ...call.body}
 }
+
+describe('db taxonomy create', () => {
+  it('sends the title and the optional fields, never a viewId (that would replace a taxonomy)', async () => {
+    const body = await bodyOf(['taxonomy', 'create', 'Allergens', '--description', 'Food', '--parent', 'txn_P', '--dependency', 'txn_A', '--dependency', 'txn_B'])
+    expect(body).toEqual({taxonomyName: 'Allergens', description: 'Food', parentId: 'txn_P', dependencies: ['txn_A', 'txn_B']})
+  })
+
+  it('--terms-meta-schema sends the file as a JSON string', async () => {
+    const body = await bodyOf(['taxonomy', 'create', 'Symptoms', '--terms-meta-schema', SCHEMA_FILE])
+    expect(JSON.parse(body.termsMetaDataSchema as string)).toEqual(dataSchema)
+  })
+})
+
+describe('the taxonomy key: id or name in every term command (N10)', () => {
+  /** The Hub's taxonomy list and one taxonomy, for the lookups. */
+  function answerTaxonomies(): void {
+    const fake = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await fake(input, init)
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      const json = (body: unknown) => new Response(JSON.stringify(body), {status: 200, headers: {'Content-Type': 'application/json'}})
+      if (url.pathname === `${P}/taxonomies`) {
+        return json({list: {items: [{viewId: 'txn_Allerg', taxonomyName: 'Allergens', taxonomySlug: 'allergens'}, {viewId: 'txn_Sympt', taxonomyName: 'Symptoms', taxonomySlug: 'symptoms'}], hasMore: false}})
+      }
+
+      if (url.pathname === `${P}/taxonomies/txn_Allerg`) return json({item: {viewId: 'txn_Allerg', name: 'Allergens', slug: 'allergens'}})
+      return res
+    }) as typeof globalThis.fetch
+  }
+
+  const paths = () => calls.map((c) => `${c.method} ${c.path}`)
+
+  it('term create by name: looks the id up, then posts to /taxonomies/{id}/terms', async () => {
+    answerTaxonomies()
+    const {error} = await runCommand(['db', 'term', 'create', 'allergens', '--doc', '{"name":"Milk"}', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(paths()).toEqual([`GET ${P}/taxonomies`, `POST ${P}/taxonomies/txn_Allerg/terms`])
+  })
+
+  it('the title in any case matches too', async () => {
+    answerTaxonomies()
+    await runCommand(['db', 'term', 'delete', 'ALLERGENS', ID, '--yes', ...globalArgs])
+    expect(paths().at(-1)).toBe(`DELETE ${P}/taxonomies/txn_Allerg/terms/${ID}`)
+  })
+
+  it('terms by id: looks the name up, then lists by name (the id used to answer 404)', async () => {
+    answerTaxonomies()
+    const {error} = await runCommand(['db', 'terms', 'txn_Allerg', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(paths()).toEqual([`GET ${P}/taxonomies/txn_Allerg`, `GET ${P}/taxonomies/allergens/terms`])
+  })
+
+  it('term tree by id: the same', async () => {
+    answerTaxonomies()
+    await runCommand(['db', 'term', 'tree', 'txn_Allerg', ...globalArgs])
+    expect(paths().at(-1)).toBe(`GET ${P}/taxonomies/allergens/terms/tree`)
+  })
+
+  it('an id where the route takes an id, a name where it takes a name: no lookup', async () => {
+    expect((await callOf(['term', 'create', 'txn_Allerg', '--doc', '{"name":"Milk"}'])).path).toBe(`${P}/taxonomies/txn_Allerg/terms`)
+    calls.length = 0
+    expect((await callOf(['terms', 'allergens'])).path).toBe(`${P}/taxonomies/allergens/terms`)
+  })
+
+  it('an unknown name: exit 5 TAXONOMY_NOT_FOUND naming the taxonomies there are, nothing written', async () => {
+    answerTaxonomies()
+    const {error} = await runCommand(['db', 'term', 'create', 'spices', '--doc', '{"name":"Salt"}', ...globalArgs])
+    expect(error?.message).toContain('No taxonomy named "spices"')
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(5)
+    expect(paths()).toEqual([`GET ${P}/taxonomies`])
+  })
+
+  it('--dry-run by name sends nothing, not even the lookup; the request shows a placeholder for the id', async () => {
+    const {error} = await runCommand(['db', 'term', 'create', 'allergens', '--doc', '{"name":"Milk"}', '--dry-run', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+    expect(dryRunTaxonomyId('allergens')).toBe('<id of taxonomy "allergens">')
+    expect(dryRunTaxonomyId('txn_Allerg')).toBe('txn_Allerg')
+    expect(dryRunTaxonomyName('txn_Allerg')).toBe('<name of taxonomy txn_Allerg>')
+    expect(isTaxonomyId('txn_5BBS25C3IKHRfzVABMjMiM')).toBe(true)
+    expect(isTaxonomyId('66b2f0a1c3d4e5f6a7b8c9d0')).toBe(false)
+  })
+})
+
+describe('db delete --filter without --many: exactly one record (N15)', () => {
+  /** Answer `find` on the collection with these records. */
+  function answerFind(items: unknown[], hasMore = false): void {
+    const fake = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await fake(input, init)
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      if ((init?.method ?? 'GET') === 'GET' && url.pathname === `${P}/collections/${COL}`) {
+        return new Response(JSON.stringify({list: {items, hasMore}}), {status: 200, headers: {'Content-Type': 'application/json'}})
+      }
+
+      return res
+    }) as typeof globalThis.fetch
+  }
+
+  const paths = () => calls.map((c) => `${c.method} ${c.path}`)
+
+  it('one match: reads at most 2, then deletes that record by its id', async () => {
+    answerFind([{_id: ID}])
+    const {error} = await runCommand(['db', 'delete', COL, '--filter', '{"_id":"66b2f0a1"}', '--yes', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(paths()).toEqual([`GET ${P}/collections/${COL}`, `DELETE ${P}/collections/${COL}/${ID}`])
+    expect(calls[0].query.get('filter')).toBe('{"_id":"66b2f0a1"}')
+  })
+
+  it('an extended-JSON {$oid} id works too', async () => {
+    answerFind([{_id: {$oid: ID}}])
+    await runCommand(['db', 'delete', COL, '--filter', '{"n":1}', '--yes', ...globalArgs])
+    expect(paths().at(-1)).toBe(`DELETE ${P}/collections/${COL}/${ID}`)
+  })
+
+  it('several matches: exit 2, the hint says --many, nothing deleted', async () => {
+    answerFind([{_id: 'a'}, {_id: 'b'}])
+    const {error} = await runCommand(['db', 'delete', COL, '--filter', '{"status":"new"}', '--yes', ...globalArgs])
+    expect(error?.message).toContain('More than one record')
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(2)
+    expect(paths()).toEqual([`GET ${P}/collections/${COL}`])
+  })
+
+  it('no match: exit 5, nothing deleted', async () => {
+    answerFind([])
+    const {error} = await runCommand(['db', 'delete', COL, '--filter', '{"status":"gone"}', '--yes', ...globalArgs])
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(5)
+    expect(paths()).toHaveLength(1)
+  })
+
+  it('without --yes in a script: the read happens, the delete is refused with exit 3', async () => {
+    answerFind([{_id: ID}])
+    const {error} = await runCommand(['db', 'delete', COL, '--filter', '{"n":1}', ...globalArgs])
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(3)
+    expect(paths()).toEqual([`GET ${P}/collections/${COL}`])
+  })
+
+  it('--dry-run sends nothing; an empty filter is still refused', async () => {
+    expect((await runCommand(['db', 'delete', COL, '--filter', '{"n":1}', '--dry-run', ...globalArgs])).error).toBeUndefined()
+    const empty = await runCommand(['db', 'delete', COL, '--filter', '{}', '--yes', ...globalArgs])
+    expect(empty.error?.message).toContain("matches every record")
+    expect(calls).toHaveLength(0)
+  })
+})
+
+describe('db schema publish: confirmation only for a breaking change (N11)', () => {
+  const breaking = {
+    responseStatus: {
+      isSuccess: false,
+      errorCode: 'CM-ERRORS-SCHEMA-020',
+      message: 'Publishing this schema version removes 2 field(s) (color, size) that existed in the previous version.',
+      errors: [
+        {
+          errorCode: 'CM-ERRORS-SCHEMA-020',
+          message: 'Publishing this schema version removes 2 field(s) (color, size) that existed in the previous version.',
+          context: {SchemaId: ID, RemovedFieldsText: 'color, size'},
+        },
+      ],
+    },
+  }
+
+  /** The Hub answers the publishes in order: `true` = 200, `false` = the breaking-change refusal. */
+  function answerPublish(...ok: boolean[]): void {
+    const fake = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      await fake(input, init)
+      const pass = ok.shift() ?? true
+      return new Response(JSON.stringify(pass ? {} : breaking), {status: pass ? 200 : 400, headers: {'Content-Type': 'application/json'}})
+    }) as typeof globalThis.fetch
+  }
+
+  const confirmedSent = () => calls.map((c) => c.body?.confirmed)
+
+  it('no --yes, no terminal: a first or additive publish goes through with confirmed: false', async () => {
+    answerPublish(true)
+    const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(confirmedSent()).toEqual([false])
+  })
+
+  it('no --yes and the Hub says fields are removed: exit 3 naming them, the second publish is not sent', async () => {
+    answerPublish(false)
+    const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(3)
+    expect(error?.message).toContain('removes the field(s) color, size')
+    expect(confirmedSent()).toEqual([false])
+  })
+
+  it('--yes: one call with confirmed: true (publishes even a breaking change)', async () => {
+    answerPublish(true)
+    await runCommand(['db', 'schema', 'publish', ID, '--yes', ...globalArgs])
+    expect(confirmedSent()).toEqual([true])
+  })
+
+  it('another refusal is reported as it is, not turned into a confirmation', async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({responseStatus: {errorCode: 'CM-ERRORS-SCHEMA-010', message: 'bad schema'}}), {
+        status: 400,
+        headers: {'Content-Type': 'application/json'},
+      })) as typeof globalThis.fetch
+    const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(6)
+  })
+})
 
 describe('db update / delete of many records', () => {
   it('update --many sends the filter and the plain fields, without allRecords', async () => {
@@ -439,10 +645,10 @@ describe('db schema writes', () => {
     expect(await bodyOf(['schema', 'publish', ID, '--yes'])).toEqual({confirmed: true})
   })
 
-  it('publish without --yes in a non-interactive shell sends nothing', async () => {
+  it('publish without --yes in a non-interactive shell asks the Hub with confirmed: false (N11; the Hub refuses a breaking change)', async () => {
     const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
-    expect(error?.message).toMatch(/Confirmation required/)
-    expect(calls).toHaveLength(0)
+    expect(error).toBeUndefined()
+    expect(calls.map((c) => c.body)).toEqual([{confirmed: false}])
   })
 
   it('delete without --yes in a non-interactive shell warns that the records go too, and sends nothing', async () => {

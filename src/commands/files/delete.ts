@@ -1,7 +1,7 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
-import {integrationFlag, resolveIntegration} from '../../lib/files.js'
+import {integrationFlag} from '../../lib/files.js'
 
 export default class FilesDelete extends BaseCommand {
   static description = 'Delete one file'
@@ -23,10 +23,7 @@ export default class FilesDelete extends BaseCommand {
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(FilesDelete)
     const client = this.client(flags)
-    const integration = resolveIntegration(flags.integration, this.resolveContext(flags).filesIntegrationId)
-    if (!integration) {
-      this.error('No files integration ID. Pass --integration or run `norbix config set filesIntegrationId <id>`.')
-    }
+    const integration = await this.filesIntegration(flags)
 
     await this.confirmOrFail(`Delete file "${args.remote}"?`, flags)
 

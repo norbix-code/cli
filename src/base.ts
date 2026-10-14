@@ -1,8 +1,11 @@
+import {existsSync} from 'node:fs'
+import {join} from 'node:path'
+
 import {Norbix} from '@norbix.ai/ts'
 import {Command, Flags, ux} from '@oclif/core'
 
 import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
-import {EXIT} from './lib/exit-codes.js'
+import {EXIT, exitForStatus} from './lib/exit-codes.js'
 import {
   DEFAULT_HOST,
   cachedHost,
@@ -29,6 +32,8 @@ import {
   type Profile,
   type Session,
 } from './lib/profiles.js'
+import {CONTEXT_MD, syncContext, type ContextRequest} from './lib/agent-context.js'
+import {findProjectConfig, type FoundProjectConfig} from './lib/project-config.js'
 import {SessionRefresher} from './lib/session-auth.js'
 import {readStore, type StoredConfig} from './lib/store.js'
 
@@ -110,7 +115,11 @@ export interface ResolvedContext {
   /** The host the CLI was pointed at, as an origin: `https://cloud.finlo.space`. */
   host: string
   /** Where the host came from. */
-  hostSource: 'flag/env' | `profile [${string}]` | 'deprecated url' | 'default'
+  hostSource: 'flag/env' | 'project file' | `profile [${string}]` | 'deprecated url' | 'default'
+  /** The repo's `.norbix/project.json` in use (its host is this one), when there is one. */
+  projectFile?: FoundProjectConfig
+  /** Where the environment came from; 'none' means no norbix-env header — the server uses PROD. */
+  envSource: 'flag/env' | 'project file' | `profile [${string}]` | 'session' | 'legacy config' | 'none'
   /** The Hub's key — the name of its session file: `hub.finlo.space`. */
   hubKey: string
   /** What discovery learned about the Hub; undefined when nothing is known yet. */
@@ -172,6 +181,14 @@ export interface DryRunValidation {
   note?: string
 }
 
+/** A `hubRequest` dry run already printed its report: `catch` exits 0 quietly. */
+export class DryRunDone extends Error {
+  constructor() {
+    super('dry run')
+    this.name = 'DryRunDone'
+  }
+}
+
 /** Thrown by the dry-run middleware instead of sending; caught in `catch`. */
 class DryRunStop extends Error {
   constructor(readonly http: DryRunRequest) {
@@ -213,7 +230,7 @@ export abstract class BaseCommand extends Command {
       helpGroup: 'GLOBAL',
     }),
     env: Flags.string({
-      description: 'Project environment (e.g. PROD, TEST)',
+      description: 'Project environment (e.g. PROD, TEST). A change needs one: with none (or PROD only from a saved default) it is refused — pass --env PROD to change PROD on purpose',
       env: 'NORBIX_ENV',
       helpGroup: 'GLOBAL',
     }),
@@ -264,6 +281,8 @@ export abstract class BaseCommand extends Command {
 
   /** The SDK call captured by a dry run, filled by the client proxy. */
   private dryRunCall?: {method: string; request: unknown}
+  /** The last report `dryRun` printed (a `hubRequest` dry run returns it from `catch`). */
+  private lastDryRun?: DryRunReport
   /** A dry run's input check, set by the command before the stopped call. */
   protected dryRunValidation?: DryRunValidation
 
@@ -316,6 +335,7 @@ export abstract class BaseCommand extends Command {
     const report: DryRunReport = {dryRun: true, method: call.method, request: call.request}
     if (call.http) report.http = call.http
     this.printDryRun(report)
+    this.lastDryRun = report
     return report
   }
 
@@ -365,6 +385,59 @@ export abstract class BaseCommand extends Command {
     }
 
     await this.prepareHost(flags)
+    if (isEnvWriteCommand(ctor, this.id)) await this.assertWriteEnv(flags)
+  }
+
+  /**
+   * Which commands are "writes inside an environment" (the env policy below
+   * applies): a command with --dry-run changes something; `envWrite = false`
+   * opts out (dynamic commands decide per call), and project- or account-wide
+   * settings (ENV_FREE_COMMANDS) have no environment at all.
+   */
+  static envWrite?: boolean
+
+  /**
+   * The environment rule for a change (Pickio N-21), the CLI twin of the MCP
+   * surface's AiToolEnvPolicy:
+   *
+   *   - --env / NORBIX_ENV names it: any environment, PROD included.
+   *   - a saved default (.norbix/project.json, `env use`, the profile) that
+   *     is not PROD: used.
+   *   - no environment at all — the server would use PROD — or PROD only from
+   *     a saved default: refused (exit 2, ENV_REQUIRED / PROD_NOT_EXPLICIT);
+   *     at a terminal the CLI asks instead. --yes does not answer it: a
+   *     change in PROD is chosen per call, with --env PROD.
+   *
+   * Reads keep the old default (no header = PROD). A dry run sends nothing,
+   * so it is never refused.
+   */
+  protected async assertWriteEnv(flags: GlobalFlags): Promise<void> {
+    if (flags['dry-run']) return
+    const ctx = this.resolveContext(flags)
+    if (ctx.envSource === 'flag/env') return
+    const env = ctx.env?.trim().toUpperCase()
+    if (env && env !== 'PROD') return
+
+    const unset = !env
+    const message = unset
+      ? `\`${this.commandName}\` changes data and no environment is set, so it would run in PROD.`
+      : `\`${this.commandName}\` changes data in PROD, and PROD comes only from a saved default (${ctx.envSource}${ctx.envSource === 'project file' && ctx.projectFile ? `: ${ctx.projectFile.path}` : ''}).`
+    const hint =
+      'Name the environment on the call: --env TEST (or NORBIX_ENV=TEST), or --env PROD to change PROD on purpose. ' +
+      (unset ? 'To make a non-PROD environment the default here: norbix env use TEST (in a repo set up by `norbix ai init` it is saved in .norbix/project.json).' : 'A saved default is never enough for PROD.')
+    if (this.isInteractive()) {
+      const {confirm} = await import('@inquirer/prompts')
+      if (await confirm({message: `${message} Run it in PROD?`, default: false})) return
+      throw new CliError({exit: EXIT.CANCELLED, code: 'CANCELLED', message: 'Cancelled.', hint})
+    }
+
+    throw new CliError({
+      exit: EXIT.USAGE,
+      code: unset ? 'ENV_REQUIRED' : 'PROD_NOT_EXPLICIT',
+      message,
+      hint,
+      docs: 'norbix env --help',
+    })
   }
 
   /** Discover the host `flags` point at, so `resolveContext` knows its Hub. */
@@ -427,22 +500,31 @@ export abstract class BaseCommand extends Command {
     hubOverride?: string
     apiOverride?: string
     deprecations: string[]
+    projectFile?: FoundProjectConfig
   } {
     let {prof, profileName, explicit} = this.selectProfile(flags)
-    const flagHost = flags.host?.trim() || undefined
+    const found = this.projectConfig()
+    const profOrigin = () =>
+      prof.host ? normalizeHost(prof.host) : prof.hub_url ? originOf(prof.hub_url) : normalizeHost(DEFAULT_HOST)
+    // The repo's file applies when nothing explicit names another host.
+    const fileOrigin = found?.config.host ? normalizeHost(found.config.host) : undefined
+    let projectFile: FoundProjectConfig | undefined
+    if (found) {
+      const flagOrigin = flags.host?.trim() ? normalizeHost(flags.host.trim()) : undefined
+      const against = flagOrigin ?? (explicit ? profOrigin() : undefined)
+      projectFile = !fileOrigin || !against || sameHub(fileOrigin, against) ? found : undefined
+    }
+
+    const flagHost = flags.host?.trim() || (projectFile && fileOrigin && !explicit ? projectFile.config.host : undefined)
+    const hostFromFile = !flags.host?.trim() && flagHost !== undefined
 
     if (flagHost) {
       const origin = normalizeHost(flagHost)
       if (profileName) {
-        const profOrigin = prof.host
-          ? normalizeHost(prof.host)
-          : prof.hub_url
-            ? originOf(prof.hub_url)
-            : normalizeHost(DEFAULT_HOST)
-        if (!sameHub(origin, profOrigin)) {
+        if (!sameHub(origin, profOrigin())) {
           if (explicit) {
             throw usageError(
-              `Profile "${profileName}" is for ${new URL(profOrigin).host}, but --host / NORBIX_HOST names ${new URL(origin).host}.`,
+              `Profile "${profileName}" is for ${new URL(profOrigin()).host}, but --host / NORBIX_HOST names ${new URL(origin).host}.`,
               `Drop one of them, or change the profile: norbix config set host ${new URL(origin).host} --profile ${profileName}.`,
               'norbix config --help',
             )
@@ -453,11 +535,11 @@ export abstract class BaseCommand extends Command {
         }
       }
 
-      return {origin, hostSource: 'flag/env', prof, profileName, explicit, deprecations: []}
+      return {origin, hostSource: hostFromFile ? 'project file' : 'flag/env', prof, profileName, explicit, deprecations: [], projectFile}
     }
 
     if (prof.host) {
-      return {origin: normalizeHost(prof.host), hostSource: `profile [${profileName}]`, prof, profileName, explicit, deprecations: []}
+      return {origin: normalizeHost(prof.host), hostSource: `profile [${profileName}]`, prof, profileName, explicit, deprecations: [], projectFile}
     }
 
     // Deprecated for one release: full Api / Hub URLs instead of a host.
@@ -489,7 +571,16 @@ export abstract class BaseCommand extends Command {
       hubOverride,
       apiOverride,
       deprecations,
+      projectFile,
     }
+  }
+
+  private foundProjectConfig?: {value?: FoundProjectConfig}
+
+  /** The repo's `.norbix/project.json` (lib/project-config.ts), read once per run. */
+  protected projectConfig(): FoundProjectConfig | undefined {
+    this.foundProjectConfig ??= {value: findProjectConfig()}
+    return this.foundProjectConfig.value
   }
 
   protected resolveContext(flags: GlobalFlags): ResolvedContext {
@@ -532,7 +623,16 @@ export abstract class BaseCommand extends Command {
     const {base: apiUrlBase, version: apiUrlVersion} = splitVersionedUrl(apiFull)
     const {base: hubUrlBase, version: hubUrlVersion} = splitVersionedUrl(hubFull)
 
-    const projectId = flags.project ?? prof.project_id ?? session?.projectId ?? fromLegacy(legacy.projectId)
+    const file = target.projectFile?.config
+    const projectId = flags.project ?? file?.projectId ?? prof.project_id ?? session?.projectId ?? fromLegacy(legacy.projectId)
+    const envPick: Array<[string | undefined, ResolvedContext['envSource']]> = [
+      [flags.env, 'flag/env'],
+      [file?.env, 'project file'],
+      [prof.env, `profile [${profileName ?? 'default'}]`],
+      [session?.env, 'session'],
+      [fromLegacy(legacy.env), 'legacy config'],
+    ]
+    const [env, envSource] = envPick.find(([value]) => value) ?? [undefined, 'none' as const]
     const region =
       flags.region ??
       prof.region ??
@@ -558,7 +658,9 @@ export abstract class BaseCommand extends Command {
       usesDefaultEndpoints,
       projectId,
       accountId: flags.account ?? prof.account_id ?? session?.accountId ?? fromLegacy(legacy.accountId),
-      env: flags.env ?? prof.env ?? session?.env ?? fromLegacy(legacy.env),
+      env,
+      envSource,
+      projectFile: target.projectFile,
       region,
       apiKey,
       bearerToken,
@@ -602,6 +704,8 @@ export abstract class BaseCommand extends Command {
 
   private hubEndpoints = new Map<string, Promise<HubEndpoint>>()
   private refresher?: SessionRefresher
+  /** The context the refresher was made for — the agent-context refresh after a renewal reuses it. */
+  private refresherCtx?: ResolvedContext
 
   /** The Hub base + version for calls the CLI makes without the SDK (sign-in, refresh, revoke). */
   protected hubEndpoint(ctx: ResolvedContext): Promise<HubEndpoint> {
@@ -619,12 +723,55 @@ export abstract class BaseCommand extends Command {
   protected sessionRefresher(ctx: ResolvedContext): SessionRefresher | undefined {
     if (ctx.authSource !== 'session' || !isSessionRefreshable(ctx.session)) return undefined
     const session = ctx.session
+    this.refresherCtx ??= ctx
     this.refresher ??= new SessionRefresher(
       session,
       () => (session.hubUrl ? resolveHubEndpoint(session.hubUrl, {stored: session.hubVersion}) : this.hubEndpoint(ctx)),
       {hubKey: ctx.hubKey},
     )
     return this.refresher
+  }
+
+  /**
+   * The AI project-context request (Hub `account/ai/context`) for this
+   * context: an account-level call, so on norbix.ai without a region it goes
+   * to the account Hub. Undefined without credentials.
+   */
+  protected async agentContextRequest(
+    ctx: ResolvedContext,
+    projectId?: string,
+  ): Promise<Omit<ContextRequest, 'format' | 'knownVersion'> | undefined> {
+    const token = ctx.bearerToken ?? ctx.apiKey
+    if (!token) return undefined
+    const hub = await this.hubEndpoint(ctx)
+    const accountHub = ctx.usesDefaultEndpoints && !ctx.region
+    return {
+      hubBase: accountHub ? ctx.authHubUrl : ctx.hubUrl,
+      hubVersion: hub.version,
+      token,
+      accountId: ctx.accountId,
+      projectId,
+      region: ctx.region,
+    }
+  }
+
+  /**
+   * After a run that renewed the browser sign-in: bring the agent-context
+   * copy in this folder (`.norbix-ai/context.md`, written by `norbix ai
+   * context --write` or `norbix login`) up to date, when there is one and its
+   * version changed. Silent, and never changes the command's outcome.
+   */
+  protected async finally(error: Error | undefined): Promise<unknown> {
+    if (!error && this.refresher?.renewed && this.refresherCtx && existsSync(join(process.cwd(), CONTEXT_MD))) {
+      try {
+        const base = await this.agentContextRequest({...this.refresherCtx, bearerToken: this.refresher.token})
+        if (base) await syncContext(process.cwd(), base, {onlyIfPresent: true})
+      } catch {
+        // best effort by contract
+      }
+    }
+
+    return super.finally(error)
   }
 
   /**
@@ -770,6 +917,95 @@ export abstract class BaseCommand extends Command {
   }
 
   /**
+   * A read a command needs before its real call — the id behind a name, the
+   * default integration. A dry run sends nothing, so it gets `placeholder`
+   * (a readable stand-in that shows up in the printed request) instead.
+   */
+  protected async lookup<T>(flags: GlobalFlags, placeholder: T, read: (client: Norbix) => Promise<T>): Promise<T> {
+    if (flags['dry-run']) return placeholder
+    return read(this.client(flags))
+  }
+
+  /**
+   * A Hub call the installed SDK has no typed method for yet (new gateway
+   * routes before the next `@norbix.ai/ts` release). Same headers as the SDK
+   * and `norbix raw` (auth, project, account, env, region, language), the
+   * session refreshed first. A dry run prints the request — with the fields
+   * named in `redact` masked — and sends nothing. A gateway refusal becomes the
+   * usual error envelope. Switch the caller to the typed SDK method once the
+   * SDK has it.
+   */
+  protected async hubRequest<T>(
+    flags: GlobalFlags,
+    call: {method: 'POST' | 'GET' | 'PUT' | 'DELETE'; path: string; body?: unknown; name: string; redact?: (body: unknown) => unknown},
+  ): Promise<T> {
+    const ctx = await this.freshContext(flags)
+    if (!ctx.projectId) throw new NoProjectError(flags)
+    this.assertEndpoints(ctx)
+    const token = ctx.bearerToken ?? ctx.apiKey
+    if (!token && !flags['dry-run']) {
+      throw new CliError({exit: EXIT.AUTH, code: 'UNAUTHENTICATED', message: 'Not authenticated.', hint: 'Run `norbix login`, or pass --api-key.', docs: 'norbix login --help'})
+    }
+
+    const url = `${ctx.hubUrl.replace(/\/$/, '')}/${ctx.hubVersion ?? 'v3'}${call.path}`
+    const headers: Record<string, string> = {Accept: 'application/json', 'norbix-project-id': ctx.projectId, Authorization: `Bearer ${token ?? ''}`}
+    if (ctx.accountId) headers['norbix-account-id'] = ctx.accountId
+    if (ctx.env) headers['norbix-env'] = ctx.env.toUpperCase()
+    if (ctx.region) headers['nb-region'] = ctx.region
+    const language = this.acceptLanguage(flags)
+    if (language) headers['Accept-Language'] = language
+    if (call.body !== undefined) headers['Content-Type'] = 'application/json'
+
+    if (flags['dry-run']) {
+      const shown = call.redact ? call.redact(call.body) : call.body
+      this.dryRun({method: call.name, request: shown ?? {}, http: {method: call.method, url, headers: {...headers, Authorization: 'Bearer ***'}, body: shown}})
+      throw new DryRunDone()
+    }
+
+    let res: Response
+    try {
+      res = await fetch(url, {method: call.method, headers, body: call.body === undefined ? undefined : JSON.stringify(call.body)})
+    } catch (error) {
+      throw new CliError({exit: EXIT.NETWORK, code: 'NETWORK_ERROR', message: `Could not reach ${url}: ${error instanceof Error ? error.message : String(error)}`, url})
+    }
+
+    const text = await res.text()
+    let data: unknown
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      data = text
+    }
+
+    const status = (data as {responseStatus?: {errorCode?: string; message?: string; isSuccess?: boolean; errors?: Array<{errorCode?: string; message?: string}>}})?.responseStatus
+    const refused = !res.ok || status?.isSuccess === false || Boolean(status?.errorCode)
+    if (refused) {
+      const first = status?.errors?.[0]
+      throw new CliError({
+        exit: res.status === 404 && !status ? EXIT.NOT_FOUND : exitForStatus(res.status),
+        code: status?.errorCode ?? first?.errorCode ?? `HTTP_${res.status}`,
+        message: status?.message ?? first?.message ?? (res.status === 404 ? `This Hub has no ${call.method} ${call.path} — it is older than this command.` : `HTTP ${res.status}`),
+        status: res.status,
+        url,
+      })
+    }
+
+    return data as T
+  }
+
+  /**
+   * The files integration a `files` command uses: --integration /
+   * NORBIX_FILES_INTEGRATION_ID → the profile's files_integration_id → the
+   * project's default files integration in this environment (one Hub read).
+   */
+  protected async filesIntegration(flags: GlobalFlags & {integration?: string}): Promise<string> {
+    const known = flags.integration ?? this.resolveContext(flags).filesIntegrationId
+    if (known) return known
+    const {DRY_RUN_FILES_INTEGRATION, defaultFilesIntegration} = await import('./lib/files.js')
+    return this.lookup(flags, DRY_RUN_FILES_INTEGRATION, (c) => defaultFilesIntegration(c.hub, this.resolveContext(flags).env))
+  }
+
+  /**
    * The account's projects (Hub `account/projects`) with their primary
    * region, or undefined when they cannot be read. An account-level call: on
    * norbix.ai it needs no region (see `client`, option `account`).
@@ -879,6 +1115,10 @@ export abstract class BaseCommand extends Command {
 
     // `this.exit(n)` — already decided, nothing to print.
     if ((error as {code?: string}).code === 'EEXIT') throw error
+    if (error instanceof DryRunDone) {
+      if (this.jsonEnabled() && this.lastDryRun) this.logJson(this.lastDryRun)
+      return this.lastDryRun
+    }
 
     // A CLI error raised inside the SDK's middleware (an ended sign-in)
     // arrives wrapped as a network error: report the CLI error itself.
@@ -901,6 +1141,21 @@ export abstract class BaseCommand extends Command {
     marked.skipOclifErrorHandling = true
     throw marked
   }
+}
+
+/**
+ * Commands that change something but not inside an environment: account and
+ * project settings (CORS, languages, roles of the account, module switches —
+ * project-wide by design), the environments themselves, and local files.
+ */
+export const ENV_FREE_COMMANDS = ['account', 'project', 'env', 'module', 'ai:init', 'ai:service-user', 'config', 'configure', 'login', 'logout', 'profiles']
+
+/** True for a command the environment rule applies to (see `assertWriteEnv`). */
+export function isEnvWriteCommand(ctor: {envWrite?: boolean; flags?: Record<string, unknown>}, id: string | undefined): boolean {
+  if (ctor.envWrite !== undefined) return ctor.envWrite
+  if (!ctor.flags || !('dry-run' in ctor.flags)) return false
+  const cid = id ?? ''
+  return !ENV_FREE_COMMANDS.some((prefix) => cid === prefix || cid.startsWith(`${prefix}:`))
 }
 
 /** `Finlo (66b2…)`, or the id alone. */
