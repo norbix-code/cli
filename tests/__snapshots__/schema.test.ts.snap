@@ -1864,6 +1864,22 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [
       "name",
     ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "connection-string-env:string",
+      "database-name:string",
+      "managed:boolean",
+      "db-region:string",
+      "integration-name:string",
+    ],
+    "id": "env create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "name",
+    ],
     "destructive": true,
     "flags": [
       "yes:boolean",

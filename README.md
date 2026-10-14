@@ -43,7 +43,7 @@ norbix scheduler list
 | `norbix files list/info/get-by-id/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
 | `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
-| `norbix env list/use/delete` | Manage project environments |
+| `norbix env list/create/use/delete` | Manage project environments; `env create TEST --connection-string-env VAR` (or `--managed`) creates one with its database |
 | `norbix logs list/trail` | Read project logs, follow one correlation ID |
 | `norbix scheduler list/get/save/enable/disable/delete` | Scheduler tasks — a cron that sends an email campaign; every scheduler endpoint, see [docs/scheduler.md](docs/scheduler.md) |
 | `norbix apikeys list/create/regenerate/revoke` | Service-user API keys for scripts, CI, SDKs and agents |
