@@ -13,6 +13,7 @@ import {
   startDeviceFlow,
   type DeviceTokenSuccess,
 } from '../lib/device-login.js'
+import {isAgentFolder, syncContext} from '../lib/agent-context.js'
 import {EXIT} from '../lib/exit-codes.js'
 import {DEFAULT_HOST, cachedHost, hostKey, normalizeHost, storedHost} from '../lib/hosts.js'
 import {type HubEndpoint} from '../lib/hub-version.js'
@@ -106,6 +107,29 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
   static discoversHost = false
 
   async run(): Promise<unknown> {
+    const result = await this.signIn()
+    await this.syncAgentContext(result)
+    return result
+  }
+
+  /**
+   * After a finished sign-in, refresh the AI project context in this folder
+   * when `norbix ai init` set it up (src/lib/agent-context.ts). Silent; a
+   * failure never fails the login.
+   */
+  private async syncAgentContext(result: unknown): Promise<void> {
+    const status = (result as {status?: string} | undefined)?.status
+    if (status === 'pending' || !isAgentFolder(process.cwd())) return
+    try {
+      const {flags} = await this.parse(Login)
+      const base = await this.agentContextRequest(this.resolveContext(flags))
+      if (base) await syncContext(process.cwd(), base, {onlyIfPresent: false})
+    } catch {
+      // best effort by contract
+    }
+  }
+
+  private async signIn(): Promise<unknown> {
     const {flags} = await this.parse(Login)
     const noBrowser = flags['no-browser']
 
