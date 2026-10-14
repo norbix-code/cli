@@ -1,3 +1,6 @@
+import {existsSync} from 'node:fs'
+import {join} from 'node:path'
+
 import {Norbix} from '@norbix.ai/ts'
 import {Command, Flags, ux} from '@oclif/core'
 
@@ -29,6 +32,7 @@ import {
   type Profile,
   type Session,
 } from './lib/profiles.js'
+import {CONTEXT_MD, syncContext, type ContextRequest} from './lib/agent-context.js'
 import {SessionRefresher} from './lib/session-auth.js'
 import {readStore, type StoredConfig} from './lib/store.js'
 
@@ -602,6 +606,8 @@ export abstract class BaseCommand extends Command {
 
   private hubEndpoints = new Map<string, Promise<HubEndpoint>>()
   private refresher?: SessionRefresher
+  /** The context the refresher was made for — the agent-context refresh after a renewal reuses it. */
+  private refresherCtx?: ResolvedContext
 
   /** The Hub base + version for calls the CLI makes without the SDK (sign-in, refresh, revoke). */
   protected hubEndpoint(ctx: ResolvedContext): Promise<HubEndpoint> {
@@ -619,12 +625,55 @@ export abstract class BaseCommand extends Command {
   protected sessionRefresher(ctx: ResolvedContext): SessionRefresher | undefined {
     if (ctx.authSource !== 'session' || !isSessionRefreshable(ctx.session)) return undefined
     const session = ctx.session
+    this.refresherCtx ??= ctx
     this.refresher ??= new SessionRefresher(
       session,
       () => (session.hubUrl ? resolveHubEndpoint(session.hubUrl, {stored: session.hubVersion}) : this.hubEndpoint(ctx)),
       {hubKey: ctx.hubKey},
     )
     return this.refresher
+  }
+
+  /**
+   * The AI project-context request (Hub `account/ai/context`) for this
+   * context: an account-level call, so on norbix.ai without a region it goes
+   * to the account Hub. Undefined without credentials.
+   */
+  protected async agentContextRequest(
+    ctx: ResolvedContext,
+    projectId?: string,
+  ): Promise<Omit<ContextRequest, 'format' | 'knownVersion'> | undefined> {
+    const token = ctx.bearerToken ?? ctx.apiKey
+    if (!token) return undefined
+    const hub = await this.hubEndpoint(ctx)
+    const accountHub = ctx.usesDefaultEndpoints && !ctx.region
+    return {
+      hubBase: accountHub ? ctx.authHubUrl : ctx.hubUrl,
+      hubVersion: hub.version,
+      token,
+      accountId: ctx.accountId,
+      projectId,
+      region: ctx.region,
+    }
+  }
+
+  /**
+   * After a run that renewed the browser sign-in: bring the agent-context
+   * copy in this folder (`.norbix-ai/context.md`, written by `norbix ai
+   * context --write` or `norbix login`) up to date, when there is one and its
+   * version changed. Silent, and never changes the command's outcome.
+   */
+  protected async finally(error: Error | undefined): Promise<unknown> {
+    if (!error && this.refresher?.renewed && this.refresherCtx && existsSync(join(process.cwd(), CONTEXT_MD))) {
+      try {
+        const base = await this.agentContextRequest({...this.refresherCtx, bearerToken: this.refresher.token})
+        if (base) await syncContext(process.cwd(), base, {onlyIfPresent: true})
+      } catch {
+        // best effort by contract
+      }
+    }
+
+    return super.finally(error)
   }
 
   /**

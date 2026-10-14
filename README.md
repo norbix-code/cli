@@ -64,6 +64,7 @@ norbix scheduler list
 | `norbix raw <path>` | Low-level HTTP escape hatch (hub by default, `--api` for API) |
 | `norbix schema [command]` | Describe every command as data (`--json`) — for scripts and agents |
 | `norbix ai init` | Set up a project for Claude Code / Cursor / AGENTS.md agents |
+| `norbix ai context` | The project context for an AI agent: your projects, environments, modules, integrations — no secrets |
 
 ### Plain-word access to every endpoint
 
@@ -322,6 +323,21 @@ server needed: one JSON document per call (`--json`), documented exit codes
 norbix ai init                 # writes .claude/skills/norbix/SKILL.md + a CLAUDE.md block
 norbix ai init --target all    # also AGENTS.md (Codex, OpenCode) and a Cursor rule
 ```
+
+The agent rebuilds what it knows about your projects from one summary —
+every project you may work on, with its environments, regions, enabled
+modules, integrations (id, name, kind, default per environment), CORS origins
+and languages; scoped to your roles and never holding a secret:
+
+```sh
+norbix ai context              # Markdown, for a prompt
+norbix ai context --json       # the structured summary, with a "version"
+norbix ai context --write      # also saves .norbix-ai/context.md (+ context.json, git-ignored)
+```
+
+In a folder set up with `norbix ai init`, `norbix login` writes that file and a
+token renewal refreshes it when the summary changed; the agent re-reads it
+after its own context was compressed.
 
 The agent signs in by itself, in two steps (its shell commands time out
 after ~2 minutes; the code lives 10 minutes):
