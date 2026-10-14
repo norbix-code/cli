@@ -360,6 +360,31 @@ describe('norbix login (browser sign-in)', () => {
     expect(existsSync(HUB_SESSION())).toBe(false)
   })
 
+  it('N2: polls while the ENTER prompt is open — approving the printed link signs in without ENTER, and the prompt is closed', async () => {
+    const prompts = await import('@inquirer/prompts')
+    let signal: AbortSignal | undefined
+    // A person who never presses ENTER: the prompt only ends when it is aborted.
+    vi.mocked(prompts.input).mockImplementationOnce(
+      (_config: unknown, context?: {signal?: AbortSignal}) => {
+        signal = context?.signal
+        return new Promise<string>((_resolve, reject) => signal?.addEventListener('abort', () => reject(new Error('aborted')))) as never
+      },
+    )
+    stubNetwork({
+      '/v3/echo': [{body: ECHO}],
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: {error: 'authorization_pending'}}, {body: SUCCESS}],
+    })
+
+    const result = (await runLogin()) as {status: string}
+
+    expect(result.status).toBe('signed-in')
+    expect(readJson(HUB_SESSION()).bearerToken).toBe('access-1')
+    expect(opened).toEqual([]) // ENTER was never pressed: no browser
+    expect(signal?.aborted).toBe(true) // the prompt does not keep the CLI waiting
+    expect(output.some((l) => l.includes('opened the link yourself? Just approve it there.'))).toBe(true)
+  })
+
   it('a machine without a desktop (or over SSH): no ENTER prompt, no browser, the link is printed and the CLI keeps waiting', async () => {
     machine.desktop = false
     const prompts = await import('@inquirer/prompts')

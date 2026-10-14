@@ -276,17 +276,21 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     this.log('')
     this.log(`Approve this sign-in on the Norbix dashboard: ${link}`)
     this.log('Check that the dashboard shows the same code, then pick the roles the CLI gets.')
+    // Polling starts now, not after ENTER (N2): a person who opens the
+    // printed link by hand and approves is signed in at once. ENTER only
+    // opens the browser; the prompt is closed as soon as the poll ends.
+    const poll = pollDeviceToken(hub, start, (m) => this.log(m))
     if (flags['no-browser'] || !canOpenBrowser()) {
       this.log('No browser is opened here: open the link on any device.')
+      this.log(`Waiting for you to approve in the browser (the code expires in ${minutes} minutes)...`)
     } else if (this.isInteractive()) {
-      const {input} = await import('@inquirer/prompts')
-      await input({message: 'Press ENTER to open the browser...'})
-      openBrowser(link)
+      this.log(`Waiting for your approval (the code expires in ${minutes} minutes) — opened the link yourself? Just approve it there.`)
+      void this.offerBrowser(link, poll)
+    } else {
+      this.log(`Waiting for you to approve in the browser (the code expires in ${minutes} minutes)...`)
     }
 
-    this.log(`Waiting for you to approve in the browser (the code expires in ${minutes} minutes)...`)
-
-    const token = await pollDeviceToken(hub, start, (m) => this.log(m))
+    const token = await poll
     return this.saveSignIn(ctx, hub, token, {
       host,
       projectId,
@@ -295,6 +299,24 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       region: flags.region ?? ctx.region,
       apiUrl: ctx.hostInfo?.apiUrl,
     })
+  }
+
+  /**
+   * "Press ENTER to open the browser" while the sign-in is already being
+   * polled. The prompt is aborted when the poll settles (approved, denied or
+   * expired), so the CLI never waits for a key that is no longer needed.
+   */
+  private async offerBrowser(link: string, poll: Promise<unknown>): Promise<void> {
+    const {input} = await import('@inquirer/prompts')
+    const controller = new AbortController()
+    const settle = () => controller.abort()
+    poll.then(settle, settle)
+    try {
+      await input({message: 'Press ENTER to open the browser'}, {signal: controller.signal})
+      if (!controller.signal.aborted) openBrowser(link)
+    } catch {
+      // Aborted because the sign-in finished (or the prompt was closed): nothing to do.
+    }
   }
 
   /** Agent step 2: poll the saved code for up to 90 s. */
