@@ -22,6 +22,10 @@ for (const name of ['NORBIX_PROJECT_ID', 'NORBIX_API_KEY', 'NORBIX_REGION', 'NOR
   delete process.env[name]
 }
 
+// No "newer CLI" check from the tests (it would ask the npm registry in a
+// child process); tests/update-check.test.ts turns it on where it is tested.
+process.env.NORBIX_NO_UPDATE_CHECK = '1'
+
 // hub.norbix.ai is "already discovered": the default host's built-in
 // addresses are in the host cache, so no test asks the real Hub. A test of
 // discovery itself uses its own host and its own fake fetch.

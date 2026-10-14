@@ -360,6 +360,15 @@ or ask for keys or tokens. In CI, give the agent `NORBIX_HOST` +
 The recipe the agent follows is in [docs/AGENTS.md](docs/AGENTS.md); the
 guarantees it relies on are in [docs/agent-contract.md](docs/agent-contract.md).
 
+## Updates
+
+When a newer `@norbix.ai/cli` is on npm, the CLI says so in one line on
+**stderr** (never in `--json` stdout): at most once a day, and on every
+`login`, `ai init` and `whoami`. It never waits for the network: the latest
+version is read from `~/.norbix/update-check.json`, which a background process
+refreshes at most once a day (3 s timeout, failures ignored). Turn it off with
+`NORBIX_NO_UPDATE_CHECK=1` (`NO_UPDATE_NOTIFIER` and `CI` turn it off too).
+
 ## Versioning
 
 The major version is frozen at **v1** until the public launch.
