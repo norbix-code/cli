@@ -41,8 +41,9 @@ first two, for scripts that treat every module alike.
 
 `--provider` is one of `Fake`, `Smtp`, `SendGrid`, `MailGun`, `AwsSes`. **Fake**
 needs nothing else: it accepts every send and contacts no mail service, so
-nothing reaches a real inbox — use it while you develop. A project can hold one
-Fake and it has no update path: delete it and add it again. The real providers
+nothing reaches a real inbox — use it while you develop. Each environment of a
+project can hold one Fake (PROD and TEST may each have their own; `module
+enable email` adds PROD's) and it has no update path: delete it and add it again. The real providers
 need a sender (`--from`) and their credentials: put the provider-specific
 fields in `--config` as a JSON object (inline, `@file.json`, or `-` for stdin)
 so a key does not land in your shell history.

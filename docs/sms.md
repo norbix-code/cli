@@ -39,7 +39,8 @@ first two, for scripts that treat every module alike.
 `--provider` is one of `Fake`, `Twilio`, `Vonage`, `Plivo`, `Telnyx`, `Bird`,
 `Telesign`, `Sinch`. **Fake** needs nothing else: it accepts every send and
 contacts no SMS service, so nothing reaches a real phone — use it while you
-develop. A project can hold one Fake and it has no update path: delete it and
+develop. Each environment of a project can hold one Fake (PROD and TEST may each
+have their own) and it has no update path: delete it and
 add it again. The real providers need their credentials: put the
 provider-specific fields in `--config` as a JSON object (inline, `@file.json`,
 or `-` for stdin).
