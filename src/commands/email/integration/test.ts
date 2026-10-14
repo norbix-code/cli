@@ -3,6 +3,9 @@ import {Flags} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class EmailIntegrationTest extends BaseCommand {
+  /** A check, not a change: the env rule for writes does not apply. */
+  static envWrite = false
+
   static description = `Send a test e-mail through an integration
 
 Point this at the Fake integration while you are developing — it accepts the

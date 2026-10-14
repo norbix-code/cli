@@ -3,6 +3,9 @@ import {Args} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class EmailValidationTest extends BaseCommand {
+  /** A check, not a change: the env rule for writes does not apply. */
+  static envWrite = false
+
   static description = `Check that an email-validation integration can reach its provider
 
 The provider checks one test address; no e-mail is sent.`

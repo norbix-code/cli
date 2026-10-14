@@ -2,7 +2,7 @@ import {Norbix} from '@norbix.ai/ts'
 
 import {BaseCommand, type DryRunValidation, type GlobalFlags} from '../base.js'
 import {usageError} from './cli-error.js'
-import {MODULE_ALIASES, camelSplit, isDestructive, matchMethods, parseArgv, typeFields} from './dispatch.js'
+import {MODULE_ALIASES, camelSplit, isDestructive, isReadOnly, matchMethods, parseArgv, typeFields} from './dispatch.js'
 import {readJsonInput} from './json.js'
 import {describeFields, fieldKinds, methodInfo, type FieldKind} from './request-fields.js'
 
@@ -24,7 +24,12 @@ next word). Force a type with --field:str, --field:num, --field:bool or
  * Shared engine for `norbix hub ...` and `norbix api ...` — resolves the
  * module and method from plain words and calls the SDK.
  */
+/** SDK modules whose calls are not inside an environment. */
+const ENV_FREE_MODULES = new Set(['account', 'environments', 'projects', 'regions', 'licensing', 'accessToken', 'auth', 'oauth', 'wellKnown', 'echo', 'public'])
+
 export abstract class NamespaceCommand extends BaseCommand {
+  static envWrite = false
+
   protected abstract readonly target: 'api' | 'hub'
 
   /**
@@ -205,6 +210,9 @@ export abstract class NamespaceCommand extends BaseCommand {
     // Context (auth, region, project) is resolved before any confirmation or
     // dry run, so a dry run that would fail for real fails here too.
     const client = this.client(flags)
+    // Changes inside an environment follow the env rule (BaseCommand.assertWriteEnv);
+    // the account / environments modules are not inside one.
+    if (!isReadOnly(method) && !ENV_FREE_MODULES.has(moduleName)) await this.assertWriteEnv(flags)
     if (isDestructive(method)) {
       await this.confirmOrFail(`Run ${method}(${JSON.stringify(request)})?`, flags)
     }

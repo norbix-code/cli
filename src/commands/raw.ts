@@ -34,10 +34,14 @@ path and it becomes v3.`
     query: Flags.string({char: 'q', description: 'Query parameter key=value (repeatable)', multiple: true}),
   }
 
+  static envWrite = false
+
   async run(): Promise<unknown> {
     const {args, flags} = await this.parse(Raw)
     const ctx = await this.freshContext(flags)
     this.assertEndpoints(ctx)
+    // A raw write (any method but GET) follows the env rule like every change.
+    if (flags.method !== 'GET') await this.assertWriteEnv(flags)
 
     if (!ctx.projectId) this.error('No project ID configured. Run `norbix login` or pass --project.')
     const token = ctx.bearerToken ?? ctx.apiKey

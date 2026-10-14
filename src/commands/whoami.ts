@@ -36,7 +36,7 @@ export default class Whoami extends BaseCommand {
       apiKey: ctx.apiKey ? redact(ctx.apiKey) : undefined,
       projectId: ctx.projectId,
       accountId: ctx.accountId,
-      env: ctx.env ?? '(not set — the server uses PROD)',
+      env: ctx.env ?? '(not set — reads use PROD; changes are refused until you name one: --env, or norbix env use <ENV>)',
       envSource: ctx.envSource,
       projectFile: ctx.projectFile?.path,
       region:

@@ -150,6 +150,27 @@ explicit `--profile` for another host wins, and the file is ignored.
 shows `hostSource: project file`. The home folder is never searched;
 `NORBIX_PROJECT_CONFIG=0` turns the lookup off.
 
+**Environments: a change never lands in PROD by default.** Every call
+works in an environment: `--env` / `NORBIX_ENV`, else the repo's
+`.norbix/project.json`, the profile's `env`, the sign-in's (`norbix env use`).
+With none, no `norbix-env` header is sent and the server uses PROD. Reads keep
+that default. A **change** (every command with `--dry-run`, and every
+non-read `hub` / `api` / `raw` call) follows the same rule as the MCP tools
+(`AiToolEnvPolicy`):
+
+| environment of the change | result |
+| --- | --- |
+| named with `--env` / `NORBIX_ENV` (PROD included) | sent |
+| a saved default that is not PROD (repo file, profile, `env use`) | sent |
+| none at all — it would be PROD | refused: exit 2 `ENV_REQUIRED` |
+| PROD, but only from a saved default | refused: exit 2 `PROD_NOT_EXPLICIT` |
+
+At a terminal the CLI asks instead of refusing; `--yes` does not answer it —
+PROD is chosen per call with `--env PROD`. A `--dry-run` is never refused.
+Account- and project-wide settings (`account`, `project`, `module`, `env`,
+AI service users) are not inside an environment and are not affected.
+Scripts that deploy to PROD set `NORBIX_ENV=PROD`.
+
 **Profiles (AWS-style)** — one INI file at `~/.norbix/config`:
 
 ```ini

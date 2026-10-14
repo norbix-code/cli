@@ -155,7 +155,7 @@
         }
       },
       "env": {
-        "description": "Manage project environments (PROD, TEST, ...): list, create (a new env needs its own database: --connection-string-env or --managed), use, delete"
+        "description": "Manage project environments (PROD, TEST, ...): list, create (a new env needs its own database: --connection-string-env or --managed), use, delete. A change needs a named env: --env, or a saved non-PROD default; PROD only with --env PROD"
       },
       "files": {
         "description": "Upload, download and manage files",

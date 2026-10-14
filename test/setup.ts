@@ -30,6 +30,12 @@ process.env.NORBIX_NO_UPDATE_CHECK = '1'
 // tests of that file turn the lookup on with their own folder.
 process.env.NORBIX_PROJECT_CONFIG = '0'
 
+// A change needs a named environment (BaseCommand.assertWriteEnv, Pickio
+// N-21). The suite names PROD the way a script does — NORBIX_ENV — so every
+// test still checks its command against the default environment;
+// tests/env-policy.test.ts removes it to test the rule itself.
+process.env.NORBIX_ENV = 'PROD'
+
 // hub.norbix.ai is "already discovered": the default host's built-in
 // addresses are in the host cache, so no test asks the real Hub. A test of
 // discovery itself uses its own host and its own fake fetch.

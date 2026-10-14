@@ -151,23 +151,23 @@ describe('ai init saves the repo\'s Norbix: .norbix/project.json (N3)', () => {
       // A command run inside the repo (a sub-folder) — no --host, no --project.
       const sub = join(project, 'src', 'deep')
       mkdirSync(sub, {recursive: true})
-      const who = await cli(home, ['whoami', '--json'], {NORBIX_PROJECT_CONFIG: undefined}, sub)
+      const who = await cli(home, ['whoami', '--json'], {NORBIX_PROJECT_CONFIG: undefined, NORBIX_ENV: undefined}, sub)
       const doc = parseSingleJson(who.stdout) as Record<string, string>
       expect(doc).toMatchObject({host, hostSource: 'project file', projectId: 'pr_HappyTummy', env: 'TEST', envSource: 'project file'})
       expect(doc.profile).toBe('(none)') // the [default] of the other host is not used — its key is never sent here
       expect(doc.auth).toBe('none')
 
       // Outside the repo: the [default] profile as before.
-      const outside = await cli(home, ['whoami', '--json'], {NORBIX_PROJECT_CONFIG: undefined}, tmpdir())
+      const outside = await cli(home, ['whoami', '--json'], {NORBIX_PROJECT_CONFIG: undefined, NORBIX_ENV: undefined}, tmpdir())
       // (that host does not answer — the error shows which host it tried)
       expect(JSON.stringify(parseSingleJson(outside.stdout))).toContain('127.0.0.1:1')
 
       // --host / --project still win.
-      const flags = await cli(home, ['whoami', '--json', '--project', 'pr_X'], {NORBIX_PROJECT_CONFIG: undefined}, sub)
+      const flags = await cli(home, ['whoami', '--json', '--project', 'pr_X'], {NORBIX_PROJECT_CONFIG: undefined, NORBIX_ENV: undefined}, sub)
       expect(parseSingleJson(flags.stdout)).toMatchObject({projectId: 'pr_X', host})
 
       // env use inside the repo writes the repo file.
-      const use = await cli(home, ['env', 'use', 'staging', '--json'], {NORBIX_PROJECT_CONFIG: undefined}, sub)
+      const use = await cli(home, ['env', 'use', 'staging', '--json'], {NORBIX_PROJECT_CONFIG: undefined, NORBIX_ENV: undefined}, sub)
       expect(use.code).toBe(0)
       expect(JSON.parse(readFileSync(join(project, '.norbix/project.json'), 'utf8')).env).toBe('STAGING')
     } finally {

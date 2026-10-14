@@ -222,7 +222,7 @@ export abstract class BaseCommand extends Command {
       helpGroup: 'GLOBAL',
     }),
     env: Flags.string({
-      description: 'Project environment (e.g. PROD, TEST)',
+      description: 'Project environment (e.g. PROD, TEST). A change needs one: with none (or PROD only from a saved default) it is refused — pass --env PROD to change PROD on purpose',
       env: 'NORBIX_ENV',
       helpGroup: 'GLOBAL',
     }),
@@ -374,6 +374,59 @@ export abstract class BaseCommand extends Command {
     }
 
     await this.prepareHost(flags)
+    if (isEnvWriteCommand(ctor, this.id)) await this.assertWriteEnv(flags)
+  }
+
+  /**
+   * Which commands are "writes inside an environment" (the env policy below
+   * applies): a command with --dry-run changes something; `envWrite = false`
+   * opts out (dynamic commands decide per call), and project- or account-wide
+   * settings (ENV_FREE_COMMANDS) have no environment at all.
+   */
+  static envWrite?: boolean
+
+  /**
+   * The environment rule for a change (Pickio N-21), the CLI twin of the MCP
+   * surface's AiToolEnvPolicy:
+   *
+   *   - --env / NORBIX_ENV names it: any environment, PROD included.
+   *   - a saved default (.norbix/project.json, `env use`, the profile) that
+   *     is not PROD: used.
+   *   - no environment at all — the server would use PROD — or PROD only from
+   *     a saved default: refused (exit 2, ENV_REQUIRED / PROD_NOT_EXPLICIT);
+   *     at a terminal the CLI asks instead. --yes does not answer it: a
+   *     change in PROD is chosen per call, with --env PROD.
+   *
+   * Reads keep the old default (no header = PROD). A dry run sends nothing,
+   * so it is never refused.
+   */
+  protected async assertWriteEnv(flags: GlobalFlags): Promise<void> {
+    if (flags['dry-run']) return
+    const ctx = this.resolveContext(flags)
+    if (ctx.envSource === 'flag/env') return
+    const env = ctx.env?.trim().toUpperCase()
+    if (env && env !== 'PROD') return
+
+    const unset = !env
+    const message = unset
+      ? `\`${this.commandName}\` changes data and no environment is set, so it would run in PROD.`
+      : `\`${this.commandName}\` changes data in PROD, and PROD comes only from a saved default (${ctx.envSource}${ctx.envSource === 'project file' && ctx.projectFile ? `: ${ctx.projectFile.path}` : ''}).`
+    const hint =
+      'Name the environment on the call: --env TEST (or NORBIX_ENV=TEST), or --env PROD to change PROD on purpose. ' +
+      (unset ? 'To make a non-PROD environment the default here: norbix env use TEST (in a repo set up by `norbix ai init` it is saved in .norbix/project.json).' : 'A saved default is never enough for PROD.')
+    if (this.isInteractive()) {
+      const {confirm} = await import('@inquirer/prompts')
+      if (await confirm({message: `${message} Run it in PROD?`, default: false})) return
+      throw new CliError({exit: EXIT.CANCELLED, code: 'CANCELLED', message: 'Cancelled.', hint})
+    }
+
+    throw new CliError({
+      exit: EXIT.USAGE,
+      code: unset ? 'ENV_REQUIRED' : 'PROD_NOT_EXPLICIT',
+      message,
+      hint,
+      docs: 'norbix env --help',
+    })
   }
 
   /** Discover the host `flags` point at, so `resolveContext` knows its Hub. */
@@ -1006,6 +1059,21 @@ export abstract class BaseCommand extends Command {
     marked.skipOclifErrorHandling = true
     throw marked
   }
+}
+
+/**
+ * Commands that change something but not inside an environment: account and
+ * project settings (CORS, languages, roles of the account, module switches —
+ * project-wide by design), the environments themselves, and local files.
+ */
+export const ENV_FREE_COMMANDS = ['account', 'project', 'env', 'module', 'ai:init', 'ai:service-user', 'config', 'configure', 'login', 'logout', 'profiles']
+
+/** True for a command the environment rule applies to (see `assertWriteEnv`). */
+export function isEnvWriteCommand(ctor: {envWrite?: boolean; flags?: Record<string, unknown>}, id: string | undefined): boolean {
+  if (ctor.envWrite !== undefined) return ctor.envWrite
+  if (!ctor.flags || !('dry-run' in ctor.flags)) return false
+  const cid = id ?? ''
+  return !ENV_FREE_COMMANDS.some((prefix) => cid === prefix || cid.startsWith(`${prefix}:`))
 }
 
 /** `Finlo (66b2…)`, or the id alone. */

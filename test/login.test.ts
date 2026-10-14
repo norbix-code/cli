@@ -20,6 +20,9 @@ import {ownerOnly, seedDefaultHost} from './seed.js'
  * are stubbed; HOME is the test sandbox.
  */
 
+// Sign-in saves no environment unless one is named; the suite's NORBIX_ENV (test/setup.ts) is not one here.
+delete process.env.NORBIX_ENV
+
 vi.mock('@inquirer/prompts', () => ({
   input: vi.fn(async () => ''),
   password: vi.fn(async () => 'pw'),
