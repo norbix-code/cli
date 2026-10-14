@@ -2,13 +2,20 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 import {fileSource, readJsonObject, readJsonText, type SchemaSettings} from '../../../lib/database.js'
+import {printSchemaWarnings} from '../../../lib/schema-rules.js'
 
 export default class DbSchemaCreate extends BaseCommand {
   static description = `Create a database schema (a collection) from a JSON file
 
 --file is the data schema (JSON Schema of one record). --ui-file is the
 optional UI schema the dashboard form uses. The schema starts as a draft:
-run \`db schema publish <id>\` to make the collection usable.`
+run \`db schema publish <id>\` to make the collection usable.
+
+Before you write the file, run \`db schema rules\`: emails and links need a
+format, language / currency / country are taxonomy pickers, user ids are user
+references. When a field breaks one of these rules the Hub still saves the
+schema and answers with "warnings"; they are printed on stderr (with --json
+they are also in the JSON on stdout).`
 
   static examples = [
     '<%= config.bin %> db schema create --name orders --file orders.schema.json',
@@ -37,6 +44,7 @@ run \`db schema publish <id>\` to make the collection usable.`
     })
 
     this.print(res)
+    printSchemaWarnings(res)
     return res
   }
 }

@@ -8,7 +8,11 @@ export default class DbSchemaUpdate extends BaseCommand {
 
 The change is saved as the schema's draft; records keep using the published
 version until you run \`db schema publish <id>\`. \`db schema draft <id>\` shows
-the draft, \`db schema discard <id>\` throws it away.`
+the draft, \`db schema discard <id>\` throws it away.
+
+Before you change the file, run \`db schema rules\`: emails and links need a
+format, language / currency / country are taxonomy pickers, user ids are user
+references.`
 
   static examples = [
     '<%= config.bin %> db schema update 66b2f0a1c3d4e5f6a7b8c9d0 --file orders.schema.json',
