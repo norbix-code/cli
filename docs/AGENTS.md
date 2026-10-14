@@ -51,6 +51,26 @@ command exits 4 with `error.code` `SESSION_EXPIRED`: sign in again as above.
 
 Never print, echo or paste a key or token, and never read `~/.norbix`.
 
+### Environments: name one when the project has several
+
+A project always has PROD and may have more (TEST, STAGING, …). Check first:
+`norbix whoami --json` (`environments`, `envRule`) or `norbix env list --json`.
+
+- **Only PROD:** pass no env — every command works in PROD (`--env PROD` /
+  `--prod` changes nothing).
+- **More than one:** every project command needs the env: `--env <name>`
+  (`--prod` is short for `--env PROD`) or `NORBIX_ENV`. Ask the user which one
+  when the task does not say it — never assume PROD. Without it the command
+  exits 2 with `error.code` `ENV_REQUIRED` and the list of environments, and
+  sends nothing (a `--dry-run` fails the same way).
+- A default saved with `norbix env use <name>` (or `env =` in a profile)
+  also counts; each command then prints `env: <name> (<where it is saved>)`
+  on stderr. Read that line.
+- Account commands (no project) and `norbix env …` are not checked.
+
+The list of environments is cached for 5 minutes per project; `env list /
+use / delete` and an "environment does not exist" error refresh it.
+
 ## 2. Always `--json`
 
 Stdout is then exactly one JSON document: the result, or
