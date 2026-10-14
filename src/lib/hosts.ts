@@ -452,3 +452,41 @@ export async function fetchProjectRegion(
     return undefined
   }
 }
+
+// ---------- a project's environments ----------
+
+/**
+ * Which environments a project has decides whether `--env` is required
+ * (src/lib/env-rule.ts). Environments change rarely but matter a lot, so the
+ * answer is kept for 5 minutes only, and `env list / use / delete` and an
+ * env error from the gateway drop it.
+ */
+export const PROJECT_ENVS_TTL_MS = 5 * 60 * 1000
+
+type ProjectEnvs = Record<string, {environments: string[]; fetchedAt: string}>
+
+function projectEnvsPath(hubKey: string): string {
+  return join(HOSTS_DIR, `${hubKey}.envs.json`)
+}
+
+/** The cached environments of a project on this Hub, while fresh. */
+export function cachedProjectEnvs(hubKey: string, projectId: string, now = Date.now()): string[] | undefined {
+  const entry = readJson<ProjectEnvs>(projectEnvsPath(hubKey))?.[projectId]
+  if (!Array.isArray(entry?.environments) || entry.environments.length === 0) return undefined
+  const age = now - Date.parse(entry.fetchedAt)
+  return age >= 0 && age < PROJECT_ENVS_TTL_MS ? entry.environments : undefined
+}
+
+export function saveProjectEnvs(hubKey: string, projectId: string, environments: string[], now = Date.now()): void {
+  const all = readJson<ProjectEnvs>(projectEnvsPath(hubKey)) ?? {}
+  all[projectId] = {environments, fetchedAt: new Date(now).toISOString()}
+  writeJson(projectEnvsPath(hubKey), all)
+}
+
+/** Drop the cached environments of a project (after `env` commands or an env error). */
+export function forgetProjectEnvs(hubKey: string, projectId: string): void {
+  const all = readJson<ProjectEnvs>(projectEnvsPath(hubKey))
+  if (!all?.[projectId]) return
+  delete all[projectId]
+  writeJson(projectEnvsPath(hubKey), all)
+}

@@ -21,13 +21,20 @@ export interface Hit {
   method: string
   url: string
   body: string
+  /** The `norbix-env` header the call carried (the SDK sends none for PROD). */
+  env?: string
 }
 
 export interface FakeGateway {
   port: number
   hits: Hit[]
+  /** Reads of the project's environment list (the env rule) — kept out of `hits`. */
+  envHits: Hit[]
   close: () => Promise<void>
 }
+
+/** The environments path the env rule reads before a project-scoped command. */
+export const ENVS_PATH = '/v3/account/projects/environments'
 
 /**
  * A gateway that answers by path: `answers[path]` when given, else
@@ -35,6 +42,7 @@ export interface FakeGateway {
  */
 export async function startFakeGateway(answers: Record<string, unknown> = {}): Promise<FakeGateway> {
   const hits: Hit[] = []
+  const envHits: Hit[] = []
   const server = http.createServer((req, res) => {
     let body = ''
     req.on('data', (chunk) => (body += chunk))
@@ -53,9 +61,23 @@ export async function startFakeGateway(answers: Record<string, unknown> = {}): P
         return res.end(JSON.stringify({hubUrl: self, apiUrl: self, hubVersion: 'v3', apiVersion: 'v3', regions: []}))
       }
 
-      hits.push({method: req.method ?? '', url, body})
+      const env = req.headers['norbix-env']
+      const hit = {method: req.method ?? '', url, body, ...(typeof env === 'string' ? {env} : {})}
+      // The env rule's read of the environment list: a project with only PROD
+      // unless the test answers otherwise. Not a hit of the command itself.
+      if (req.method === 'GET' && url.split('?')[0] === ENVS_PATH) {
+        envHits.push(hit)
+        return res.end(JSON.stringify(answers[ENVS_PATH] ?? {item: {environments: ['PROD']}}))
+      }
+
+      hits.push(hit)
       const answer = answers[url.split('?')[0]]
-      if (answer !== undefined) return res.end(JSON.stringify(answer))
+      if (answer !== undefined) {
+        // `{__status: 404, ...body}` answers with that status.
+        const {__status, ...rest} = (answer ?? {}) as {__status?: number}
+        if (typeof __status === 'number') res.statusCode = __status
+        return res.end(JSON.stringify(typeof __status === 'number' ? rest : answer))
+      }
       if (url.includes('missing')) {
         res.statusCode = 404
         return res.end('{"message":"User not found","code":"USER_NOT_FOUND","traceId":"t-1"}')
@@ -86,6 +108,7 @@ export async function startFakeGateway(answers: Record<string, unknown> = {}): P
   return {
     port,
     hits,
+    envHits,
     close: () => new Promise((resolve) => server.close(() => resolve())),
   }
 }

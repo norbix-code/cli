@@ -6,6 +6,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 
 import {accessCell, formatAccessMatrix, revokeOutcome, formatToolCatalog, formatValidation, functionsGate, parseAccessPackage, parseInputs, parseKeyValues, readArguments, toolAccess} from '../src/lib/marketplace.js'
+import {envListAnswer} from './_env.js'
 
 /**
  * Every `norbix code marketplace` command, run the way a user types it,
@@ -58,6 +59,8 @@ beforeEach(() => {
   answer = {ok: true}
   realFetch = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
     calls.push({
       method: init?.method ?? 'GET',
@@ -689,6 +692,8 @@ describe('norbix code marketplace runs', () => {
     }
     const realFake = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
       answer = url.pathname.endsWith('/logs/audit') ? lines : runs
       return realFake(input, init)

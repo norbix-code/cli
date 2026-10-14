@@ -37,6 +37,7 @@ export default class Whoami extends BaseCommand {
       projectId: ctx.projectId,
       accountId: ctx.accountId,
       env: ctx.env ?? 'PROD',
+      envSource: ctx.envSource,
       region:
         ctx.region ??
         (ctx.usesDefaultEndpoints
@@ -60,6 +61,7 @@ export default class Whoami extends BaseCommand {
         environments = (item?.environments ?? []).map((e) =>
           typeof e === 'string' ? e : (e.name ?? String(e)),
         )
+        this.rememberEnvs(ctx, res)
         verified = true
       } catch (error) {
         const raw = (error as {raw?: unknown}).raw
@@ -81,16 +83,24 @@ export default class Whoami extends BaseCommand {
         ...(signIn ? signInLines(signIn) : []),
         `Project:  ${summary.projectId ?? '(not set)'}`,
         `Account:  ${summary.accountId ?? '(not set)'}`,
-        `Env:      ${summary.env}`,
+        `Env:      ${ctx.env ? `${ctx.env} (${ctx.envSource})` : 'PROD (none named)'}`,
         `Region:   ${summary.region}`,
         verified
           ? `Server:   OK${environments?.length ? ` — environments: ${environments.join(', ')}` : ''}`
           : `Server:   not verified${verifyError ? ` (${verifyError})` : ''}`,
+        ...(environments ? [`Env rule: ${envRule(environments)}`] : []),
       ].join('\n'),
     )
 
-    return {...summary, session: signIn, verified, environments, verifyError}
+    return {...summary, session: signIn, verified, environments, envRule: environments ? envRule(environments) : undefined, verifyError}
   }
+}
+
+/** The env rule for this project, in one line (src/lib/env-rule.ts). */
+function envRule(environments: string[]): string {
+  return environments.length > 1
+    ? `this project has ${environments.length} environments — every project command needs --env <name> (or --prod, NORBIX_ENV, or \`norbix env use\`)`
+    : 'only PROD — no --env needed'
 }
 
 interface SignIn {

@@ -5,6 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 import {formatRunInput, formatRuns} from '../src/lib/code.js'
+import {envListAnswer} from './_env.js'
 
 /**
  * Every `norbix code` command, run the way a user types it, through oclif and
@@ -32,6 +33,8 @@ beforeEach(() => {
   answer = {ok: true}
   realFetch = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const envList = envListAnswer(input, init)
+    if (envList) return envList
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
     calls.push({
       method: init?.method ?? 'GET',
