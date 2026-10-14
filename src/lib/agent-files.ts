@@ -57,6 +57,7 @@ export function claudeSkill(): string {
     '   - `norbix login --no-browser --json` → `{userCode, verificationUriComplete, expiresIn}`. Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.',
     '   - `norbix login --wait --json` — waits up to 90 s. Exit 0: signed in. Exit 4 `AUTHORIZATION_PENDING`: not approved yet, run it again. `ACCESS_DENIED` or `EXPIRED_TOKEN`: start over with step one.',
     '   - Not on norbix.ai? Add `--host <their dashboard or Hub address>` (or `--profile <name>`) to both steps.',
+    '   Environments: `whoami` lists the project\'s `environments`. With only PROD, pass no env. With more than one (e.g. PROD, TEST), every project command needs `--env <name>` (`--prod` = `--env PROD`): ask the user which one, never assume PROD. Exit 2 `ENV_REQUIRED` lists them. `norbix env list --json` shows them too.',
     '2. Find the command: `norbix schema --json` lists every command with `destructive` and `supportsDryRun`; `norbix <command> --help` has a realistic example. No named command? `norbix hub <module> --json` (or `norbix api <module> --json`) lists the SDK methods with their fields; call one with plain words and `--body \'<json>\'`.',
     '3. Read with `--json` and parse the one document on stdout. Never parse the text output.',
     '   Designing a database schema? Run `norbix db schema rules` first and follow it: emails and links need a format (`email` / `uri`), language / currency / country and every list people pick from are taxonomy pickers (enum only for developer flags), user ids are user references, no createdBy / owner fields. A schema save that breaks a rule still succeeds but returns `warnings`: fix each named field and save again.',
@@ -76,7 +77,7 @@ export function claudeSkill(): string {
     'norbix hub scheduler --json                                      # methods + fields',
     '```',
     '',
-    'Context flags on every command: `--host`, `--profile`, `--project`, `--env`, `--region` (or `NORBIX_*` variables). Full contract: docs/agent-contract.md in norbix-code/cli.',
+    'Context flags on every command: `--host`, `--profile`, `--project`, `--env` / `--prod`, `--region` (or `NORBIX_*` variables). Full contract: docs/agent-contract.md in norbix-code/cli.',
     '',
   ].join('\n')
 }

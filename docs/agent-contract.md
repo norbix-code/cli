@@ -46,7 +46,7 @@ prints points back here through its `hint` and `docs` fields.
 |---|---|---|
 | 0 | success | |
 | 1 | unexpected / internal error | file an issue, include `traceId` |
-| 2 | usage: bad flags or args, invalid JSON input, unknown command, missing config | `norbix <command> --help` / `norbix schema <command> --json` |
+| 2 | usage: bad flags or args, invalid JSON input, unknown command, missing config; `ENV_REQUIRED` — the project has more than one environment and none was named | `norbix <command> --help` / `norbix schema <command> --json`; for `ENV_REQUIRED` add `--env <name>` (the message lists them) |
 | 3 | confirmation required (non-interactive shell, no `--yes`) | re-run with `--yes` after a `--dry-run` |
 | 4 | not authenticated / auth rejected (401, 403, no key); a browser sign-in denied (`ACCESS_DENIED`), not approved in time (`EXPIRED_TOKEN`), refused by the Hub (`INVALID_GRANT`, `INVALID_REQUEST`) or ended (`SESSION_EXPIRED`); `login --wait` not approved yet (`AUTHORIZATION_PENDING` — run it again) | `norbix login` (agents: `--no-browser --json`, then `--wait`), `--api-key`, `--profile`, `NORBIX_API_KEY` |
 | 5 | not found (404) | check the id, `--env`, `--project` |
