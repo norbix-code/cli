@@ -87,7 +87,7 @@
         }
       },
       "ai": {
-        "description": "LLM and MCP server integrations, AI service users, and coding-agent setup (ai init)",
+        "description": "LLM and MCP server integrations, AI service users, coding-agent setup (ai init) and the agent project context (ai context)",
         "subtopics": {
           "llm": {
             "description": "Create, test, turn on/off and delete an LLM integration"

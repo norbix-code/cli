@@ -100,6 +100,7 @@ describe('norbix ai init', () => {
     expect(bullets.map((l) => l.slice(0, 40))).toEqual([
       '- Start with `norbix whoami --json`. `"a',
       '- Pass `--json` to every command whose o',
+      '- Project context (your projects, enviro',
       '- Discover, do not guess: `norbix schema',
       '- Before any change, run it with `--dry-',
       '- Designing a database schema? Run `norb',
@@ -111,10 +112,10 @@ describe('norbix ai init', () => {
     expect(bullets[0]).toContain('run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode`')
     expect(bullets[0]).toContain('pick the roles you get')
     expect(bullets[0]).toContain('Account → AI service users')
-    expect(bullets[3]).toContain('show the user the request')
+    expect(bullets[4]).toContain('show the user the request')
     // ux-fixes item 13: the schema design rules reach the agent.
-    expect(bullets[4]).toContain('`norbix db schema rules`')
-    expect(bullets[4]).toContain('language / currency / country and every list people pick from are taxonomy pickers')
+    expect(bullets[5]).toContain('`norbix db schema rules`')
+    expect(bullets[5]).toContain('language / currency / country and every list people pick from are taxonomy pickers')
     expect(block).not.toMatch(/norbix login --api-key|nbk_/)
     expect(block.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(13)
 
