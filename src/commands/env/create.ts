@@ -31,7 +31,8 @@ the environment afterwards (--env <NAME>). Give the database one of two ways:
 
 There is no "same server as PROD, new database" option: the Hub does not hand
 out PROD's connection string, so pass it yourself. Creating an environment is
-not available while the account is on a trial (each one is an extra database).
+not available during a norbix.ai managed-service trial (each one is an extra
+database); a self-hosted licence is not a trial.
 
 Then work in it: \`norbix env use <NAME>\` or --env <NAME> per command.`
 
