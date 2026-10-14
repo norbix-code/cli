@@ -166,16 +166,20 @@ counts, the new ids, and any errors.
 
 `--file` is the data schema (the JSON Schema of one record); `--ui-file` is the
 UI schema the dashboard form uses. A change is a draft first: records keep the
-published version until `schema publish`. `publish` asks first and sends the
-server's `confirmed: true`, so it also publishes a change the server calls
-breaking — read `schema draft` (or `schema diff` after a publish) before you
-answer yes.
+published version until `schema publish`. `publish` asks only when data is at
+risk, and lets the Hub decide that: it first sends `confirmed: false`, so a
+first publish or one that only adds or changes fields goes through without
+`--yes`. When the new version removes fields the published one has, the Hub
+answers `CM-ERRORS-SCHEMA-020`; the CLI names the fields and asks (without a
+terminal: exit 3, nothing published), and on yes — or with `--yes` up front —
+publishes with `confirmed: true`. Read `schema draft` (or `schema diff` after a
+publish) before you answer yes.
 
 ```bash
 norbix db schema create --name orders --file orders.schema.json --ui-file orders.ui.json
 norbix db schema update 66b2f0a1c3d4e5f6a7b8c9d0 --file orders.schema.json
 norbix db schema draft 66b2f0a1c3d4e5f6a7b8c9d0
-norbix db schema publish 66b2f0a1c3d4e5f6a7b8c9d0 --yes
+norbix db schema publish 66b2f0a1c3d4e5f6a7b8c9d0
 norbix db schema diff 66b2f0a1c3d4e5f6a7b8c9d0 --from 1 --to 2
 ```
 
@@ -288,9 +292,11 @@ norbix db term tree countries --depth 2
   checked: `norbix hub database schema bundle apply --bundleJson '<IF json>'
   --dry-run` asks the Hub's read-only `account.validateSchema` and exits 6
   with the issues when the bundle is invalid.
-- `delete`, `discard`, `publish`, `seed`, `trigger disable`, `trigger delete`,
-  `term delete` and the `--many` / `--all` record writes ask first; `--yes` skips the
-  question, and without a terminal they exit 3 unless `--yes` is given.
+- `delete`, `discard`, `seed`, `trigger disable`, `trigger delete`,
+  `term delete` and the `--many` / `--all` record writes (and `delete --filter`)
+  ask first; `--yes` skips the question, and without a terminal they exit 3
+  unless `--yes` is given. `publish` asks only for a breaking change (see
+  above); `norbix schema` still lists it as destructive because it can be.
 - Exit codes are in the README ("Errors and exit codes").
 
 ## No command on purpose

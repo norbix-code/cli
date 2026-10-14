@@ -323,6 +323,66 @@ describe('db delete --filter without --many: exactly one record (N15)', () => {
   })
 })
 
+describe('db schema publish: confirmation only for a breaking change (N11)', () => {
+  const breaking = {
+    responseStatus: {
+      isSuccess: false,
+      errorCode: 'CM-ERRORS-SCHEMA-020',
+      message: 'Publishing this schema version removes 2 field(s) (color, size) that existed in the previous version.',
+      errors: [
+        {
+          errorCode: 'CM-ERRORS-SCHEMA-020',
+          message: 'Publishing this schema version removes 2 field(s) (color, size) that existed in the previous version.',
+          context: {SchemaId: ID, RemovedFieldsText: 'color, size'},
+        },
+      ],
+    },
+  }
+
+  /** The Hub answers the publishes in order: `true` = 200, `false` = the breaking-change refusal. */
+  function answerPublish(...ok: boolean[]): void {
+    const fake = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      await fake(input, init)
+      const pass = ok.shift() ?? true
+      return new Response(JSON.stringify(pass ? {} : breaking), {status: pass ? 200 : 400, headers: {'Content-Type': 'application/json'}})
+    }) as typeof globalThis.fetch
+  }
+
+  const confirmedSent = () => calls.map((c) => c.body?.confirmed)
+
+  it('no --yes, no terminal: a first or additive publish goes through with confirmed: false', async () => {
+    answerPublish(true)
+    const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(confirmedSent()).toEqual([false])
+  })
+
+  it('no --yes and the Hub says fields are removed: exit 3 naming them, the second publish is not sent', async () => {
+    answerPublish(false)
+    const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(3)
+    expect(error?.message).toContain('removes the field(s) color, size')
+    expect(confirmedSent()).toEqual([false])
+  })
+
+  it('--yes: one call with confirmed: true (publishes even a breaking change)', async () => {
+    answerPublish(true)
+    await runCommand(['db', 'schema', 'publish', ID, '--yes', ...globalArgs])
+    expect(confirmedSent()).toEqual([true])
+  })
+
+  it('another refusal is reported as it is, not turned into a confirmation', async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({responseStatus: {errorCode: 'CM-ERRORS-SCHEMA-010', message: 'bad schema'}}), {
+        status: 400,
+        headers: {'Content-Type': 'application/json'},
+      })) as typeof globalThis.fetch
+    const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(6)
+  })
+})
+
 describe('db update / delete of many records', () => {
   it('update --many sends the filter and the plain fields, without allRecords', async () => {
     expect(await bodyOf(['update', COL, '--many', '--filter', '{"status":"new"}', '--update', '{"status":"paid"}', '--yes'])).toEqual({
@@ -585,10 +645,10 @@ describe('db schema writes', () => {
     expect(await bodyOf(['schema', 'publish', ID, '--yes'])).toEqual({confirmed: true})
   })
 
-  it('publish without --yes in a non-interactive shell sends nothing', async () => {
+  it('publish without --yes in a non-interactive shell asks the Hub with confirmed: false (N11; the Hub refuses a breaking change)', async () => {
     const {error} = await runCommand(['db', 'schema', 'publish', ID, ...globalArgs])
-    expect(error?.message).toMatch(/Confirmation required/)
-    expect(calls).toHaveLength(0)
+    expect(error).toBeUndefined()
+    expect(calls.map((c) => c.body)).toEqual([{confirmed: false}])
   })
 
   it('delete without --yes in a non-interactive shell warns that the records go too, and sends nothing', async () => {
