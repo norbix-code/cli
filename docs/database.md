@@ -43,6 +43,7 @@ refactoringV2 (2026-10) has only the GET routes, so this CLI needs a current gat
 | `norbix db update <collection> --all --update <json> [--array-filters <json-array>] [--yes]` | update every record | `PUT /collections/{collectionName}/many` (`allRecords: true`) |
 | `norbix db replace <collection> --id <id> --doc <json>` | replace one record fully | `PUT /collections/{collectionName}/{id}/replace` |
 | `norbix db delete <collection> --id <id> [--yes]` | delete one | `DELETE /collections/{collectionName}/{id}` |
+| `norbix db delete <collection> --filter <json> [--yes]` | delete the ONE record the filter matches: reads up to 2 matches first; 0 → exit 5, 2+ → exit 2 (add `--many`) | `GET /collections/{collectionName}`, then `DELETE /collections/{collectionName}/{id}` |
 | `norbix db delete <collection> --many --filter <json> [--yes]` | delete many | `DELETE /collections/{collectionName}/many` |
 | `norbix db delete <collection> --all [--yes]` | delete every record | `DELETE /collections/{collectionName}/many` (`allRecords: true`) |
 | `norbix db aggregate <collection> --pipeline <json>` | run an inline aggregation | `POST /collections/{collectionName}/aggregate` |

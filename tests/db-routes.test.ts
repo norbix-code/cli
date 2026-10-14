@@ -262,6 +262,67 @@ describe('the taxonomy key: id or name in every term command (N10)', () => {
   })
 })
 
+describe('db delete --filter without --many: exactly one record (N15)', () => {
+  /** Answer `find` on the collection with these records. */
+  function answerFind(items: unknown[], hasMore = false): void {
+    const fake = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await fake(input, init)
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      if ((init?.method ?? 'GET') === 'GET' && url.pathname === `${P}/collections/${COL}`) {
+        return new Response(JSON.stringify({list: {items, hasMore}}), {status: 200, headers: {'Content-Type': 'application/json'}})
+      }
+
+      return res
+    }) as typeof globalThis.fetch
+  }
+
+  const paths = () => calls.map((c) => `${c.method} ${c.path}`)
+
+  it('one match: reads at most 2, then deletes that record by its id', async () => {
+    answerFind([{_id: ID}])
+    const {error} = await runCommand(['db', 'delete', COL, '--filter', '{"_id":"66b2f0a1"}', '--yes', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(paths()).toEqual([`GET ${P}/collections/${COL}`, `DELETE ${P}/collections/${COL}/${ID}`])
+    expect(calls[0].query.get('filter')).toBe('{"_id":"66b2f0a1"}')
+  })
+
+  it('an extended-JSON {$oid} id works too', async () => {
+    answerFind([{_id: {$oid: ID}}])
+    await runCommand(['db', 'delete', COL, '--filter', '{"n":1}', '--yes', ...globalArgs])
+    expect(paths().at(-1)).toBe(`DELETE ${P}/collections/${COL}/${ID}`)
+  })
+
+  it('several matches: exit 2, the hint says --many, nothing deleted', async () => {
+    answerFind([{_id: 'a'}, {_id: 'b'}])
+    const {error} = await runCommand(['db', 'delete', COL, '--filter', '{"status":"new"}', '--yes', ...globalArgs])
+    expect(error?.message).toContain('More than one record')
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(2)
+    expect(paths()).toEqual([`GET ${P}/collections/${COL}`])
+  })
+
+  it('no match: exit 5, nothing deleted', async () => {
+    answerFind([])
+    const {error} = await runCommand(['db', 'delete', COL, '--filter', '{"status":"gone"}', '--yes', ...globalArgs])
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(5)
+    expect(paths()).toHaveLength(1)
+  })
+
+  it('without --yes in a script: the read happens, the delete is refused with exit 3', async () => {
+    answerFind([{_id: ID}])
+    const {error} = await runCommand(['db', 'delete', COL, '--filter', '{"n":1}', ...globalArgs])
+    expect((error as {oclif?: {exit?: number}})?.oclif?.exit).toBe(3)
+    expect(paths()).toEqual([`GET ${P}/collections/${COL}`])
+  })
+
+  it('--dry-run sends nothing; an empty filter is still refused', async () => {
+    expect((await runCommand(['db', 'delete', COL, '--filter', '{"n":1}', '--dry-run', ...globalArgs])).error).toBeUndefined()
+    const empty = await runCommand(['db', 'delete', COL, '--filter', '{}', '--yes', ...globalArgs])
+    expect(empty.error?.message).toContain("matches every record")
+    expect(calls).toHaveLength(0)
+  })
+})
+
 describe('db update / delete of many records', () => {
   it('update --many sends the filter and the plain fields, without allRecords', async () => {
     expect(await bodyOf(['update', COL, '--many', '--filter', '{"status":"new"}', '--update', '{"status":"paid"}', '--yes'])).toEqual({
