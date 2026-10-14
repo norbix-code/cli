@@ -1039,6 +1039,13 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "db schema rules",
+    "supportsDryRun": false,
+  },
+  {
     "args": [
       "id",
     ],
