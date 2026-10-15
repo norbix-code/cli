@@ -2,6 +2,7 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 import {readJsonObject, SCHEMA_TRIGGER} from '../../../lib/database.js'
+import {triggerFromFile} from '../../../lib/triggers.js'
 
 export default class DbTriggerCreate extends BaseCommand {
   static description = `Create or update a schema trigger from a JSON file
@@ -45,10 +46,8 @@ action fails (--no-break-on-error turns it off). Both override the file.`
 
     const source = flags.file === '-' ? '-' : `@${flags.file}`
     const parsed = await readJsonObject(source, 'file')
-    // Accept the bare trigger or the whole request body ({"trigger": {...}}).
-    const fromFile = (
-      parsed.trigger && typeof parsed.trigger === 'object' ? parsed.trigger : parsed
-    ) as Record<string, unknown>
+    // The bare trigger, the request body or a `trigger <id> --json` answer.
+    const fromFile = triggerFromFile(parsed)
 
     const trigger: Record<string, unknown> = {type: SCHEMA_TRIGGER, ...fromFile}
     if (flags.schema) trigger.schemaId = flags.schema

@@ -386,6 +386,15 @@ describe('db trigger', () => {
     })
   })
 
+  it('create takes a `db trigger <id> --json` answer: item unwrapped, thenAction saved as action', async () => {
+    const {action, ...rest} = trigger as Record<string, unknown>
+    const read = join(dir, 'read-trigger.json')
+    writeFileSync(read, JSON.stringify({item: {...rest, thenAction: action}}))
+    expect(await bodyOf(['trigger', 'create', '--file', read])).toEqual({
+      trigger: {type: 'Schema', ...rest, action},
+    })
+  })
+
   it('create refuses a negative --order and sends nothing', async () => {
     const {error} = await runCommand(['db', 'trigger', 'create', '--file', TRIGGER_FILE, '--order', '-1', ...globalArgs])
     expect(error?.message).toMatch(/order/)

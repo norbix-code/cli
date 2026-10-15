@@ -219,6 +219,19 @@ describe('payments trigger save', () => {
     expect(body?.trigger).toMatchObject({type: 'Payments', name: 'Paid'})
   })
 
+  it('takes a `payments trigger <id> --json` answer: item unwrapped, thenAction saved as action', async () => {
+    const file = join(dir, 'read.json')
+    writeFileSync(file, JSON.stringify({item: {name: 'Paid', thenAction: {type: 'WebhookCall'}, events: ['invoice.paid']}}))
+    const {body} = await callOf(['trigger', 'save', '--file', file])
+    expect(body?.trigger).toEqual({
+      type: 'Payments',
+      when: 'OnWebhookCallReceived',
+      name: 'Paid',
+      action: {type: 'WebhookCall'},
+      events: ['invoice.paid'],
+    })
+  })
+
   it('lets the flags override the file', async () => {
     const {body} = await callOf([
       'trigger', 'save', '--file', triggerFile({order: 5}), '--id', ID,
