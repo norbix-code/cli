@@ -73,6 +73,7 @@ function docBefore(block, at) {
 export function methodsOf(block, label = 'module') {
   const methods = {}
   const problems = []
+  const forwarders = new Set()
   let sendsInMethods = 0
   for (const m of block.matchAll(SIGNATURE_RE)) {
     const name = m[1]
@@ -113,6 +114,10 @@ export function methodsOf(block, label = 'module') {
     }
 
     methods[name] = {http, path, dto: dtos[0], target}
+    // A deprecated forwarder may call the other host's route (4.28.0:
+    // hub.notifications.grantContactConsent → the API route); the host check
+    // below lets it through.
+    if (/@deprecated\b/.test(doc)) forwarders.add(name)
   }
 
   const sends = block.split(SEND).length - 1
@@ -120,7 +125,7 @@ export function methodsOf(block, label = 'module') {
     problems.push(`${label}: ${sends - sendsInMethods} send call(s) outside a method of the shape \`name = (request = {}, options = {}) => {\``)
   }
 
-  return {methods, problems}
+  return {methods, problems, forwarders}
 }
 
 /** `this.membership = new MembershipModule(transport)` inside a namespace class. */
@@ -235,10 +240,10 @@ export function sdkMethods(indexJs) {
         continue
       }
 
-      const {methods, problems: p} = methodsOf(block, `${target}.${moduleName}`)
+      const {methods, problems: p, forwarders} = methodsOf(block, `${target}.${moduleName}`)
       problems.push(...p)
       for (const [name, info] of Object.entries(methods)) {
-        if (info.target !== target) problems.push(`${target}.${moduleName}.${name}: sends to "${info.target}", not "${target}"`)
+        if (info.target !== target && !forwarders.has(name)) problems.push(`${target}.${moduleName}.${name}: sends to "${info.target}", not "${target}"`)
       }
 
       result[target][moduleName] = methods
