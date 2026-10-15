@@ -2076,6 +2076,45 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "payments disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "payments enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "payments integration",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "payments integration confirm-delivery",
+    "supportsDryRun": true,
+  },
+  {
     "args": [
       "id",
     ],
@@ -2084,7 +2123,19 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "yes:boolean",
       "dry-run:boolean",
     ],
-    "id": "payments disable",
+    "id": "payments integration delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "payments integration disable",
     "supportsDryRun": true,
   },
   {
@@ -2095,7 +2146,31 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [
       "dry-run:boolean",
     ],
-    "id": "payments enable",
+    "id": "payments integration enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "provider:option",
+      "name:string",
+      "id:string",
+      "disabled:boolean",
+      "config:string",
+    ],
+    "id": "payments integration save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "integration:string",
+    ],
+    "id": "payments integration test",
     "supportsDryRun": true,
   },
   {
@@ -2115,10 +2190,70 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "payments trigger delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "payments trigger disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "payments trigger enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file:string",
+      "id:string",
+      "event:string",
+      "integration:string",
+      "order:string",
+      "break-on-error:boolean",
+    ],
+    "id": "payments trigger save",
+    "supportsDryRun": true,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [],
     "id": "payments triggers",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "limit:string",
+    ],
+    "id": "payments webhook-log",
     "supportsDryRun": false,
   },
   {
