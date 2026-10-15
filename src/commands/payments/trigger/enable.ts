@@ -1,13 +1,13 @@
 import {Args} from '@oclif/core'
 
-import {BaseCommand} from '../../base.js'
+import {BaseCommand} from '../../../base.js'
 
-export default class PaymentsEnable extends BaseCommand {
-  static description = 'Enable a payment trigger'
+export default class PaymentsTriggerEnable extends BaseCommand {
+  static description = 'Turn a payment trigger on'
 
   static examples = [
-    '<%= config.bin %> payments enable 66b2f0a1c3d4e5f6a7b8c9d0',
-    '<%= config.bin %> payments enable 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
+    '<%= config.bin %> payments trigger enable 66b2f0a1c3d4e5f6a7b8c9d0',
+    '<%= config.bin %> payments trigger enable 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
   ]
 
   static args = {
@@ -19,10 +19,12 @@ export default class PaymentsEnable extends BaseCommand {
   }
 
   async run(): Promise<unknown> {
-    const {args, flags} = await this.parse(PaymentsEnable)
+    const {args, flags} = await this.parse(PaymentsTriggerEnable)
     const client = this.client(flags)
 
+    // The server sets the trigger type from the route (Payments).
     const res = await client.hub.payments.enablePaymentsTrigger({triggerId: args.id})
+
     this.print(`Trigger ${args.id} enabled.`)
     return res
   }

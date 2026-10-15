@@ -152,8 +152,6 @@ const files = {
   'src/commands/payments/integrations.ts': list('PaymentsIntegrations', 'List payment integrations', 'client.hub.payments.getPaymentsIntegrations', {example: 'payments integrations'}),
   'src/commands/payments/triggers.ts': list('PaymentsTriggers', 'List payment triggers', 'client.hub.payments.getPaymentsTriggers', {example: 'payments triggers'}),
   'src/commands/payments/trigger.ts': getById('PaymentsTrigger', 'Show one payment trigger', 'client.hub.payments.getPaymentsTrigger', {example: 'payments trigger 66b2f0a1...', argDesc: 'Trigger ID'}),
-  'src/commands/payments/enable.ts': action('PaymentsEnable', 'Enable a payment trigger', 'client.hub.payments.enablePaymentsTrigger', 'Trigger \${args.id} enabled.', {example: 'payments enable 66b2f0a1...', argDesc: 'Trigger ID', idField: 'triggerId'}),
-  'src/commands/payments/disable.ts': action('PaymentsDisable', 'Disable a payment trigger', 'client.hub.payments.disablePaymentsTrigger', 'Trigger \${args.id} disabled.', {example: 'payments disable 66b2f0a1...', argDesc: 'Trigger ID', idField: 'triggerId'}),
 }
 
 for (const [path, content] of Object.entries(files)) {
