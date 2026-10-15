@@ -131,6 +131,8 @@ describe('gen:fields reads SDK methods', () => {
           method('wrongDoc', ['POST /{version}/other', 'Request DTO: GetThings']),
           // sends to the wrong service for its namespace
           method('wrongTarget', ['GET /things', 'Request DTO: GetThings'], {target: 'api', path: '/things', method: 'GET'}),
+          // a deprecated forwarder to the other host's route is not a problem
+          method('forwarder', ['GET /things', 'Request DTO: GetThings', '@deprecated The route lives on the API.'], {target: 'api', path: '/things', method: 'GET'}),
           // a send call in a method of another shape
           `  async custom(body) {
     return this.transport.send({
@@ -156,7 +158,7 @@ describe('gen:fields reads SDK methods', () => {
       'hub.things.wrongTarget: sends to "api", not "hub"',
       'hub.gone: class GoneModule not found in dist/index.js',
     ])
-    expect(Object.keys(methods.hub.things)).toEqual(['ok', 'wrongTarget'])
+    expect(Object.keys(methods.hub.things)).toEqual(['ok', 'wrongTarget', 'forwarder'])
   })
 
   it('reads every method of the installed @norbix.ai/ts with no problem', () => {
