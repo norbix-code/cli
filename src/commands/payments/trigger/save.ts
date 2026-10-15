@@ -2,6 +2,7 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 import {ON_WEBHOOK_CALL_RECEIVED, PAYMENTS_TRIGGER, readJsonObject} from '../../../lib/payments.js'
+import {triggerFromFile} from '../../../lib/triggers.js'
 
 export default class PaymentsTriggerSave extends BaseCommand {
   static description = `Create or update a payment trigger from a JSON file
@@ -50,10 +51,8 @@ trigger's place in the queue of the same event.`
 
     const source = flags.file === '-' ? '-' : `@${flags.file}`
     const parsed = await readJsonObject(source, 'file')
-    // Accept the bare trigger or the whole request body ({"trigger": {...}}).
-    const fromFile = (
-      parsed.trigger && typeof parsed.trigger === 'object' ? parsed.trigger : parsed
-    ) as Record<string, unknown>
+    // The bare trigger, the request body or a `trigger <id> --json` answer.
+    const fromFile = triggerFromFile(parsed)
 
     const trigger: Record<string, unknown> = {type: PAYMENTS_TRIGGER, when: ON_WEBHOOK_CALL_RECEIVED, ...fromFile}
     if (flags.id) trigger.triggerId = flags.id
