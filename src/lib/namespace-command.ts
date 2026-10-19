@@ -24,6 +24,28 @@ next word). Force a type with --field:str, --field:num, --field:bool or
 --field:json. Or pass the whole request as JSON: --body '{"id":"..."}' (or
 --body - for stdin) — then no --field flags are allowed.`
 
+interface FlagShape {
+  type?: string
+  char?: string
+}
+
+/**
+ * The flag names oclif must parse, from the command's own flags plus the
+ * global ones (BaseCommand.baseFlags) — derived, so a new global flag
+ * (--host, --language, --prod) can never fall through to the request body.
+ */
+export function knownFlags(flags: Record<string, FlagShape>): {VALUE_FLAGS: Set<string>; BOOL_FLAGS: Set<string>} {
+  const VALUE_FLAGS = new Set<string>()
+  const BOOL_FLAGS = new Set<string>(['--json'])
+  for (const [name, flag] of Object.entries(flags)) {
+    const set = flag.type === 'boolean' ? BOOL_FLAGS : VALUE_FLAGS
+    set.add(`--${name}`)
+    if (flag.char) set.add(`-${flag.char}`)
+  }
+
+  return {VALUE_FLAGS, BOOL_FLAGS}
+}
+
 /**
  * Shared engine for `norbix hub ...` and `norbix api ...` — resolves the
  * module and method from plain words and calls the SDK.
@@ -37,8 +59,8 @@ export abstract class NamespaceCommand extends BaseCommand {
    * known global flags go to oclif, everything else goes to the dispatcher.
    */
   protected splitArgv(): {flagArgv: string[]; rest: string[]; help: boolean} {
-    const VALUE_FLAGS = new Set(['--project', '--env', '--region', '--api-key', '--account', '--profile', '--body'])
-    const BOOL_FLAGS = new Set(['--json', '--yes', '-y', '--dry-run'])
+    const ctor = this.constructor as typeof NamespaceCommand
+    const {VALUE_FLAGS, BOOL_FLAGS} = knownFlags({...BaseCommand.baseFlags, ...ctor.flags})
     const flagArgv: string[] = []
     const rest: string[] = []
     let help = false
@@ -60,6 +82,11 @@ export abstract class NamespaceCommand extends BaseCommand {
     }
 
     return {flagArgv, rest, help}
+  }
+
+  /** Discovery in `init` must see --host too, not fail on the request fields and skip. */
+  protected override discoveryArgv(): string[] {
+    return this.splitArgv().flagArgv
   }
 
   /** camelCase method → the plain-word form of this CLI (noun first, verb last). */

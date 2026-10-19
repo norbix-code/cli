@@ -372,13 +372,22 @@ export abstract class BaseCommand extends Command {
     const ctor = this.constructor as typeof BaseCommand
     if (!ctor.discoversHost) return
     let flags: GlobalFlags
+    // oclif's parse replaces this.argv with what it parsed; `run` needs the whole argv back.
+    const argv = this.argv
     try {
-      flags = (await this.parse(ctor as unknown as Parameters<typeof this.parse>[0])).flags as GlobalFlags
+      flags = (await this.parse(ctor as unknown as Parameters<typeof this.parse>[0], this.discoveryArgv())).flags as GlobalFlags
     } catch {
       return
+    } finally {
+      this.argv = argv
     }
 
     await this.prepareHost(flags)
+  }
+
+  /** The argv `init` parses to find the host; commands that split their own argv (hub, api) pass the global part only. */
+  protected discoveryArgv(): string[] {
+    return this.argv
   }
 
   /** Discover the host `flags` point at, so `resolveContext` knows its Hub. */
