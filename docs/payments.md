@@ -98,8 +98,9 @@ norbix payments integration save --provider Montonio --name "Montonio sandbox" -
 | `norbix payments order create --buyer <usr_…> --reference <ref> --key <key> --line <sku:qty:cents[:title]>... [--meta k=v]... [--currency EUR] [--price-version v1] [--file <json>]` | create an order for one buyer | `POST /orders` |
 | `norbix payments order checkout <id> --integration <id> --return-url <url> [--method <m>] [--country <cc>] [--provider <code>]` | start or reuse the checkout; answers the payment URL | `POST /orders/{Id}/checkout` |
 
-The price is yours: Norbix adds up the lines (whole cents, EUR) and never
-reads a price from the buyer. `--key` is the idempotency key: the same key with
+The price is yours: Norbix adds up the lines (whole cents, EUR — at least 1
+cent per unit) and never reads a price from the buyer. Every line needs a title;
+`--line` without one uses the sku. `--key` is the idempotency key: the same key with
 the same body returns the same order, with another body it is refused (409).
 Creating an order needs a key whose role has "Payments — full access" (or
 Administrator); a buyer can read and check out only their own orders.

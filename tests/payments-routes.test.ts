@@ -312,7 +312,7 @@ describe('payments order create', () => {
       currency: 'EUR',
       priceVersion: 'v1',
       lines: [
-        {sku: 'star-day', quantity: 21, unitAmountMinor: 30},
+        {sku: 'star-day', quantity: 21, unitAmountMinor: 30, title: 'star-day'},
         {sku: 'highlight-day', quantity: 7, unitAmountMinor: 30, title: 'Highlight'},
       ],
       metadata: {adId: 'ad_1042'},
@@ -333,6 +333,12 @@ describe('payments order create', () => {
       priceVersion: '2026-10-01',
       metadata: {adId: 'ad_1', promotion: 'stars'},
     })
+  })
+
+  it('refuses a 0-cent line (the server needs 1 cent or more)', async () => {
+    const {error} = await runCommand(['payments', 'order', 'create', '--line', 'star-day:21:0', ...globalArgs])
+    expect(error?.message).toMatch(/cents 1 or more/)
+    expect(calls).toHaveLength(0)
   })
 
   it('refuses a malformed --line before sending anything', async () => {
