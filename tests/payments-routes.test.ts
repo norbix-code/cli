@@ -12,11 +12,13 @@ import {envListAnswer} from './_env.js'
  * path of the request it sends. `fetch` is replaced, so nothing leaves the
  * process and no payment provider is contacted.
  *
+ * The order commands go to the Api host (same /v3 prefix), the rest to the Hub.
  * The inbound provider webhook (`POST /payments/webhooks/{acc}/{prj}/{source}/{int}`)
  * is called by Stripe & co., not by a person, so it has no command.
  */
 
 const ID = '66b2f0a1'
+const ORD = 'ord_2ToIiRM03X63TZaJ2dJdv2'
 
 interface Call {
   method: string
@@ -90,6 +92,12 @@ const routes: Array<[() => string[], string, string]> = [
   [() => ['trigger', 'enable', ID], 'PATCH', `${P}/triggers/${ID}/enable`],
   [() => ['trigger', 'disable', ID, '--yes'], 'PATCH', `${P}/triggers/${ID}/disable`],
   [() => ['trigger', 'delete', ID, '--yes'], 'DELETE', `${P}/triggers/${ID}`],
+
+  // Orders (Api host)
+  [() => ['orders'], 'GET', `${P}/orders`],
+  [() => ['order', ORD], 'GET', `${P}/orders/${ORD}`],
+  [() => ['order', 'create', '--buyer', 'usr_1', '--reference', 'ad-1', '--key', 'key-00000001', '--line', 'star-day:21:30'], 'POST', `${P}/orders`],
+  [() => ['order', 'checkout', ORD, '--integration', 'int_1', '--return-url', 'https://shop.example.com/paid'], 'POST', `${P}/orders/${ORD}/checkout`],
 ]
 
 describe('every payments command reaches its route', () => {
@@ -105,11 +113,11 @@ describe('every payments command reaches its route', () => {
   }
 })
 
-it('covers all 17 payments routes a person calls', () => {
-  // The manifest (sdks/typegen/coverage/endpoints.hub.json) lists 17 Payments
-  // entries and @norbix.ai/ts 4.28.0 has 17 payments methods; the 18th route,
-  // the inbound provider webhook, is called by the provider.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(17)
+it('covers all 21 payments routes a person calls', () => {
+  // The manifests (sdks/typegen/coverage/endpoints.{hub,api}.json) list 17 Hub
+  // and 4 Api Payments entries, the same as @norbix.ai/ts 4.29.0; the inbound
+  // provider webhook is called by the provider.
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(21)
 })
 
 /** Run a command and return the one request it sent. */
@@ -256,4 +264,102 @@ describe('payments trigger enable / disable / delete', () => {
       expect(call.path).toContain(`/triggers/${ID}`)
     })
   }
+})
+
+describe('payments trigger save --when', () => {
+  it('saves an order trigger with the Norbix order events', async () => {
+    const {body} = await callOf([
+      'trigger', 'save', '--file', triggerFile({events: undefined}), '--when', 'OnOrderPaymentChanged',
+      '--event', 'payments.order.refunded',
+    ])
+    expect(body?.trigger).toMatchObject({type: 'Payments', when: 'OnOrderPaymentChanged', events: ['payments.order.refunded']})
+  })
+
+  it('keeps the file\'s when unless --when is given', async () => {
+    const {body} = await callOf(['trigger', 'save', '--file', triggerFile({when: 'OnOrderPaid', events: []})])
+    expect(body?.trigger).toMatchObject({when: 'OnOrderPaid'})
+  })
+
+  it('refuses a trigger type the server does not fire', async () => {
+    const {error} = await runCommand(['payments', 'trigger', 'save', '--file', triggerFile(), '--when', 'OnOrderCreated', ...globalArgs])
+    expect(error?.message).toMatch(/Expected --when=OnOrderCreated to be one of/)
+    expect(calls).toHaveLength(0)
+  })
+})
+
+describe('payments integration save --provider Montonio', () => {
+  it('sends the Montonio keys from --config', async () => {
+    const {body} = await callOf([
+      'integration', 'save', '--provider', 'Montonio', '--name', 'Montonio',
+      '--config', '{"accessKey":"ak_1","secretKey":"sk_1","isSandbox":true}',
+    ])
+    expect(body).toEqual({
+      integration: {accessKey: 'ak_1', secretKey: 'sk_1', isSandbox: true, provider: 'Montonio', integrationName: 'Montonio', isEnabled: true},
+    })
+  })
+})
+
+describe('payments order create', () => {
+  it('turns the flags into the order body, EUR and v1 by default', async () => {
+    const {body} = await callOf([
+      'order', 'create', '--buyer', 'usr_1', '--reference', 'ad-1042', '--key', 'promo-1042-0001',
+      '--line', 'star-day:21:30', '--line', 'highlight-day:7:30:Highlight', '--meta', 'adId=ad_1042',
+    ])
+    expect(body).toEqual({
+      buyerUserId: 'usr_1',
+      merchantReference: 'ad-1042',
+      idempotencyKey: 'promo-1042-0001',
+      currency: 'EUR',
+      priceVersion: 'v1',
+      lines: [
+        {sku: 'star-day', quantity: 21, unitAmountMinor: 30},
+        {sku: 'highlight-day', quantity: 7, unitAmountMinor: 30, title: 'Highlight'},
+      ],
+      metadata: {adId: 'ad_1042'},
+    })
+  })
+
+  it('takes the body from --file and lets the flags override it', async () => {
+    const file = join(dir, 'order.json')
+    writeFileSync(file, JSON.stringify({
+      buyerUserId: 'usr_file', merchantReference: 'ref-file', idempotencyKey: 'key-file-0001', currency: 'EUR',
+      priceVersion: '2026-10-01', lines: [{sku: 'star-day', title: 'Star × day', quantity: 21, unitAmountMinor: 30}],
+      metadata: {adId: 'ad_1'},
+    }))
+    const {body} = await callOf(['order', 'create', '--file', `@${file}`, '--reference', 'ref-flag', '--meta', 'promotion=stars'])
+    expect(body).toMatchObject({
+      buyerUserId: 'usr_file',
+      merchantReference: 'ref-flag',
+      priceVersion: '2026-10-01',
+      metadata: {adId: 'ad_1', promotion: 'stars'},
+    })
+  })
+
+  it('refuses a malformed --line before sending anything', async () => {
+    const {error} = await runCommand(['payments', 'order', 'create', '--line', 'star-day:zero:30', ...globalArgs])
+    expect(error?.message).toMatch(/must be sku:quantity:unitCents/)
+    expect(calls).toHaveLength(0)
+  })
+})
+
+describe('payments orders / order / checkout', () => {
+  it('orders sends the filters as query parameters', async () => {
+    const call = await callOf(['orders', '--buyer', 'usr_1', '--reference', 'ad-1', '--status', 'Paid'])
+    expect(Object.fromEntries(call.query)).toMatchObject({buyerUserId: 'usr_1', merchantReference: 'ad-1', status: 'Paid'})
+  })
+
+  it('checkout sends the integration, the return URL and the options in the body', async () => {
+    const call = await callOf([
+      'order', 'checkout', ORD, '--integration', 'int_1', '--return-url', 'https://shop.example.com/paid',
+      '--method', 'bankLink', '--country', 'LT',
+    ])
+    expect(call.path).toBe(`${P}/orders/${ORD}/checkout`)
+    expect(call.body).toMatchObject({integrationId: 'int_1', returnUrl: 'https://shop.example.com/paid', method: 'bankLink', preferredCountry: 'LT'})
+  })
+
+  it('checkout needs --integration and --return-url', async () => {
+    const {error} = await runCommand(['payments', 'order', 'checkout', ORD, ...globalArgs])
+    expect(error?.message).toMatch(/Missing required flag/)
+    expect(calls).toHaveLength(0)
+  })
 })
