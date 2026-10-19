@@ -74,7 +74,7 @@ const routes: Array<[string[], string, string]> = [
   [['integration', 'default', ID], 'PUT', `${P}/integrations/${ID}/default`],
   [['integration', 'delete', ID, '--yes'], 'DELETE', `${P}/integrations/${ID}`],
   [['integration', 'test', '--integration', ID, '--token', 'dGVzdA==', '--family', 'Ios'], 'POST', `${P}/integrations/test`],
-  [['integration', 'save', '--provider', 'Fake'], 'POST', `${P}/integrations`],
+  [['integration', 'save', '--provider', 'Sandbox'], 'POST', `${P}/integrations`],
   [['integration', 'confirm-delivery', ID], 'POST', `${P}/integrations/confirm-human-delivery`],
 
   // Devices
@@ -148,8 +148,8 @@ async function bodyOf(argv: string[]): Promise<Record<string, unknown>> {
 }
 
 describe('push integration save', () => {
-  it('saves the Fake provider with nothing else needed', async () => {
-    const body = await bodyOf(['integration', 'save', '--provider', 'Fake'])
+  it('saves the Sandbox provider with nothing else needed — sent as the API value Fake', async () => {
+    const body = await bodyOf(['integration', 'save', '--provider', 'Sandbox'])
     // `provider` is the discriminator the server routes the body by.
     expect(body).toEqual({integration: {provider: 'Fake', integrationName: '', isEnabled: true}})
   })
@@ -159,7 +159,7 @@ describe('push integration save', () => {
       'integration',
       'save',
       '--provider',
-      'Fake',
+      'Sandbox',
       '--id',
       ID,
       '--disabled',
@@ -167,6 +167,12 @@ describe('push integration save', () => {
       '{"provider":"AppleApns","note":"x"}',
     ])
     expect(body).toEqual({integration: {provider: 'Fake', note: 'x', integrationId: ID, integrationName: '', isEnabled: false}})
+  })
+
+  it('offers Sandbox, not the API value Fake, as the provider name', async () => {
+    const {error} = await runCommand(['push', 'integration', 'save', '--provider', 'Fake', ...globalArgs])
+    expect(error?.message).toMatch(/Expected --provider=Fake to be one of: Sandbox, /)
+    expect(calls).toHaveLength(0)
   })
 
   it('rejects a provider the server does not know', async () => {

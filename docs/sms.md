@@ -6,7 +6,7 @@ Every command is covered by `tests/sms-routes.test.ts`, which runs it through
 the real SDK with `fetch` replaced and checks the verb and path it sends (so a
 wrong route token fails a test). `tests/sms.test.ts` and
 `tests/sms-existing.test.ts` also check the request fields. No test contacts an
-SMS provider; the only provider a test saves is **Fake**.
+SMS provider; the only provider a test saves is **Sandbox** (API value `Fake`).
 
 All paths below are under `/{version}/notifications/sms`.
 
@@ -36,16 +36,16 @@ first two, for scripts that treat every module alike.
 | `norbix sms integration test --integration <id> [--to <phone>]` | send a test SMS | `POST /integrations/test` |
 | `norbix sms integration confirm-delivery <id>` | confirm the test SMS reached a person | `POST /integrations/confirm-human-delivery` |
 
-`--provider` is one of `Fake`, `Twilio`, `Vonage`, `Plivo`, `Telnyx`, `Bird`,
-`Telesign`, `Sinch`. **Fake** needs nothing else: it accepts every send and
+`--provider` is one of `Sandbox`, `Twilio`, `Vonage`, `Plivo`, `Telnyx`, `Bird`,
+`Telesign`, `Sinch`. **Sandbox** (sent to the API as `Fake`) needs nothing else: it accepts every send and
 contacts no SMS service, so nothing reaches a real phone — use it while you
-develop. A project can hold one Fake and it has no update path: delete it and
+develop. A project can hold one Sandbox and it has no update path: delete it and
 add it again. The real providers need their credentials: put the
 provider-specific fields in `--config` as a JSON object (inline, `@file.json`,
 or `-` for stdin).
 
 ```bash
-norbix sms integration save --provider Fake
+norbix sms integration save --provider Sandbox
 norbix sms integration save --provider Twilio --name Twilio --config @twilio.json
 norbix sms integration test --integration int_123 --to +37060000000
 norbix sms integration confirm-delivery int_123

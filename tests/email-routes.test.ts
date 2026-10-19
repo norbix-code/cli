@@ -66,7 +66,7 @@ const routes: Array<[string[], string, string]> = [
   // Integrations
   [['integrations'], 'GET', `${P}/integrations`],
   [['integration', ID], 'GET', `${P}/integrations/${ID}`],
-  [['integration', 'save', '--provider', 'Fake'], 'POST', `${P}/integrations`],
+  [['integration', 'save', '--provider', 'Sandbox'], 'POST', `${P}/integrations`],
   [['integration', 'enable', ID], 'PUT', `${P}/integrations/${ID}/enable`],
   [['integration', 'disable', ID, '--yes'], 'PUT', `${P}/integrations/${ID}/disable`],
   [['integration', 'default', ID], 'PUT', `${P}/integrations/${ID}/default`],
@@ -156,8 +156,8 @@ async function bodyOf(argv: string[]): Promise<Record<string, unknown>> {
 }
 
 describe('email integration save', () => {
-  it('saves the Fake provider with nothing else needed', async () => {
-    const body = await bodyOf(['integration', 'save', '--provider', 'Fake'])
+  it('saves the Sandbox provider with nothing else needed — sent as the API value Fake', async () => {
+    const body = await bodyOf(['integration', 'save', '--provider', 'Sandbox'])
     // `provider` is the discriminator the server routes the body by; the Fake
     // needs no payload (Hub.Emails/Integrations/Save.Fake.cs builds its own
     // name, sender and address).
@@ -221,6 +221,12 @@ describe('email integration save', () => {
     calls.length = 0
     const flag = await bodyOf(['integration', 'save', '--provider', 'Smtp', '--id', 'int_other', '--config', `{"viewId":"${ID}"}`])
     expect(flag.integration).toMatchObject({integrationId: 'int_other'})
+  })
+
+  it('offers Sandbox, not the API value Fake, as the provider name', async () => {
+    const {error} = await runCommand(['email', 'integration', 'save', '--provider', 'Fake', ...globalArgs])
+    expect(error?.message).toMatch(/Expected --provider=Fake to be one of: Sandbox, /)
+    expect(calls).toHaveLength(0)
   })
 
   it('rejects a provider the server does not know', async () => {

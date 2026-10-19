@@ -72,7 +72,7 @@ const routes: Array<[string[], string, string]> = [
   [['integration', 'default', ID], 'PUT', `${P}/integrations/${ID}/default`],
   [['integration', 'delete', ID, '--yes'], 'DELETE', `${P}/integrations/${ID}`],
   [['integration', 'test', '--integration', ID, '--to', PHONE], 'POST', `${P}/integrations/test`],
-  [['integration', 'save', '--provider', 'Fake'], 'POST', `${P}/integrations`],
+  [['integration', 'save', '--provider', 'Sandbox'], 'POST', `${P}/integrations`],
   [['integration', 'confirm-delivery', ID], 'POST', `${P}/integrations/confirm-human-delivery`],
 
   // Templates
@@ -137,8 +137,8 @@ async function bodyOf(argv: string[]): Promise<Record<string, unknown>> {
 }
 
 describe('sms integration save', () => {
-  it('saves the Fake provider with nothing else needed', async () => {
-    const body = await bodyOf(['integration', 'save', '--provider', 'Fake'])
+  it('saves the Sandbox provider with nothing else needed — sent as the API value Fake', async () => {
+    const body = await bodyOf(['integration', 'save', '--provider', 'Sandbox'])
     // `provider` is the discriminator the server routes the body by; the Fake
     // needs no payload (Hub.Sms/Integrations/Save.Fake.cs).
     expect(body).toEqual({integration: {provider: 'Fake', integrationName: '', isEnabled: true}})
@@ -152,6 +152,12 @@ describe('sms integration save', () => {
     expect(body).toEqual({
       integration: {provider: 'Twilio', accountSid: 'AC1', integrationId: ID, integrationName: 'Twilio', isEnabled: false},
     })
+  })
+
+  it('offers Sandbox, not the API value Fake, as the provider name', async () => {
+    const {error} = await runCommand(['sms', 'integration', 'save', '--provider', 'Fake', ...globalArgs])
+    expect(error?.message).toMatch(/Expected --provider=Fake to be one of: Sandbox, /)
+    expect(calls).toHaveLength(0)
   })
 
   it('rejects a provider the server does not know', async () => {

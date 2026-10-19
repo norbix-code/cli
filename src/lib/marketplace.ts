@@ -163,7 +163,7 @@ export function runCorrelationWithDetails(run: unknown): string | undefined {
 }
 
 /**
- * `runs --details` for the terminal: each row as JSON (a Fake-vendor `input`
+ * `runs --details` for the terminal: each row as JSON (a Sandbox-vendor `input`
  * pretty-printed under it, as without --details), then its log lines — one line
  * each (time, level, event code, title) with `meta` indented — or the note.
  */

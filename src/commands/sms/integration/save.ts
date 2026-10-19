@@ -1,30 +1,31 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
+import {providerFlag} from '../../../lib/providers.js'
 import {readJsonObject} from '../../../lib/sms.js'
 
-/** The provider names the server's integration converter accepts. */
-const PROVIDERS = ['Fake', 'Twilio', 'Vonage', 'Plivo', 'Telnyx', 'Bird', 'Telesign', 'Sinch']
+/** The real provider names the server's integration converter accepts (Sandbox is added by providerFlag). */
+const PROVIDERS = ['Twilio', 'Vonage', 'Plivo', 'Telnyx', 'Bird', 'Telesign', 'Sinch']
 
 export default class SmsIntegrationSave extends BaseCommand {
   static description = `Create or update an SMS integration
 
---provider picks the body shape. Fake needs nothing else: it accepts every send
-and contacts no SMS service, so use it while you develop (one Fake per project,
+--provider picks the body shape. Sandbox needs nothing else: it accepts every send
+and contacts no SMS service, so use it while you develop (one Sandbox per project,
 no update — delete and add it again). The real providers need their
 credentials — put the provider-specific fields in --config (inline JSON,
 @file.json, or - for stdin). Pass --id to update an existing integration.`
 
   static examples = [
-    '<%= config.bin %> sms integration save --provider Fake',
+    '<%= config.bin %> sms integration save --provider Sandbox',
     '<%= config.bin %> sms integration save --provider Twilio --name Twilio --config @twilio.json',
-    '<%= config.bin %> sms integration save --provider Fake --dry-run',
+    '<%= config.bin %> sms integration save --provider Sandbox --dry-run',
   ]
 
   static flags = {
     ...BaseCommand.dryRunFlags,
-    provider: Flags.string({required: true, description: 'SMS provider', options: PROVIDERS}),
-    name: Flags.string({description: 'Integration name (Fake ignores it and uses its own)'}),
+    provider: providerFlag('SMS', PROVIDERS),
+    name: Flags.string({description: 'Integration name (Sandbox ignores it and uses its own)'}),
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),
     disabled: Flags.boolean({description: 'Save it turned off', default: false}),
     config: Flags.string({description: 'Provider-specific fields as a JSON object, @file or -'}),
