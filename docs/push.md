@@ -6,7 +6,7 @@ Every command is covered by `tests/push-routes.test.ts`, which runs it through
 the real SDK with `fetch` replaced and checks the verb and path it sends (so a
 wrong route token fails a test). `tests/push.test.ts` and
 `tests/push-existing.test.ts` also check the request fields. No test contacts a
-push provider; the only provider a test saves is **Fake**.
+push provider; the only provider a test saves is **Sandbox** (API value `Fake`).
 
 All paths below are under `/{version}/notifications/push`.
 
@@ -33,15 +33,15 @@ All paths below are under `/{version}/notifications/push`.
 | `norbix push integration test --integration <id> [--token <t>] [--family <f>]` | send a test push | `POST /integrations/test` |
 | `norbix push integration confirm-delivery <id>` | confirm the test push reached a person | `POST /integrations/confirm-human-delivery` |
 
-`--provider` is one of `Fake`, `AppleApns`, `AndroidFirebase`, `SafariPush`,
-`ChromeWeb`, `FirefoxWeb`, `EdgeWeb`, `ChromePush`. **Fake** needs nothing else:
+`--provider` is one of `Sandbox`, `AppleApns`, `AndroidFirebase`, `SafariPush`,
+`ChromeWeb`, `FirefoxWeb`, `EdgeWeb`, `ChromePush`. **Sandbox** (sent to the API as `Fake`) needs nothing else:
 it accepts every send and contacts no push service, so nothing reaches a real
 device — use it while you develop. The real providers need their credentials:
 put the provider-specific fields in `--config` as a JSON object (inline,
 `@file.json`, or `-` for stdin).
 
 ```bash
-norbix push integration save --provider Fake
+norbix push integration save --provider Sandbox
 norbix push integration save --provider AndroidFirebase --name Android --config @firebase.json
 norbix push integration test --integration int_123 --token dGVzdA== --family Ios
 norbix push integration confirm-delivery int_123

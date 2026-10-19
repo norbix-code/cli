@@ -1,17 +1,18 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
+import {providerFlag} from '../../../lib/providers.js'
 import {readJsonObject} from '../../../lib/email.js'
 
-/** The provider names the server's integration converter accepts. */
-const PROVIDERS = ['Fake', 'Smtp', 'SendGrid', 'MailGun', 'AwsSes']
+/** The real provider names the server's integration converter accepts (Sandbox is added by providerFlag). */
+const PROVIDERS = ['Smtp', 'SendGrid', 'MailGun', 'AwsSes']
 
 export default class EmailIntegrationSave extends BaseCommand {
   static description = `Create or update an email integration
 
---provider picks the body shape. Fake needs nothing else: it accepts every send
+--provider picks the body shape. Sandbox needs nothing else: it accepts every send
 and contacts no mail service, so nothing reaches a real inbox — use it while you
-develop (one Fake per project, no update — delete and add it again). The real
+develop (one Sandbox per project, no update — delete and add it again). The real
 providers need a sender (--from) and their credentials: put the
 provider-specific fields in --config (inline JSON, @file.json, or - for stdin).
 Pass --id to update an existing integration. The output of \`email integration
@@ -19,18 +20,18 @@ get\` can be fed back as --config (bare or wrapped in {"integration": …}): its
 viewId picks the integration to update, so no second one is created.`
 
   static examples = [
-    '<%= config.bin %> email integration save --provider Fake',
+    '<%= config.bin %> email integration save --provider Sandbox',
     '<%= config.bin %> email integration save --provider SendGrid --name SendGrid --from hello@example.com --config @sendgrid.json',
-    '<%= config.bin %> email integration save --provider Fake --dry-run',
+    '<%= config.bin %> email integration save --provider Sandbox --dry-run',
     '<%= config.bin %> email integration save --provider SendGrid --config @integration-from-get.json',
   ]
 
   static flags = {
     ...BaseCommand.dryRunFlags,
-    provider: Flags.string({required: true, description: 'Email provider', options: PROVIDERS}),
-    name: Flags.string({description: 'Integration name (Fake ignores it and uses its own)'}),
+    provider: providerFlag('Email', PROVIDERS),
+    name: Flags.string({description: 'Integration name (Sandbox ignores it and uses its own)'}),
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),
-    from: Flags.string({description: 'Sender e-mail address (Fake ignores it)'}),
+    from: Flags.string({description: 'Sender e-mail address (Sandbox ignores it)'}),
     'sender-name': Flags.string({description: 'Sender display name'}),
     disabled: Flags.boolean({description: 'Save it turned off', default: false}),
     config: Flags.string({description: 'Provider-specific fields as a JSON object, @file or -'}),

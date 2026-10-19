@@ -61,7 +61,7 @@ export async function readPayload(flags: {payload?: string; 'payload-file'?: str
 }
 
 /**
- * `code runs` for the terminal. A run through the Fake provider carries
+ * `code runs` for the terminal. A run through the Sandbox (Fake) provider carries
  * `input` — the envelope the function received, `context.runAs.accessToken`
  * masked, cut at 64 KB. It is printed under the run's row as pretty JSON (as
  * it came when the cut left it unparsable); every other field stays in the

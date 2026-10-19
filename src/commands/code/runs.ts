@@ -6,7 +6,7 @@ import {formatRuns} from '../../lib/code.js'
 export default class CodeRuns extends BaseCommand {
   static description = `The last cloud-function runs of a trigger or a scheduler task
 
-Newest first: when it fired, the event, whether it succeeded, the status code, the duration in ms, the error and the provider's request id. A run through the Fake provider also carries input — the envelope the function received, context.runAs.accessToken masked, cut at 64 KB — printed as JSON under its row (a string with --json). The same list as the Last runs panel of the trigger's or task's edit screen.`
+Newest first: when it fired, the event, whether it succeeded, the status code, the duration in ms, the error and the provider's request id. A run through the Sandbox provider (API value Fake) also carries input — the envelope the function received, context.runAs.accessToken masked, cut at 64 KB — printed as JSON under its row (a string with --json). The same list as the Last runs panel of the trigger's or task's edit screen.`
 
   static examples = [
     '<%= config.bin %> code runs --trigger trg_1p4R3gTobGZpD6fXvHT4rd',

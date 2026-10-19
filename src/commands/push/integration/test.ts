@@ -5,7 +5,7 @@ import {BaseCommand} from '../../../base.js'
 export default class PushIntegrationTest extends BaseCommand {
   static description = `Send a test push through an integration
 
-Point this at the Fake integration while you are developing — it accepts the
+Point this at the Sandbox integration while you are developing — it accepts the
 send and contacts no push service, so nothing reaches a real device.`
 
   static examples = [

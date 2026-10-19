@@ -7,7 +7,7 @@ Every command is covered by `tests/email-routes.test.ts`, which runs it through
 the real SDK with `fetch` replaced and checks the verb and path it sends (so a
 wrong route token fails a test). `tests/email.test.ts` and
 `tests/email-existing.test.ts` also check the request fields. No test contacts
-a mail service; the only provider a test saves is **Fake**.
+a mail service; the only provider a test saves is **Sandbox** (API value `Fake`).
 
 All paths below are under `/{version}/notifications/email`, except
 `campaign messages` (the gateway spells that route `/notifications/emails/…`).
@@ -39,16 +39,15 @@ first two, for scripts that treat every module alike.
 | `norbix email integration confirm-delivery <id>` | confirm the test e-mail reached a person | `POST /integrations/confirm-human-delivery` |
 | `norbix email integration domain-health <id>` | check SPF / DKIM / DMARC of the sending domain (read only) | `POST /integrations/domain-health` |
 
-`--provider` is one of `Fake`, `Smtp`, `SendGrid`, `MailGun`, `AwsSes`. **Fake**
-needs nothing else: it accepts every send and contacts no mail service, so
+`--provider` is one of `Sandbox`, `Smtp`, `SendGrid`, `MailGun`, `AwsSes`. **Sandbox** (sent to the API as `Fake`) needs nothing else: it accepts every send and contacts no mail service, so
 nothing reaches a real inbox — use it while you develop. A project can hold one
-Fake and it has no update path: delete it and add it again. The real providers
+Sandbox and it has no update path: delete it and add it again. The real providers
 need a sender (`--from`) and their credentials: put the provider-specific
 fields in `--config` as a JSON object (inline, `@file.json`, or `-` for stdin)
 so a key does not land in your shell history.
 
 ```bash
-norbix email integration save --provider Fake
+norbix email integration save --provider Sandbox
 norbix email integration save --provider SendGrid --name SendGrid --from hello@example.com --config @sendgrid.json
 norbix email integration test --integration int_123 --to dev@example.com
 norbix email integration confirm-delivery int_123
