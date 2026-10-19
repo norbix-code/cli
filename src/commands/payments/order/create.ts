@@ -7,7 +7,8 @@ export default class PaymentsOrderCreate extends BaseCommand {
   static description = `Create a payment order for one buyer
 
 The price is yours: give each line as --line sku:quantity:unitCents[:title]
-(repeat for several); Norbix adds up the total in cents. --key is the
+(repeat for several; without a title the sku is used as the title); Norbix
+adds up the total in cents. --key is the
 idempotency key (8 characters or more): the same key with the same body
 returns the same order, the same key with another body is refused. Needs a
 key whose role may create orders (Payments — full access, or Administrator).

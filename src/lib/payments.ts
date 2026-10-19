@@ -48,16 +48,17 @@ export const PAYMENT_PROVIDERS = [
 
 /**
  * One order line from `--line sku:quantity:unitCents[:title]` — e.g. `star-day:21:30`.
+ * The server requires a title on every line: without one, the sku is the title.
  * A title with spaces goes in --file instead.
  */
 export function parseOrderLine(raw: string): {sku: string; quantity: number; unitAmountMinor: number; title?: string} {
   const [sku, quantity, unit, ...title] = raw.split(':')
   const q = Number(quantity)
   const u = Number(unit)
-  if (!sku || !Number.isInteger(q) || q < 1 || !Number.isInteger(u) || u < 0) {
-    throw new Error(`--line "${raw}" must be sku:quantity:unitCents[:title], e.g. star-day:21:30 (quantity 1 or more, cents 0 or more)`)
+  if (!sku || !Number.isInteger(q) || q < 1 || !Number.isInteger(u) || u < 1) {
+    throw new Error(`--line "${raw}" must be sku:quantity:unitCents[:title], e.g. star-day:21:30 (quantity 1 or more, cents 1 or more)`)
   }
-  return title.length > 0 ? {sku, quantity: q, unitAmountMinor: u, title: title.join(':')} : {sku, quantity: q, unitAmountMinor: u}
+  return {sku, quantity: q, unitAmountMinor: u, title: title.length > 0 ? title.join(':') : sku}
 }
 
 /** `--meta key=value` (repeatable) → a string map. */
