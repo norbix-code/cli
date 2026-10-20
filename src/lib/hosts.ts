@@ -463,7 +463,7 @@ export async function fetchProjectRegion(
  */
 export const PROJECT_ENVS_TTL_MS = 5 * 60 * 1000
 
-type ProjectEnvs = Record<string, {environments: string[]; fetchedAt: string}>
+type ProjectEnvs = Record<string, {environments: string[]; fetchedAt: string; promotionOrder?: string[]}>
 
 function projectEnvsPath(hubKey: string): string {
   return join(HOSTS_DIR, `${hubKey}.envs.json`)
@@ -477,10 +477,26 @@ export function cachedProjectEnvs(hubKey: string, projectId: string, now = Date.
   return age >= 0 && age < PROJECT_ENVS_TTL_MS ? entry.environments : undefined
 }
 
-export function saveProjectEnvs(hubKey: string, projectId: string, environments: string[], now = Date.now()): void {
+export function saveProjectEnvs(
+  hubKey: string,
+  projectId: string,
+  environments: string[],
+  now = Date.now(),
+  promotionOrder?: string[],
+): void {
   const all = readJson<ProjectEnvs>(projectEnvsPath(hubKey)) ?? {}
-  all[projectId] = {environments, fetchedAt: new Date(now).toISOString()}
+  all[projectId] = {environments, fetchedAt: new Date(now).toISOString(), ...(promotionOrder ? {promotionOrder} : {})}
   writeJson(projectEnvsPath(hubKey), all)
+}
+
+/**
+ * The cached promotion ladder of a project (lowest → PROD), while the env list
+ * is fresh; undefined when the Hub sent none (older gateways) or nothing is cached.
+ */
+export function cachedPromotionOrder(hubKey: string, projectId: string, now = Date.now()): string[] | undefined {
+  if (!cachedProjectEnvs(hubKey, projectId, now)) return undefined
+  const order = readJson<ProjectEnvs>(projectEnvsPath(hubKey))?.[projectId]?.promotionOrder
+  return Array.isArray(order) && order.length > 0 ? order : undefined
 }
 
 /** Drop the cached environments of a project (after `env` commands or an env error). */

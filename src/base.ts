@@ -2,12 +2,13 @@ import {Norbix} from '@norbix.ai/ts'
 import {Command, Flags, ux} from '@oclif/core'
 
 import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
-import {checkEnv, envsOf, type EnvSource} from './lib/env-rule.js'
+import {checkEnv, envsOf, promotionOrderOf, type EnvSource} from './lib/env-rule.js'
 import {EXIT} from './lib/exit-codes.js'
 import {
   DEFAULT_HOST,
   cachedHost,
   cachedProjectEnvs,
+  cachedPromotionOrder,
   cachedProjectRegion,
   forgetProjectEnvs,
   saveProjectEnvs,
@@ -34,6 +35,7 @@ import {
   type Session,
 } from './lib/profiles.js'
 import {SessionRefresher} from './lib/session-auth.js'
+import {PROMOTED_CONTENT_COMMANDS, lowerEnvOf, promotionHint} from './lib/promotion.js'
 import {readStore, type StoredConfig} from './lib/store.js'
 
 /** One link of the SDK's transport middleware chain. */
@@ -658,7 +660,7 @@ export abstract class BaseCommand extends Command {
   /** Remember a freshly read environment list of the project (`env list`). */
   protected rememberEnvs(ctx: ResolvedContext, response: unknown): void {
     const envs = envsOf(response)
-    if (ctx.projectId && envs) saveProjectEnvs(ctx.hubKey, ctx.projectId, envs)
+    if (ctx.projectId && envs) saveProjectEnvs(ctx.hubKey, ctx.projectId, envs, Date.now(), promotionOrderOf(response))
   }
 
   /** The env rule ran once in this process (one check per command). */
@@ -674,10 +676,13 @@ export abstract class BaseCommand extends Command {
     this.envChecked ??= (async () => {
       if (!ctx.projectId) return
       let envs = cachedProjectEnvs(ctx.hubKey, ctx.projectId)
+      let order = envs ? cachedPromotionOrder(ctx.hubKey, ctx.projectId) : undefined
       if (!envs && !dryRun) {
         try {
-          envs = envsOf(await client().hub.environments.list())
-          if (envs) saveProjectEnvs(ctx.hubKey, ctx.projectId, envs)
+          const answer = await client().hub.environments.list()
+          envs = envsOf(answer)
+          order = promotionOrderOf(answer)
+          if (envs) saveProjectEnvs(ctx.hubKey, ctx.projectId, envs, Date.now(), order)
         } catch (error) {
           // The sign-in ended, the Hub is down: let the command itself report it.
           const raw = (error as {raw?: unknown}).raw
@@ -688,8 +693,31 @@ export abstract class BaseCommand extends Command {
 
       const verdict = checkEnv(dryRun && !envs ? ['PROD'] : envs, {env: ctx.env, source: ctx.envSource})
       if (verdict.notice) process.stderr.write(verdict.notice + '\n')
+      this.promotionHintLine = this.promotionHintFor(ctx.env, envs, order)
     })()
     return this.envChecked
+  }
+
+  /** The promotion hint of this run (a content write into an env with a lower one), printed once after the call. */
+  private promotionHintLine?: string
+
+  /**
+   * "PROD is promoted from TEST — make the change in TEST and run `norbix env
+   * promote --from TEST --to PROD`" for a command that writes promoted content
+   * (src/lib/promotion.ts) into an env that has a lower one; else undefined.
+   */
+  private promotionHintFor(env: string | undefined, envs: string[] | undefined, order: string[] | undefined): string | undefined {
+    if (!this.id || !PROMOTED_CONTENT_COMMANDS.has(this.id) || !envs || envs.length < 2) return undefined
+    const target = (env ?? 'PROD').toUpperCase()
+    const lower = lowerEnvOf(target, order, envs)
+    return lower ? promotionHint(target, lower) : undefined
+  }
+
+  /** Print the promotion hint on stderr (stdout stays one JSON document), once. */
+  private printPromotionHint(): void {
+    if (!this.promotionHintLine) return
+    process.stderr.write(`Note: ${this.promotionHintLine}\n`)
+    this.promotionHintLine = undefined
   }
 
   /** One warning per deprecated setting and run, on stderr (stdout stays one JSON document). */
@@ -807,7 +835,9 @@ export abstract class BaseCommand extends Command {
     if (!noProject && opts.account !== true) {
       middleware.push(async (call) => {
         if (!isEnvManagementCall(call.url)) await this.checkProjectEnv(ctx, () => client, Boolean(flags['dry-run']))
-        return call.next()
+        const response = await call.next()
+        if (response.ok) this.printPromotionHint()
+        return response
       })
     }
 
@@ -981,6 +1011,7 @@ export abstract class BaseCommand extends Command {
       }
       if (this.jsonEnabled()) this.logJson(report)
       else this.printDryRun(report)
+      this.printPromotionHint()
       // The Hub said the input is wrong: the report is printed, the exit code says "would fail" (6).
       if (this.dryRunValidation?.valid === false) {
         const invalid = new Error('dry run: the Hub rejected the input') as Error & {oclif?: {exit?: number}; skipOclifErrorHandling?: boolean}
