@@ -155,7 +155,12 @@
         }
       },
       "env": {
-        "description": "Manage project environments (PROD, TEST, ...)"
+        "description": "Project environments (PROD, TEST, ...): list, pick a default, promote TEST → PROD, roll back, repair built-ins",
+        "subtopics": {
+          "built-ins": {
+            "description": "PROD's built-in templates, footer and signature in every environment"
+          }
+        }
       },
       "files": {
         "description": "Upload, download and manage files",
