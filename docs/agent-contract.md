@@ -137,6 +137,10 @@ command that makes several calls (`files upload`) shows the first.
   `insert`, `update --id`, `replace`, `archive`, `unarchive`, `clone`,
   `enable`, `invite`, `unblock`, `upload`, `publish`, `unpublish`,
   `config set / unset`, `env use`, `logout`, `raw`.
+- **Preview by default** (`env promote`, `env rollback`, `env built-ins repair`):
+  without `--yes` they ask the Hub for the plan and change nothing — here
+  `--dry-run` is that preview (the request is sent with `dryRun: true`), not
+  "send nothing". `--yes` runs them for real.
 - **Read-only**: everything else; no `--yes`, no `--dry-run`.
 
 ## 6. Shared code

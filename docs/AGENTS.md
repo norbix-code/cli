@@ -68,8 +68,30 @@ A project always has PROD and may have more (TEST, STAGING, …). Check first:
   on stderr. Read that line.
 - Account commands (no project) and `norbix env …` are not checked.
 
-The list of environments is cached for 5 minutes per project; `env list /
-use / delete` and an "environment does not exist" error refresh it.
+The list of environments (and the promotion ladder, `promotionOrder`) is
+cached for 5 minutes per project; `env list / use / delete` and an
+"environment does not exist" error refresh it.
+
+### Environments: build in TEST, promote to PROD
+
+Never build PROD by hand when the project has a lower env. Schemas,
+taxonomies, terms, templates, footers, signatures and triggers are made in TEST
+and promoted:
+
+1. `norbix env promote --from TEST --to PROD --json` — a preview (the
+   default), nothing changes. Show the user `summary`, `items` (deleted ones
+   with `recordCount`), `integrations` (`action`, `warning`, `realSender`) and
+   `notPromoted`.
+2. After the user agreed: the same command with `--yes`
+   (`--seed / --skip / --map id=targetId` only for integrations the user
+   decided; `--confirm-record-loss` only when `requiresConfirmation` is true and
+   the user accepts it — exit 3 `CM-ERRORS-ENVIRONMENTS-013` means it was missing).
+3. Keep `fromVersion`: `norbix env rollback --to PROD --version <fromVersion>`
+   (preview, then `--yes`) undoes it.
+
+A content command run straight in PROD while TEST exists prints
+`Note: PROD is promoted from TEST — …` on stderr: make the change in TEST and
+promote instead.
 
 ## 2. Always `--json`
 
