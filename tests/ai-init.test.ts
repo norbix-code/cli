@@ -44,7 +44,7 @@ describe('norbix ai init', () => {
     expect(skill).toContain('--dry-run')
     const claude = readFileSync(join(project, 'CLAUDE.md'), 'utf8')
     expect(claude).toContain('<!-- norbix-cli:start -->')
-    expect(claude.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(12)
+    expect(claude.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(13)
 
     const second = await cli(home, ['ai', 'init', '--dir', project, '--json'])
     expect(second.code).toBe(2)
@@ -103,6 +103,7 @@ describe('norbix ai init', () => {
       '- Discover, do not guess: `norbix schema',
       '- Before any change, run it with `--dry-',
       '- Designing a database schema? Run `norb',
+      '- Environments: build in the lowest one ',
       '- Never print, paste or ask for API keys',
       '- Branch on the exit code: 0 ok · 2 usag',
       '- Full contract: `docs/agent-contract.md',
@@ -115,7 +116,7 @@ describe('norbix ai init', () => {
     expect(bullets[4]).toContain('`norbix db schema rules`')
     expect(bullets[4]).toContain('language / currency / country and every list people pick from are taxonomy pickers')
     expect(block).not.toMatch(/norbix login --api-key|nbk_/)
-    expect(block.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(12)
+    expect(block.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(13)
 
     const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
     expect(skill).toContain('## Secrets\n\nNever print, echo, paste or ask for API keys, passwords or tokens')
@@ -124,7 +125,7 @@ describe('norbix ai init', () => {
     expect(skill).toContain('Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.')
     expect(skill).toContain('`norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user.')
     expect(skill).not.toMatch(/--api-key|nbk_/)
-    expect(skill.split('\n').length).toBeLessThanOrEqual(40)
+    expect(skill.split('\n').length).toBeLessThanOrEqual(50)
 
     expect(readFileSync(join(project, '.cursor/rules/norbix.mdc'), 'utf8')).toContain(bullets[4])
   })
@@ -175,5 +176,28 @@ describe('norbix --version', () => {
     const r = await cli(home, ['--version'])
     expect(r.code).toBe(0)
     expect(r.stdout).toMatch(/^@norbix\.ai\/cli\/\d+\.\d+\.\d+ \w+-\w+ node-v\d+/)
+  })
+  // Promotion phase 2: an agent asked to "set up PROD like TEST" promotes — preview first,
+  // then --yes after the user agreed, rollback as the anchor — and never builds PROD by hand.
+  it('the block and the skill say: build in TEST, preview the promotion, promote, roll back — never build PROD by hand', async () => {
+    const r = await cli(home, ['ai', 'init', '--target', 'all', '--dir', project])
+    expect(r.code).toBe(0)
+
+    const block = readFileSync(join(project, 'AGENTS.md'), 'utf8')
+    const env = block.split('\n').find((l) => l.startsWith('- Environments:'))!
+    expect(env).toContain('never in PROD by hand')
+    expect(env).toContain('`norbix env promote --from TEST --to PROD --json` (a preview, changes nothing)')
+    expect(env).toContain('the same command with `--yes`')
+    expect(env).toContain('`norbix env rollback --to PROD --version <fromVersion>`')
+    expect(readFileSync(join(project, 'CLAUDE.md'), 'utf8')).toContain(env)
+
+    const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
+    expect(skill).toMatch(/^description: .*moving TEST to PROD \(promotion\)/m)
+    const section = skill.slice(skill.indexOf('## Environments'), skill.indexOf('## Secrets'))
+    expect(section).toContain('never build PROD by hand')
+    expect(section).toContain('2. Preview: `norbix env promote --from TEST --to PROD --json` — the default is a preview, nothing changes.')
+    expect(section).toContain('3. Promote, only after the user agreed: the same command with `--yes`.')
+    expect(section).toContain('`norbix env rollback --to PROD --version <fromVersion>`')
+    expect(section).toContain('Note: PROD is promoted from TEST')
   })
 })
