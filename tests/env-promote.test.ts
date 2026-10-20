@@ -23,7 +23,7 @@ const REPAIR = '/v3/account/projects/environments/built-ins/repair'
 const PLAN = {
   summary: {
     added: 1, changed: 1, unchanged: 2, deleted: 1, kept: 0, skipped: 0, recordsAtRisk: 1,
-    integrationsSeeded: 0, integrationsSkipped: 2, integrationsMapped: 0, integrationsRemoved: 0, isNoOp: false,
+    integrationsSeeded: 1, integrationsSkipped: 2, integrationsMapped: 0, integrationsRemoved: 0, isNoOp: false,
   },
   items: [
     {type: 'Schema', id: 'sch_3jucP9sDknGQ7R4zBwQKc4', name: 'orders', status: 'added', builtIn: false},
@@ -42,6 +42,10 @@ const PLAN = {
       module: 'Email', id: 'int_mailgun', name: 'mailgun', provider: 'MailGun', status: 'skipped',
       defaultAction: 'skip', action: 'skip', holdsSecret: true, isFake: false, realSender: true,
       targets: [{id: 'int_fake', name: 'Test Me', provider: 'Fake', isDefault: true}],
+    },
+    {
+      module: 'Files', id: 'int_s3', targetId: 'int_s3_prod', name: 'S3 files', provider: 'AwsS3', status: 'seeded',
+      defaultAction: 'skip', action: 'seed', holdsSecret: true, isFake: false, realSender: false, targets: [],
     },
   ],
   notPromoted: [
