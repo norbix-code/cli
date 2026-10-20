@@ -43,7 +43,7 @@ norbix scheduler list
 | `norbix files list/info/get-by-id/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
 | `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
-| `norbix env list/use/delete` | Manage project environments (see *Environments* below) |
+| `norbix env list/use/delete/promote/rollback`, `norbix env built-ins repair` | Manage project environments and move content TEST → PROD (see *Environments* below) |
 | `norbix logs list/trail` | Read project logs, follow one correlation ID |
 | `norbix scheduler list/get/save/enable/disable/delete` | Scheduler tasks — a cron that sends an email campaign; every scheduler endpoint, see [docs/scheduler.md](docs/scheduler.md) |
 | `norbix apikeys list/create/regenerate/revoke` | Service-user API keys for scripts, CI, SDKs and agents |
@@ -268,6 +268,38 @@ for `--env PROD`), `NORBIX_ENV`, or a default saved with `norbix env use TEST`
 (then printed on stderr by every command). Without it the command stops with
 exit 2 `ENV_REQUIRED` and lists the environments; nothing is sent. Apps that
 use the API or an SDK directly are not affected: with no env they work in PROD.
+
+#### Moving TEST to PROD (promotion)
+
+Build schemas, taxonomies and terms, templates, footers, signatures and
+triggers in TEST, then move them up — never re-create them in PROD by hand
+(the copies would get other ids and break triggers and term links).
+
+```sh
+norbix env promote --from TEST --to PROD          # preview (the default): nothing changes
+norbix env promote --from TEST --to PROD --yes    # promote; prints the rollback anchor
+norbix env rollback --to PROD --version 279       # preview the undo; add --yes to run it
+norbix env built-ins repair                       # built-in templates under PROD's ids; --yes to run
+```
+
+The preview shows a summary, every item by status (added / changed /
+unchanged / deleted with its record count / kept), one line per source
+integration with the choice that applies (`!` marks a real e-mail / SMS /
+push sender) and what is never promoted (records, users, files, …).
+By default Fake integrations are copied and everything else is left out;
+change that per integration with `--seed <id>`, `--skip <id>` or
+`--map <id>=<target id>`. A real run that would hide records stops with exit 3
+until you add `--confirm-record-loss`. For these three commands `--dry-run`
+means the Hub's preview (the request is sent with `dryRun: true`). `--json`
+prints the Hub's answer as it is.
+
+When a command creates or changes such content directly in an environment that
+has a lower one (`db schema create --env PROD` while TEST exists), it still
+runs, and stderr says:
+
+```text
+Note: PROD is promoted from TEST — make the change in TEST and run `norbix env promote --from TEST --to PROD`
+```
 
 ## JSON output
 
