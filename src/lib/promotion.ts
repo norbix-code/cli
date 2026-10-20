@@ -50,6 +50,11 @@ export interface PromotionIntegrationTarget {
 export interface PromotionIntegration {
   module: string
   id: string
+  /**
+   * The id the integration has (or will have) in the target env. Equals `id` except a seeded
+   * Files integration (its own new id per target env) and a `map` (the mapped target integration).
+   */
+  targetId?: string
   name?: string
   provider?: string
   status?: string
@@ -245,9 +250,13 @@ export function renderIntegrations(integrations: PromotionIntegration[] = [], ro
       : `${i.action ?? i.defaultAction ?? ''}${i.action && i.defaultAction && i.action !== i.defaultAction ? ` (default ${i.defaultAction})` : ''}` +
         (i.mapToId ? ` → ${i.mapToId}` : '')
     lines.push(
-      `  ${i.realSender ? '!' : ' '} ${pad(i.module, 10)} ${pad(i.name ?? '', 30)} ${pad(i.provider ?? '', 24)} ${pad(choice, 18)} ${i.id}` +
+      `  ${i.realSender ? '!' : ' '} ${pad(i.module, 10)} ${pad(i.name ?? '', 30)} ${pad(i.provider ?? '', 24)} ${pad(choice, 20)} ${i.id}` +
         (flags.length > 0 ? `  [${flags.join(', ')}]` : ''),
     )
+    if (i.targetId && i.targetId !== i.id) {
+      const how = i.action === 'map' || i.status === 'mapped' ? 'the mapped target integration' : 'its own new id — apps use this id there'
+      lines.push(`      id in the target: ${i.targetId} (${how})`)
+    }
     if (i.warning) lines.push(`      warning: ${i.warning}`)
     if (!rollback && (i.targets?.length ?? 0) > 0) {
       lines.push(`      in target: ${i.targets!.map((t) => `${t.name ?? t.id} (${t.provider ?? '?'}${t.isDefault ? ', default' : ''}) ${t.id}`).join('; ')}`)
