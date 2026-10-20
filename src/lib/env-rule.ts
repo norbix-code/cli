@@ -46,6 +46,14 @@ export function envsOf(response: unknown): string[] | undefined {
   return names.length > 0 ? orderEnvs(names) : undefined
 }
 
+/** The promotion ladder (`promotionOrder`, lowest → PROD) in a `GetProjectEnvironments` answer, upper case; undefined when the Hub sent none. */
+export function promotionOrderOf(response: unknown): string[] | undefined {
+  const list = (response as {item?: {promotionOrder?: unknown}} | undefined)?.item?.promotionOrder
+  if (!Array.isArray(list)) return undefined
+  const names = list.filter((e): e is string => typeof e === 'string' && e.trim() !== '').map((e) => e.trim().toUpperCase())
+  return names.length > 0 ? names : undefined
+}
+
 export interface EnvCheck {
   /** The env named for this run, upper case; undefined = none. */
   env?: string
