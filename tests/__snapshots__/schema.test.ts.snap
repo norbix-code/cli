@@ -1842,6 +1842,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "target:string",
+      "dry-run:boolean",
+      "yes:boolean",
+    ],
+    "id": "env built-ins repair",
+    "supportsDryRun": true,
+  },
+  {
     "args": [
       "name",
     ],
@@ -1859,6 +1870,35 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [],
     "id": "env list",
     "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "from:string",
+      "to:string",
+      "dry-run:boolean",
+      "yes:boolean",
+      "confirm-record-loss:boolean",
+      "seed:string",
+      "skip:string",
+      "map:string",
+    ],
+    "id": "env promote",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "to:string",
+      "version:string",
+      "dry-run:boolean",
+      "yes:boolean",
+      "confirm-record-loss:boolean",
+    ],
+    "id": "env rollback",
+    "supportsDryRun": true,
   },
   {
     "args": [
