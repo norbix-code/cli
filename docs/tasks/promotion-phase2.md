@@ -19,7 +19,8 @@ Not in scope: team-member update / remove commands (another agent; may come in a
 5. [done] feat(cli:ai:init): the skill and the CLAUDE.md / AGENTS.md block get a short "Environments" section
 6. [done] test(cli): tests for the three commands (fixture = the phase 1 contract example), the hint, `ai init`, the old `hub account environment promote --body` path; `tsc --noEmit` clean, `npm test` 39 files, 1067/1067 passed
 7. [done] docs(cli): README + docs/project.md command table
-8. [todo] release(cli): pull request, merge with nbx-ship; semantic-release publishes a minor from CI
+8. [done] feat(cli:env:promotion): the integrations table shows the id in the target when it differs (`targetId`, gateway 44548a144: a seeded Files integration gets its own id; a map names the target integration)
+9. [done] release(cli): pull request merged by nbx-ship (rebase); semantic-release publishes the minor from CI (trusted publishing) — PR and version in the final report
 
 ## Decisions
 - decision(cli:sdk-types): the CLI does not wait for a regenerated `@norbix.ai/ts`. 4.29.0 knows `promoteEnvironment` / `rollbackPromotion` but not `confirmRecordLoss`, `integrationChoices`, rollback `dryRun`, the v2 result fields, or the built-in repair endpoint. Regenerating needs a running Hub (`sync-types.mjs`) and a separate SDK release; the transport sends the whole request object, so the CLI builds the body with its own types (`src/lib/promotion.ts`) and calls the repair route through the SDK transport of the environments module (same auth, refresh, env rule, retry). Recorded under Findings for the SDK owners.
@@ -60,6 +61,7 @@ Not in scope: team-member update / remove commands (another agent; may come in a
 ```
 - gap(cli:hint): `norbix hub <module> <method>` (the generic path) and `norbix raw` never print the promotion hint — only the named content commands do — open
 - gap(cli:hint): there is no `db taxonomy create` command in the CLI (taxonomies are made with `norbix hub database save-database-taxonomy`), so a taxonomy write gets no hint from the CLI; terms do (`db term create/update`) — open
+- gap(cli:hint): on `--dry-run` the CLI sends nothing, so it reads the env list only from the 5-minute cache; with a cold cache a dry run prints no hint (the real run does) — open, by design
 - chore(cli:git): `nbx-doctor` WARN — the main checkout /Users/djovaisas/Projects/norbix/sdks/cli is on `fix/sdk-1.3-and-deps` with an untracked `docs/tasks/agent-native-cli.md`; not mine, untouched
 
 ## Acceptance #5 — "set up PROD like TEST" leads to a promotion with a preview first
