@@ -3,7 +3,7 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**243 endpoints have a dedicated CLI command (the sum of the table below;
+**247 endpoints have a dedicated CLI command (the sum of the table below;
 the line said 117 until the Project campaign, 2026-10-03, and had not kept
 up with the push / SMS / Email rows). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
@@ -26,7 +26,7 @@ out of reach.
 | database/taxonomies | 2/15 | read-only list/get |
 | database/aggregates | 1/5 | list only |
 | files/* | 9/23 | upload, download, list, info, sign, delete. Missing: bulk delete, triggers, integration config |
-| logs/* | 6/14 | list, trail, settings, module toggle. Missing: clean, integration config |
+| logs/* | 10/16 | list, trail, get, settings, settings set, clean, write (Api host), module toggle — each command is run through the real transport in `tests/logs.test.ts`. Missing: integration config (save / test / enable / disable / delete — `norbix hub logs …` reaches them) |
 | membership/users | 6/35 | list, get, invite, block, unblock, delete. Missing: contacts, create-user variants, preferences |
 | membership/roles + policies | 2/10 | read-only lists |
 | notifications/email | 48/51 | every endpoint except the three recipient / provider callbacks — see `docs/email.md`; each command is run through the real transport in `tests/email-routes.test.ts` |

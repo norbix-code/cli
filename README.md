@@ -44,7 +44,9 @@ norbix scheduler list
 | `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
 | `norbix env list/use/delete/promote/rollback`, `norbix env built-ins repair` | Manage project environments and move content TEST → PROD (see *Environments* below) |
-| `norbix logs list/trail` | Read project logs, follow one correlation ID |
+| `norbix logs list/trail/get` | Read project logs, follow one correlation ID, show one entry |
+| `norbix logs write` | Write your app's own lines (`--title …` or `--file entries.json`); prints `accepted: n`, on a 429 says how many seconds to wait |
+| `norbix logs settings` / `settings set` / `clean` | Read and change log settings (only the flags you pass are sent); delete every stored entry (asks; `--yes` skips) |
 | `norbix scheduler list/get/save/enable/disable/delete` | Scheduler tasks — a cron that sends an email campaign; every scheduler endpoint, see [docs/scheduler.md](docs/scheduler.md) |
 | `norbix apikeys list/create/regenerate/revoke` | Service-user API keys for scripts, CI, SDKs and agents |
 | `norbix webhooks show/secret/enable/disable/remove` | Inspect the webhook integration |
