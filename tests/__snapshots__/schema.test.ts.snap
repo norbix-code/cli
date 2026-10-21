@@ -2071,6 +2071,25 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "logs clean",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "logs get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
     "destructive": false,
     "flags": [
       "level:string",
@@ -2094,6 +2113,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "skip-cloud:option",
+      "skip-body:option",
+      "ai-chat:option",
+    ],
+    "id": "logs settings set",
+    "supportsDryRun": true,
+  },
+  {
     "args": [
       "correlationId",
     ],
@@ -2101,6 +2132,23 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [],
     "id": "logs trail",
     "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "title:string",
+      "level:option",
+      "message:string",
+      "event-code:string",
+      "correlation-id:string",
+      "timestamp:string",
+      "meta:string",
+      "file:string",
+    ],
+    "id": "logs write",
+    "supportsDryRun": true,
   },
   {
     "args": [

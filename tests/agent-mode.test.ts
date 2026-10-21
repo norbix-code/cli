@@ -78,6 +78,7 @@ const DESTRUCTIVE: string[][] = [
   ['sms', 'campaign', 'delete', 'abc123'],
   ['sms', 'integration', 'delete', 'abc123'],
   ['sms', 'integration', 'disable', 'abc123'],
+  ['logs', 'clean'],
   ['project', 'delete'],
   ['project', 'disable'],
   ['project', 'admin-portal', 'disable'],
