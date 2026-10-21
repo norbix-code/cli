@@ -80,14 +80,16 @@ and promoted:
 
 1. `norbix env promote --from TEST --to PROD --json` — a preview (the
    default), nothing changes. Show the user `summary`, `items` (deleted ones
-   with `recordCount`), `integrations` (`action`, `warning`, `realSender`) and
+   with `recordCount`), `integrations` (`action`, `warning`, `note`, `realSender`) and
    `notPromoted`.
 2. After the user agreed: the same command with `--yes`
    (`--seed / --skip / --map id=targetId` only for integrations the user
    decided; `--confirm-record-loss` only when `requiresConfirmation` is true and
    the user accepts it — exit 3 `CM-ERRORS-ENVIRONMENTS-013` means it was missing).
 3. Keep `fromVersion`: `norbix env rollback --to PROD --version <fromVersion>`
-   (preview, then `--yes`) undoes it.
+   (preview, then `--yes`) undoes it. `promoted: false` (with `summary.isNoOp`)
+   means nothing needed promoting: nothing was written and there is no
+   `fromVersion` — tell the user "Nothing to promote — PROD already matches TEST.".
 
 A content command run straight in PROD while TEST exists prints
 `Note: PROD is promoted from TEST — …` on stderr: make the change in TEST and

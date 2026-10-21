@@ -277,7 +277,7 @@ triggers in TEST, then move them up — never re-create them in PROD by hand
 
 ```sh
 norbix env promote --from TEST --to PROD          # preview (the default): nothing changes
-norbix env promote --from TEST --to PROD --yes    # promote; prints the rollback anchor
+norbix env promote --from TEST --to PROD --yes    # promote; prints the rollback anchor (or "Nothing to promote")
 norbix env rollback --to PROD --version 279       # preview the undo; add --yes to run it
 norbix env built-ins repair                       # built-in templates under PROD's ids; --yes to run
 ```
