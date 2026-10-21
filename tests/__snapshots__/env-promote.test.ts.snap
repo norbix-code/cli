@@ -14,6 +14,23 @@ To apply it: add --yes
 "
 `;
 
+exports[`norbix env promote > a real run with nothing to change: says nothing was promoted, no rollback anchor, exit 0 1`] = `
+"Nothing to promote — PROD already matches TEST.
+Summary: 0 added · 0 changed · 2 unchanged · 0 deleted · 0 kept · 0 skipped
+Integrations: 0 seeded · 1 skipped · 0 mapped
+
+Content
+  UNCHANGED (2)
+    Schema faq, EmailTemplate Password reset
+
+Integrations (choice per source integration; ! = sends real e-mail / SMS / push)
+    Email      Test Me                        Fake                     skip                 int_test_fake  [fake]
+      note: PROD already has its own Fake Email integration
+      in target: Test Me (Fake, default) int_prod_fake
+
+"
+`;
+
 exports[`norbix env promote > previews by default: sends dryRun true, prints the readable plan, changes nothing, exit 0 1`] = `
 "Preview: TEST → PROD — nothing was changed.
 Summary: 1 added · 1 changed · 2 unchanged · 1 deleted (1 record at risk) · 0 kept · 0 skipped

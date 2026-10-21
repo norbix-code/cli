@@ -20,9 +20,9 @@ Build and test in the lower environment, then move it up with this command — n
 
 A PREVIEW is the default: the Hub works out the plan and changes nothing (--dry-run says it explicitly). The preview lists every item by status — added, changed, unchanged, deleted (with the number of records a deleted collection holds), kept — one line per source integration with the choice that applies, and what is never promoted (records, users, files, …). A real run needs --yes. In a terminal you are asked after the preview instead.
 
-Integrations: by default Fake providers are copied (seed) and everything else is left out (skip) — a database, a secret or a real sender is never copied unless you say so: --seed <id> copies one, --skip <id> leaves one out, --map <id>=<target id> points the promoted content at an integration the target already has (same module).
+Integrations: by default Fake providers are copied (seed) — unless the target already has its own Fake of that module (then skip, with a note) — and everything else is left out (skip) — a database, a secret or a real sender is never copied unless you say so: --seed <id> copies one, --skip <id> leaves one out, --map <id>=<target id> points the promoted content at an integration the target already has (same module).
 
-A real run that would hide records (a collection deleted in the target) refuses without --confirm-record-loss. The answer of a real run names its rollback anchor (fromVersion): \`norbix env rollback --to <target> --version <fromVersion>\` undoes it.
+A real run that would hide records (a collection deleted in the target) refuses without --confirm-record-loss. The answer of a real run names its rollback anchor (fromVersion): \`norbix env rollback --to <target> --version <fromVersion>\` undoes it. A real run with nothing to change writes nothing and makes no anchor: it prints "Nothing to promote — PROD already matches TEST." and exits 0 (--json: promoted false, no fromVersion).
 
 --json prints the Hub's answer as it is (summary, items, integrations, notPromoted, requiresConfirmation, fromVersion, …).`
 
