@@ -120,6 +120,60 @@ describe('norbix env promote', () => {
     expect(r.stdout).toContain('Rollback anchor: fromVersion 279. To undo: norbix env rollback --to PROD --version 279')
   })
 
+  /** A second real run of the same content (gateway 2026-10-21): nothing written, no anchor. */
+  const NOOP = {
+    summary: {
+      added: 0, changed: 0, unchanged: 2, deleted: 0, kept: 0, skipped: 0, recordsAtRisk: 0,
+      integrationsSeeded: 0, integrationsSkipped: 1, integrationsMapped: 0, integrationsRemoved: 0, isNoOp: true,
+    },
+    items: [
+      {type: 'Schema', id: 'sch_faq', name: 'faq', status: 'unchanged', matchedBy: 'id', builtIn: false},
+      {type: 'EmailTemplate', id: 'tmpl_6kbXOl8AX1HdVMyFwURznj', name: 'Password reset', status: 'unchanged', matchedBy: 'id', builtIn: true},
+    ],
+    integrations: [
+      {
+        module: 'Email', id: 'int_test_fake', name: 'Test Me', provider: 'Fake', status: 'skipped',
+        defaultAction: 'skip', action: 'skip', holdsSecret: false, isFake: true, realSender: false,
+        targets: [{id: 'int_prod_fake', name: 'Test Me', provider: 'Fake', isDefault: true}],
+        note: 'PROD already has its own Fake Email integration',
+      },
+    ],
+    notPromoted: [], requiresConfirmation: false, blockers: [], termChanges: [], warnings: [],
+    fromVersion: null, wasDryRun: false, promoted: false, message: 'Nothing to promote — PROD already matches TEST.',
+  }
+
+  it('a real run with nothing to change: says nothing was promoted, no rollback anchor, exit 0', async () => {
+    const {run} = await project({[PROMOTE]: {item: NOOP}})
+
+    const r = await run(['env', 'promote', '--from', 'TEST', '--to', 'PROD', '--yes'])
+
+    expect(r.code).toBe(0)
+    expect(r.stdout.split('\n')[0]).toBe('Nothing to promote — PROD already matches TEST.')
+    expect(r.stdout).not.toContain('Promoted TEST → PROD.')
+    expect(r.stdout).not.toContain('Rollback anchor')
+    expect(r.stdout).toMatchSnapshot()
+  })
+
+  it('a real no-op from an older gateway (no promoted field, no anchor) reads the same', async () => {
+    const {promoted: _promoted, message: _message, ...older} = NOOP
+    const {run} = await project({[PROMOTE]: {item: older}})
+
+    const r = await run(['env', 'promote', '--from', 'TEST', '--to', 'PROD', '--yes'])
+
+    expect(r.code).toBe(0)
+    expect(r.stdout.split('\n')[0]).toBe('Nothing to promote — PROD already matches TEST.')
+  })
+
+  it('--json of a real no-op is the Hub answer: promoted false, fromVersion null', async () => {
+    const {run} = await project({[PROMOTE]: {item: NOOP}})
+
+    const r = await run(['env', 'promote', '--from', 'TEST', '--to', 'PROD', '--yes', '--json'])
+
+    expect(r.code).toBe(0)
+    const item = (parseSingleJson(r.stdout) as {item: {promoted: boolean; fromVersion: unknown}}).item
+    expect({promoted: item.promoted, fromVersion: item.fromVersion}).toEqual({promoted: false, fromVersion: null})
+  })
+
   it('a real run that would hide records: the plan, then exit 3 with the gateway code and the flag to add', async () => {
     const {run} = await project({
       [PROMOTE]: {__status: 400, item: PLAN, responseStatus: {errorCode: 'CM-ERRORS-ENVIRONMENTS-013', message: 'Record loss not confirmed.'}},

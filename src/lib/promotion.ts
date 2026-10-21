@@ -66,6 +66,8 @@ export interface PromotionIntegration {
   realSender?: boolean
   targets?: PromotionIntegrationTarget[]
   warning?: string
+  /** Why the default is what it is, e.g. "PROD already has its own Fake Email integration" (gateway 2026-10-21; not a warning). */
+  note?: string
 }
 
 export interface PromotionNotPromoted {
@@ -91,8 +93,16 @@ export interface PromotionResult {
   blockers?: PromotionRef[]
   warnings?: PromotionRef[]
   termChanges?: Array<{taxonomyId?: string; termId?: string; slug?: string; change?: string}>
-  fromVersion?: number
+  fromVersion?: number | null
   wasDryRun?: boolean
+  /**
+   * Promote answers (gateway 2026-10-21): true when the real run changed the target and wrote the
+   * rollback anchor; false on a preview and on a real run with nothing to change (no events, no
+   * fromVersion). Absent from older gateways and from rollback answers.
+   */
+  promoted?: boolean
+  /** One sentence for people, e.g. "Nothing to promote — PROD already matches TEST." */
+  message?: string
 }
 
 export interface BuiltInRepairEnv {
@@ -258,6 +268,7 @@ export function renderIntegrations(integrations: PromotionIntegration[] = [], ro
       lines.push(`      id in the target: ${i.targetId} (${how})`)
     }
     if (i.warning) lines.push(`      warning: ${i.warning}`)
+    if (i.note) lines.push(`      note: ${i.note}`)
     if (!rollback && (i.targets?.length ?? 0) > 0) {
       lines.push(`      in target: ${i.targets!.map((t) => `${t.name ?? t.id} (${t.provider ?? '?'}${t.isDefault ? ', default' : ''}) ${t.id}`).join('; ')}`)
     }
@@ -282,14 +293,30 @@ export interface RenderContext {
   rerun: string
 }
 
+/**
+ * A real promote that changed nothing: the gateway says `promoted: false` (2026-10-21). An older
+ * gateway has no `promoted` field; then a no-op summary without a rollback anchor means the same.
+ */
+export function nothingPromoted(result: PromotionResult, ctx: Pick<RenderContext, 'kind' | 'dryRun'>): boolean {
+  if (ctx.kind !== 'promote' || ctx.dryRun || (result.blockers?.length ?? 0) > 0) return false
+  if (result.promoted !== undefined) return result.promoted === false
+  return result.summary?.isNoOp === true && (result.fromVersion === undefined || result.fromVersion === null)
+}
+
 /** The whole preview / result as text, the way a person reads it. */
 export function renderPromotion(result: PromotionResult, ctx: RenderContext): string {
   const s = result.summary ?? {}
   const what = ctx.kind === 'promote' ? `${ctx.source} → ${ctx.target}` : `rollback of ${ctx.target}`
   const lines: string[] = []
-  lines.push(ctx.dryRun ? `Preview: ${what} — nothing was changed.` : ctx.kind === 'promote' ? `Promoted ${what}.` : `Rolled back ${ctx.target}.`)
+  const nothing = nothingPromoted(result, ctx)
+  if (nothing) {
+    // Nothing was written: no new version, no rollback anchor.
+    lines.push(`Nothing to promote — ${ctx.target} already matches ${ctx.source}.`)
+  } else {
+    lines.push(ctx.dryRun ? `Preview: ${what} — nothing was changed.` : ctx.kind === 'promote' ? `Promoted ${what}.` : `Rolled back ${ctx.target}.`)
+    if (s.isNoOp) lines.push(`Nothing to change — ${ctx.target} already matches.`)
+  }
 
-  if (s.isNoOp) lines.push(`Nothing to change — ${ctx.target} already matches.`)
   const at = s.recordsAtRisk ? ` (${plural(s.recordsAtRisk, 'record')} at risk)` : ''
   lines.push(
     `Summary: ${s.added ?? 0} added · ${s.changed ?? 0} changed · ${s.unchanged ?? 0} unchanged · ${s.deleted ?? 0} deleted${at} · ` +
