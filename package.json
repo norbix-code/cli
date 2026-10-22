@@ -173,6 +173,9 @@
       "logs": {
         "description": "Read and write project logs, log settings"
       },
+      "membership": {
+        "description": "Membership tools (test the password-reset e-mail)"
+      },
       "payments": {
         "description": "Payment integrations and triggers"
       },
