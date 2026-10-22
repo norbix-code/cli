@@ -43,3 +43,17 @@ the coverage matrix (manifests identical, 0 new cells).
 
 ## Open questions
 - None.
+
+## Round 2 (2026-10-22, owner decisions on the B12 report — 10-payments B14–B17)
+
+Gateway `refactoringV2` f0f1b782e: `Tags` on the with-permissions register requests and on Create a
+Contact (tags at creation); a service login fires no user trigger. The regeneration also brought in
+three Hub endpoints other rounds had added (environment admin url get / update, push device delete).
+
+| Repo | Result |
+|---|---|
+| sdk-ts | #106 → v4.35.0 (types + the three endpoints' modules, docs, tests; `osv-scanner.toml` ignores GHSA-rxp7-6hxx-x8q5 like its bundled-npm siblings) |
+| sdk-net | #110 → v3.32.0 (types; coverage snapshots take the new endpoints and fields) |
+| sdk-go | #54 → v2.36.0 |
+| mcp | manifest from 4.35.0 (tags, admin url, push device delete) — this round's pull request |
+| cli | `@norbix.ai/ts` ^4.35.0, `gen:fields` 720 methods — this pull request |
