@@ -13,6 +13,17 @@ export interface TestPasswordResetAnswer {
   integrationName?: string
   provider?: string
   integrationProblem?: string
+  /** The template and language the hub will use (gateway N46). */
+  templateId?: string
+  templateName?: string
+  templateSource?: string
+  language?: string
+  languageRule?: string
+  templateLanguages?: string[]
+  /** Set when the fixed English text would be sent: a code, then the reason (e.g. `mjml-render-failed (401): …`). */
+  fallback?: string
+  /** The MJML renderer: ok, unauthorized (401), unreachable, error (…), not-configured. */
+  mjmlRenderer?: string
   responseStatus?: {isSuccess?: boolean; errors?: Array<{message?: string; errorCode?: string}>}
 }
 
@@ -32,7 +43,9 @@ export interface DeliveryResult {
   integrationName?: string
   provider?: string
   template?: string
+  templateName?: string
   language?: string
+  languageRule?: string
   fallbackReason?: string
   reason?: string
 }
@@ -52,7 +65,9 @@ export function deliveryFrom(entries: LogEntry[]): DeliveryResult {
         integrationName: m.integrationName,
         provider: m.provider,
         template: m.template,
+        templateName: m.templateName,
         language: m.language,
+        languageRule: m.languageRule,
         fallbackReason: m.fallbackReason,
       }
     : {status: 'not-sent', reason: m.reason, integrationId: m.integrationId, fallbackReason: m.fallbackReason}
@@ -65,7 +80,10 @@ Admin only (needs the right to change project users' logins). It runs the same
 reset flow an app runs — the login is looked up in the --env environment, a
 one-time link is issued and the hub sends the e-mail — and answers what the
 public request never tells: whether a login was found, the environment, the
-integration that will send it, and the correlation id. It then waits for the
+integration that will send it, the template and language it will use (or
+"fallback: <reason>" when the fixed English text would be sent, e.g.
+mjml-render-failed (401) when the MJML renderer refuses the hub's token), the
+MJML renderer's state, and the correlation id. It then waits for the
 hub's project-log entry with that correlation id and prints what really
 happened (sent through which integration and template, or why not).
 
@@ -167,11 +185,21 @@ export function describe(answer: TestPasswordResetAnswer, delivery: DeliveryResu
   else if (answer.integrationId) lines.push(`  Integration for ${env}: ${answer.integrationName} (${answer.provider}, ${answer.integrationId}).`)
 
   if (answer.queued) {
+    if (answer.templateId)
+      lines.push(`  Template: ${answer.templateName} (${answer.templateId}, ${answer.templateSource}), language ${answer.language} (${answer.languageRule}; the template has: ${(answer.templateLanguages ?? []).join(', ')}).`)
+    if (answer.fallback) lines.push(`  fallback: ${answer.fallback}`)
+    if (answer.mjmlRenderer) lines.push(`  MJML renderer: ${answer.mjmlRenderer}.`)
+  }
+
+  if (answer.queued) {
     if (delivery.status === 'sent') {
       lines.push(`Sent by the hub through ${delivery.integrationName} (${delivery.provider}, ${delivery.integrationId}).`)
-      lines.push(delivery.template
-        ? `  Template ${delivery.template}, language ${delivery.language}.`
-        : `  Fixed English text (template not used: ${delivery.fallbackReason ?? 'unknown'}).`)
+      // The hub names the chosen template even when it could not render it, so the fallback goes first.
+      lines.push(delivery.fallbackReason
+        ? `  Fixed English text — fallback: ${delivery.fallbackReason}`
+        : delivery.template
+          ? `  Template ${delivery.templateName ? `${delivery.templateName} (${delivery.template})` : delivery.template}, language ${delivery.language}${delivery.languageRule ? ` (${delivery.languageRule})` : ''}.`
+          : '  Fixed English text (no template named by the hub).')
     } else if (delivery.status === 'not-sent') {
       lines.push(`The hub did NOT send it: ${delivery.reason ?? 'unknown reason'}.`)
     } else if (waited > 0) {

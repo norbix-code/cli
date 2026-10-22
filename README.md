@@ -43,7 +43,7 @@ norbix scheduler list
 | `norbix files list/info/get-by-id/upload/download/sign/delete/publish/unpublish` | Upload, download, manage and publish files |
 | `norbix files integrations test <id>` | Check that a files integration really works (live upload/read/list/delete probe) |
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
-| `norbix membership password reset request <email>` | Admin: send a test password-reset e-mail in `--env`; says whether a login was found, which integration sends it, and (from the hub's project-log entry) whether it went out, through which integration and template |
+| `norbix membership password reset request <email>` | Admin: send a test password-reset e-mail in `--env`; says whether a login was found, which integration sends it, which template and language the hub will use (or `fallback: <reason>`, e.g. `mjml-render-failed (401)`), the MJML renderer's state, and (from the hub's project-log entry) whether it went out, through which integration and template |
 | `norbix env list/use/delete/promote/rollback`, `norbix env built-ins repair` | Manage project environments and move content TEST → PROD (see *Environments* below) |
 | `norbix env admin-url set/clear/show` | The admin portal address one environment's reset / magic-link / invitation e-mails open (gateway N49); `norbix project --env <ENV>` shows it too, with its source |
 | `norbix logs list/trail/get` | Read project logs, follow one correlation ID, show one entry |
