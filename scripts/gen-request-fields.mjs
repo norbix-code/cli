@@ -113,6 +113,9 @@ export function methodsOf(block, label = 'module') {
       continue
     }
 
+    // owner 2026-10-22: /internal/* is not SDK surface
+    if (path.startsWith('/internal/')) continue
+
     methods[name] = {http, path, dto: dtos[0], target}
     // A deprecated forwarder may call the other host's route (4.28.0:
     // hub.notifications.grantContactConsent → the API route); the host check
