@@ -115,6 +115,27 @@ describe('gen:fields reads SDK methods', () => {
     })
   })
 
+  it('skips a route under /internal/ (owner 2026-10-22: not SDK surface)', () => {
+    const source = sdk(
+      moduleClass(
+        'ThingsModule',
+        [
+          method('plain', ['GET /{version}/things', 'Request DTO: GetThings']),
+          method('internalsTypeGen', ['GET /internal/_typegen', 'Request DTO: InternalsTypeGen'], {
+            target: 'hub',
+            path: '/internal/_typegen',
+            method: 'GET',
+          }),
+        ].join(''),
+      ),
+    )
+
+    const {methods, problems} = sdkMethods(source)
+
+    expect(problems).toEqual([])
+    expect(methods.hub).toEqual({things: {plain: {http: 'GET', path: '/{version}/things', dto: 'GetThings', target: 'hub'}}})
+  })
+
   it('lists every method it cannot read instead of dropping it', () => {
     const source = sdk(
       moduleClass(

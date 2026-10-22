@@ -297,6 +297,16 @@ describe('payments integration save --provider Montonio', () => {
       integration: {accessKey: 'ak_1', secretKey: 'sk_1', isSandbox: true, provider: 'Montonio', integrationName: 'Montonio', isEnabled: true},
     })
   })
+
+  it('leaves isSandbox out when --config has none (empty = true on the gateway: sandbox)', async () => {
+    const {body} = await callOf([
+      'integration', 'save', '--provider', 'Montonio', '--name', 'Montonio',
+      '--config', '{"accessKey":"ak_1","secretKey":"sk_1"}',
+    ])
+    expect(body).toEqual({
+      integration: {accessKey: 'ak_1', secretKey: 'sk_1', provider: 'Montonio', integrationName: 'Montonio', isEnabled: true},
+    })
+  })
 })
 
 describe('payments order create', () => {

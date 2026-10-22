@@ -85,6 +85,9 @@ For Montonio (the checkout provider of payment orders), the keys of a Montonio
 {"accessKey": "…", "secretKey": "…", "isSandbox": true, "locale": "lt"}
 ```
 
+`isSandbox` is optional: empty = true (sandbox). Leave it out or send `true`;
+only an explicit `false` points the integration at a live store.
+
 ```bash
 norbix payments integration save --provider Montonio --name "Montonio sandbox" --config @montonio.json
 ```
