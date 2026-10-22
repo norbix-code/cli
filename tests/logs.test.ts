@@ -171,6 +171,24 @@ describe('logs settings', () => {
   })
 })
 
+describe('logs settings — N48 self-check', () => {
+  it('prints the storage warning of the env in plain words', async () => {
+    answer = {status: 200, body: {
+      env: 'TEST', hasNorbixLogging: false,
+      storageWarning: 'TEST has no Norbix Logging integration, so TEST log entries (and scheduler runs) are not stored.',
+    }}
+    const warned = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+    const {error, stderr} = await run(['settings', '--env', 'TEST'])
+
+    expect(error).toBeUndefined()
+    expect(out()).toContain('TEST')
+    const said = stderr + warned.mock.calls.map((c) => String(c[0])).join('')
+    expect(said).toContain('TEST has no Norbix Logging integration')
+    warned.mockRestore()
+  })
+})
+
 describe('logs settings set', () => {
   it('sends only the setting given (absent = unchanged)', async () => {
     const {error} = await run(['settings', 'set', '--skip-body', 'true'])

@@ -54,6 +54,7 @@ norbix push integration confirm-delivery int_123
 | `norbix push device register --user <id> --token <t> --os <os>` | register a device for a user | `POST /devices` |
 | `norbix push devices` | list the registered devices | `GET /devices` |
 | `norbix push device <id>` | show one device and its owner | `GET /devices/{id}` |
+| `norbix push device delete <id>` | delete any user's device (admin, `push:delete`); asks first, or `--yes` | `DELETE /devices/{Id}` |
 
 A device always belongs to a user, so `--user` is required on register. `--os`
 is the operating system the token came from; the backend uses it to pick a
@@ -70,6 +71,16 @@ that list is refused rather than answered with an empty list.
 ```bash
 norbix push devices --platform ios
 norbix push device pnd_123
+```
+
+`push device delete` removes a device from whichever user holds it — a stale
+handset, or a test device of another user. It works in the `--env` environment
+(the device must be there), needs a hub with gateway N48 (an older hub answers
+405 and the command says so), and calls the route directly until the SDK knows
+it. A user removes their own device from the app, through the data API.
+
+```bash
+norbix push device delete pnd_123 --env TEST --yes
 ```
 
 Devices are stored inside their user, so a page is a page of **users** and
