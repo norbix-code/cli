@@ -105,7 +105,9 @@ describe('norbix membership password reset request', () => {
       integrationName: 'Test Me',
       provider: 'Fake',
       template: 'tmpl_3ckGBebabo8Z5BiaOgfdG4',
+      templateName: undefined,
       language: 'lt',
+      languageRule: undefined,
       fallbackReason: undefined,
     })
   })
@@ -156,5 +158,82 @@ describe('the text report', () => {
   it('ignores the request-side entry and reads the hub one', () => {
     expect(deliveryFrom([{eventCode: 'membership:email:not-sent', meta: {stage: 'request', reason: 'no-login'}}])).toEqual({status: 'unknown'})
     expect(deliveryFrom([{eventCode: 'membership:email:not-sent', meta: {stage: 'send', reason: 'expired before it could be sent'}}]).status).toBe('not-sent')
+  })
+})
+
+/**
+ * Gateway N46 (reopened): the admin answer names the template and language
+ * the hub will use, or `fallback: <code (status)>: <reason>` — Happy Tummy's
+ * MJML renderer refused the hub's token, so every reset went out as the fixed
+ * English text while the template and language were fine.
+ */
+describe('template, language and fallback (N46)', () => {
+  const chosen = {
+    ...queued,
+    templateId: 'tmpl_4OFYLs4G9VYV223hjuAGhR',
+    templateName: 'Password reset',
+    templateSource: 'project',
+    language: 'en',
+    languageRule: 'english',
+    templateLanguages: ['en'],
+  }
+  const refused = {
+    ...chosen,
+    fallback: "mjml-render-failed (401): the MJML renderer refused the hub's token",
+    mjmlRenderer: 'unauthorized (401)',
+  }
+
+  it('prints the template and language the hub will use', () => {
+    expect(report({...chosen, mjmlRenderer: 'ok'}, {status: 'unknown'}, 0)).toBe([
+      'Queued in TEST (correlation 0e563daa3ce7d2389f7ecc185e01656d; the link expires 2026-10-22T08:45:32Z).',
+      '  Integration for TEST: Test Me (Fake, int_57wC6x4g7mHr2uuUO7hMJB).',
+      '  Template: Password reset (tmpl_4OFYLs4G9VYV223hjuAGhR, project), language en (english; the template has: en).',
+      '  MJML renderer: ok.',
+    ].join('\n'))
+  })
+
+  it('prints fallback: mjml-render-failed (401) when the renderer refuses the token', () => {
+    const text = report(refused, {status: 'unknown'}, 0)
+    expect(text).toContain("  fallback: mjml-render-failed (401): the MJML renderer refused the hub's token")
+    expect(text).toContain('  MJML renderer: unauthorized (401).')
+  })
+
+  it('puts the fallback in --json', async () => {
+    fakeFetch([['/membership/userauth/password/reset/test', refused]])
+
+    const {result, error} = await runCommand<{fallback: string; mjmlRenderer: string; templateId: string; language: string}>([
+      'membership', 'password', 'reset', 'request', 'tester@example.com', '--env', 'TEST', '--wait', '0', '--json', ...globalArgs,
+    ])
+
+    expect(error).toBeUndefined()
+    expect(result?.fallback).toBe("mjml-render-failed (401): the MJML renderer refused the hub's token")
+    expect(result?.mjmlRenderer).toBe('unauthorized (401)')
+    expect(result?.templateId).toBe('tmpl_4OFYLs4G9VYV223hjuAGhR')
+    expect(result?.language).toBe('en')
+  })
+
+  it('reads the hub fallback first: the hub names the chosen template even when it could not render it', () => {
+    const delivery = deliveryFrom([
+      {
+        eventCode: 'membership:email:sent',
+        meta: {
+          stage: 'send',
+          integrationId: 'int_2XKN',
+          integrationName: 'Happy Tummy TEST',
+          provider: 'AwsSes',
+          template: 'tmpl_4OFYLs4G9VYV223hjuAGhR',
+          templateName: 'Password reset',
+          language: 'en',
+          languageRule: 'english',
+          fallbackReason: "mjml-render-failed (401): the MJML renderer refused the hub's token",
+        },
+      },
+    ])
+    expect(report(chosen, delivery, 5)).toContain(
+      "  Fixed English text — fallback: mjml-render-failed (401): the MJML renderer refused the hub's token",
+    )
+    expect(report(chosen, {...delivery, fallbackReason: undefined}, 5)).toContain(
+      '  Template Password reset (tmpl_4OFYLs4G9VYV223hjuAGhR), language en (english).',
+    )
   })
 })
