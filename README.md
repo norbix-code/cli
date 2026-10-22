@@ -45,6 +45,7 @@ norbix scheduler list
 | `norbix users list/get/invite/block/unblock/delete` | Manage project users (membership) |
 | `norbix membership password reset request <email>` | Admin: send a test password-reset e-mail in `--env`; says whether a login was found, which integration sends it, and (from the hub's project-log entry) whether it went out, through which integration and template |
 | `norbix env list/use/delete/promote/rollback`, `norbix env built-ins repair` | Manage project environments and move content TEST → PROD (see *Environments* below) |
+| `norbix env admin-url set/clear/show` | The admin portal address one environment's reset / magic-link / invitation e-mails open (gateway N49); `norbix project --env <ENV>` shows it too, with its source |
 | `norbix logs list/trail/get` | Read project logs, follow one correlation ID, show one entry |
 | `norbix logs write` | Write your app's own lines (`--title …` or `--file entries.json`); prints `accepted: n`, on a 429 says how many seconds to wait |
 | `norbix logs settings` / `settings set` / `clean` | Read and change log settings (only the flags you pass are sent); delete every stored entry (asks; `--yes` skips) |
@@ -303,6 +304,26 @@ runs, and stderr says:
 ```text
 Note: PROD is promoted from TEST — make the change in TEST and run `norbix env promote --from TEST --to PROD`
 ```
+
+#### One admin portal per environment
+
+When each environment runs its own admin portal (the portal image started with
+`ENV=TEST` on `test-admin.…` and `ENV=PROD` on `admin.…`), give each environment
+its address. Password-reset, magic-link and invitation e-mails sent in that
+environment then open its own portal, which confirms in the same environment:
+
+```sh
+norbix env admin-url set https://admin.example.com --prod
+norbix env admin-url set https://test-admin.example.com --env TEST
+norbix env admin-url show --env TEST     # TEST: e-mail links open https://test-admin.example.com — from its own admin URL
+norbix project --env TEST                # the project, plus environmentAdminUrl {adminUrl, effectiveAdminUrl, source}
+norbix env admin-url clear --env TEST    # back to the project admin URL, then the Norbix-hosted portal
+```
+
+An environment without its own address uses the project admin URL
+(`project admin-portal set-url`), then the Norbix-hosted portal. The address's
+origin is allowed through CORS automatically while it is set; promotion never
+copies it.
 
 ## JSON output
 

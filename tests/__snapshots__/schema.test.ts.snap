@@ -1843,6 +1843,33 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "env admin-url clear",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "url",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "env admin-url set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "env admin-url show",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
     "destructive": true,
     "flags": [
       "target:string",
