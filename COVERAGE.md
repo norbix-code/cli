@@ -49,7 +49,10 @@ Cross-cutting commands: `norbix integrations <module>` lists integrations for
 - **ai/integrations: embeddings (5)** — not asked for; the LLM and MCP
   integrations have commands since the Project campaign (`docs/ai.md`).
 - **membership/passkeys-recovery (18)** — passkeys, magic links, password
-  reset: end-user browser flows, not admin CLI actions.
+  reset: end-user browser flows, not admin CLI actions. Exception: the admin
+  route `POST /membership/userauth/password/reset/test` is covered by
+  `norbix membership password reset request` (gateway N45: test the reset
+  e-mail and see which integration sent it).
 - **account/verify, account/module create-account, team-member-from-invitation**
   — signup/onboarding flows that happen in the portal or email links.
 - **webhooks/module receive-webhook** — inbound endpoint called by external
