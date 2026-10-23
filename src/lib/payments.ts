@@ -44,6 +44,7 @@ export const PAYMENT_PROVIDERS = [
   'CheckOutCom',
   'Worldpay',
   'Montonio',
+  'Neopay',
 ]
 
 /**
