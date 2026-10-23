@@ -90,6 +90,16 @@ One document on stdout, nothing on stderr:
   (`context` on the error item), e.g. `{"missingPermissions": "files:public"}`
   with `CM-ERRORS-MEMBERSHIP-039`. In text mode each value is a
   `context.<key>: <value>` line.
+- `errors` — every error item the gateway sent (`responseStatus.errors[]`)
+  as `{code, message, field?}`, in its order. Text mode lists them under
+  `errors:` when there is more than one.
+- `body` — the start of the response body (≤ 500 characters, whitespace
+  collapsed) when it held no Norbix error: an HTML page or plain text from a
+  proxy (e.g. a 503 from the load balancer), or JSON without error items.
+- `retryAfterSeconds` — on a 429, from the `Retry-After` header or the
+  `RetryAfterSeconds` the gateway attached to the error (e.g.
+  `CM-ERRORS-FILES-031`, files register busy). The hint then says
+  `Retry after N seconds`.
 - `url` — the URL that was called, when known (network errors always have it).
 - `traceId` — when the server returned one (`traceId`, `correlationId`,
   or `responseStatus.meta.correlationId`).

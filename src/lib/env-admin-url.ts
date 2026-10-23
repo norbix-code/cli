@@ -1,4 +1,5 @@
 import type {ResolvedContext} from '../base.js'
+import {readNorbixResponse} from './http-response.js'
 
 /**
  * The admin portal URL of one environment (gateway N49):
@@ -69,22 +70,10 @@ export async function sendEnvAdminUrlCall(call: HubCall): Promise<HubAnswer> {
     headers: call.headers,
     body: call.body === undefined ? undefined : JSON.stringify(call.body),
   })
-  const text = await res.text()
-  let answer: HubAnswer = {}
-  try {
-    answer = text ? (JSON.parse(text) as HubAnswer) : {}
-  } catch {
-    throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`)
-  }
-
-  if (!res.ok || answer.responseStatus?.isSuccess === false) {
-    const why = answer.responseStatus?.errors?.map((e) => [e.errorCode, e.message].filter(Boolean).join(' ')).join('; ')
-    const old = res.status === 404 || res.status === 405
-    throw new Error(
-      `HTTP ${res.status}${why ? `: ${why}` : ''}${old && !why ? ' (this hub is older than the per-environment admin URL — upgrade it)' : ''}`,
-    )
-  }
-
+  const answer = ((await readNorbixResponse(res, call.url, {
+    note: (status, hasErrors) =>
+      (status === 404 || status === 405) && !hasErrors ? 'this hub is older than the per-environment admin URL — upgrade it' : undefined,
+  })) ?? {}) as HubAnswer
   return answer
 }
 

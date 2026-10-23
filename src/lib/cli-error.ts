@@ -22,6 +22,19 @@ export interface ErrorEnvelope {
    * e.g. `{missingPermissions: "files:create"}`. Only when there are some.
    */
   context?: Record<string, unknown>
+  /**
+   * Every error item the server sent (`responseStatus.errors[]`): code and
+   * message. Only when the body had some.
+   */
+  errors?: ErrorItem[]
+  /**
+   * The start (≤ 500 chars) of the response body when it held no error items
+   * the CLI could read — an HTML or plain-text page from a proxy, an empty
+   * JSON object, ... Only when the server answered with such a body.
+   */
+  body?: string
+  /** Seconds to wait before sending again (429: `Retry-After` header or `RetryAfterSeconds` on the error). */
+  retryAfterSeconds?: number
   /** The URL that was called, when known. */
   url?: string
   /** Server trace / correlation id, when the server returned one. */
@@ -30,6 +43,13 @@ export interface ErrorEnvelope {
   hint?: string
   /** Where to read more: a URL or `norbix <cmd> --help`. */
   docs?: string
+}
+
+/** One gateway error item: `{errorCode, message}` (plus the field it names). */
+export interface ErrorItem {
+  code?: string
+  message?: string
+  field?: string
 }
 
 export interface CliErrorInit {
@@ -44,6 +64,9 @@ export interface CliErrorInit {
   traceId?: string
   /** Extra values for scripts, e.g. `{reason: "EmailNotVerified"}` (JSON envelope `context`). */
   context?: Record<string, unknown>
+  errors?: ErrorItem[]
+  body?: string
+  retryAfterSeconds?: number
 }
 
 /** An error the CLI raises itself, already carrying its exit code and hint. */
@@ -57,6 +80,9 @@ export class CliError extends Error {
   readonly url?: string
   readonly traceId?: string
   readonly context?: Record<string, unknown>
+  readonly errors?: ErrorItem[]
+  readonly body?: string
+  readonly retryAfterSeconds?: number
 
   constructor(init: CliErrorInit) {
     super(init.message)
@@ -70,6 +96,9 @@ export class CliError extends Error {
     this.url = init.url
     this.traceId = init.traceId
     this.context = init.context
+    this.errors = init.errors
+    this.body = init.body
+    this.retryAfterSeconds = init.retryAfterSeconds
   }
 }
 
@@ -151,6 +180,7 @@ interface NorbixErrorLike {
   fieldErrors?: NorbixErrorItemLike[]
   raw?: unknown
   url?: string
+  retryAfterSeconds?: number
 }
 
 /** Duck-typed: the SDK's NorbixError family, without importing the SDK here. */
@@ -168,14 +198,82 @@ export function contextOf(items: NorbixErrorItemLike[] | undefined, code?: strin
   return item?.meta
 }
 
+/** Gateway: files register refused because the project already runs the most register calls at once (HTTP 429). */
+export const REGISTER_BUSY_CODE = 'CM-ERRORS-FILES-031'
+
+/** How much of a body the envelope keeps when it has no error items. */
+export const BODY_SNIPPET_LENGTH = 500
+
+/** The start of a response body, whitespace collapsed, for people and logs. */
+export function bodySnippet(raw: unknown): string | undefined {
+  if (raw === undefined || raw === null) return undefined
+  const textBody = typeof raw === 'string' ? raw : JSON.stringify(raw)
+  const flat = (textBody ?? '').replaceAll(/\s+/g, ' ').trim()
+  if (!flat) return undefined
+  return flat.length > BODY_SNIPPET_LENGTH ? `${flat.slice(0, BODY_SNIPPET_LENGTH)}…` : flat
+}
+
+/** Every error item with a code or a message, in the server's order. */
+function errorItemsOf(items: NorbixErrorItemLike[] | undefined): ErrorItem[] | undefined {
+  const out = (items ?? [])
+    .filter((i) => i.errorCode !== undefined || i.message !== undefined)
+    .map((i) => compactItem({code: i.errorCode, message: i.message, field: i.fieldName}))
+  return out.length > 0 ? out : undefined
+}
+
+function compactItem(item: ErrorItem): ErrorItem {
+  return Object.fromEntries(Object.entries(item).filter(([, v]) => v !== undefined)) as ErrorItem
+}
+
+/**
+ * Seconds to wait before sending again: the `Retry-After` header (the SDK's
+ * `retryAfterSeconds`) or `RetryAfterSeconds` the gateway puts on the error
+ * item's context (e.g. CM-ERRORS-FILES-031, CM-ERRORS-LOGGING-003).
+ */
+function retryAfterOf(err: {retryAfterSeconds?: unknown; fieldErrors?: NorbixErrorItemLike[]}): number | undefined {
+  const fromHeader = secondsOf(err.retryAfterSeconds)
+  if (fromHeader !== undefined) return fromHeader
+  for (const item of err.fieldErrors ?? []) {
+    if (!isRecord(item.meta)) continue
+    for (const [key, value] of Object.entries(item.meta)) {
+      if (key.toLowerCase() !== 'retryafterseconds') continue
+      const seconds = secondsOf(value)
+      if (seconds !== undefined) return seconds
+    }
+  }
+
+  return undefined
+}
+
+function secondsOf(value: unknown): number | undefined {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN
+  return Number.isFinite(n) && n >= 0 ? Math.ceil(n) : undefined
+}
+
+/** `fetch failed` hides the reason in `cause` (ECONNREFUSED, ENOTFOUND, ...). */
+function networkReason(message: string, cause: unknown): string {
+  const c = cause as {code?: unknown; message?: unknown} | undefined
+  const detail = typeof c?.code === 'string' ? c.code : typeof c?.message === 'string' ? c.message : undefined
+  return detail && !message.includes(detail) ? `${message} (${detail})` : message
+}
+
 const SDK_LOCAL_CODES: Record<string, ExitCode> = {
   NORBIX_NOT_AUTHENTICATED: EXIT.AUTH,
   NORBIX_ACCOUNT_SCOPE_REQUIRED: EXIT.USAGE,
   NORBIX_MISSING_PATH_PARAM: EXIT.USAGE,
 }
 
-function hintForExit(exit: ExitCode, env: {status?: number; url?: string}, command?: string): string {
+function hintForExit(exit: ExitCode, env: {status?: number; url?: string; code?: string; retryAfterSeconds?: number}, command?: string): string {
   const help = command ? `norbix ${command} --help` : 'norbix --help'
+  if (env.retryAfterSeconds !== undefined || env.status === 429) {
+    const wait = env.retryAfterSeconds === undefined ? 'a little' : `${env.retryAfterSeconds} second${env.retryAfterSeconds === 1 ? '' : 's'}`
+    if (env.code === REGISTER_BUSY_CODE) {
+      return `Register busy: the project already has the most register calls running at once. Retry after ${wait}, when one of them has finished.`
+    }
+
+    return `Rate limited. Retry after ${wait}.`
+  }
+
   switch (exit) {
     case EXIT.AUTH:
       return env.status === 403
@@ -209,8 +307,11 @@ export function toEnvelope(err: unknown, ctx: {command?: string} = {}): ErrorEnv
       fieldErrors: err.fieldErrors,
       context: err.context,
       url: err.url,
+      errors: err.errors,
+      body: err.body,
+      retryAfterSeconds: err.retryAfterSeconds,
       traceId: err.traceId,
-      hint: err.hint ?? hintForExit(err.exit, {status: err.status, url: err.url}, ctx.command),
+      hint: err.hint ?? hintForExit(err.exit, {status: err.status, url: err.url, code: err.code, retryAfterSeconds: err.retryAfterSeconds}, ctx.command),
       docs: err.docs ?? docs,
     })
   }
@@ -223,22 +324,43 @@ export function toEnvelope(err: unknown, ctx: {command?: string} = {}): ErrorEnv
     // The SDK reads `errorCode`; some answers carry `code` instead.
     const bodyCode = isRecord(err.raw) ? (text(err.raw.code) ?? text(err.raw.errorCode)) : undefined
     const code = err.code ?? bodyCode ?? (isNetwork && err.name === 'NorbixTimeoutError' ? 'TIMEOUT' : codeForExit(exit))
+    const status = err.status && err.status > 0 ? err.status : undefined
+    const errors = isNetwork ? undefined : errorItemsOf(err.fieldErrors)
+    // No error item and no message the CLI could read: show what the server
+    // did send (an HTML page from a proxy, plain text, an unexpected JSON).
+    const generic = /^Request failed \(HTTP \d+\)$/.test(err.message)
+    const body = isNetwork || status === undefined ? undefined : typeof err.raw === 'string' || (!errors && generic) ? bodySnippet(err.raw) : undefined
+    const retryAfterSeconds = isNetwork ? undefined : retryAfterOf(err)
     return compact({
       code,
-      message: err.message,
-      status: err.status && err.status > 0 ? err.status : undefined,
+      message: isNetwork ? networkReason(err.message, (err.raw as {cause?: unknown} | undefined)?.cause) : err.message,
+      status,
       exit,
       fieldErrors: fieldErrorsOf(err.raw, err.fieldErrors),
       context: contextOf(err.fieldErrors, code),
+      errors,
+      body,
+      retryAfterSeconds,
       url: err.url,
       traceId: traceIdOf(err.raw),
-      hint: hintForExit(exit, {status: err.status, url: err.url}, ctx.command),
+      hint: hintForExit(exit, {status: err.status, url: err.url, code, retryAfterSeconds}, ctx.command),
       docs,
     })
   }
 
   if (err instanceof Error) {
     const anyErr = err as Error & {oclif?: {exit?: number}; code?: string; parse?: unknown}
+    // A bare `fetch` that never reached the server (connection refused, DNS, TLS).
+    if (err.name === 'TypeError' && err.message === 'fetch failed') {
+      return compact({
+        code: 'NORBIX_NETWORK_ERROR',
+        message: networkReason(err.message, (err as {cause?: unknown}).cause),
+        exit: EXIT.NETWORK,
+        hint: hintForExit(EXIT.NETWORK, {}, ctx.command),
+        docs,
+      })
+    }
+
     // Ctrl+C at an @inquirer prompt.
     if (err.name === 'ExitPromptError') {
       return compact({code: 'CANCELLED', message: 'Cancelled.', exit: EXIT.CANCELLED})
@@ -291,6 +413,7 @@ export function formatErrorText(env: ErrorEnvelope): string {
   const details: string[] = []
   if (env.code && env.code !== 'INTERNAL_ERROR' && env.code !== 'USAGE_ERROR') details.push(`code: ${env.code}`)
   if (env.status !== undefined) details.push(`status: ${env.status}`)
+  if (env.retryAfterSeconds !== undefined) details.push(`retryAfterSeconds: ${env.retryAfterSeconds}`)
   if (env.url) details.push(`url: ${env.url}`)
   if (env.traceId) details.push(`traceId: ${env.traceId}`)
   for (const [key, value] of Object.entries(env.context ?? {})) details.push(`context.${key}: ${contextText(value)}`)
@@ -298,6 +421,14 @@ export function formatErrorText(env: ErrorEnvelope): string {
     for (const [field, messages] of Object.entries(env.fieldErrors)) details.push(`${field}: ${messages.join('; ')}`)
   }
 
+  // The first item is already the message and code above; list them all when there are more.
+  const items = env.errors ?? []
+  if (items.length > 1 || (items.length === 1 && items[0].message !== env.message)) {
+    details.push('errors:')
+    for (const item of items) details.push(`  - ${[item.code, item.field ? `${item.field}:` : undefined, item.message].filter(Boolean).join(' ')}`)
+  }
+
+  if (env.body) details.push(`body: ${env.body}`)
   for (const d of details) lines.push(`  ${d}`)
   if (env.hint) lines.push(`Hint: ${env.hint}`)
   if (env.docs) lines.push(`Docs: ${env.docs}`)

@@ -98,6 +98,49 @@ export async function startFakeGateway(answers: Record<string, unknown> = {}): P
         return res.end('{"responseStatus":{"errorCode":"CM-ERRORS-INTERNAL","message":"boom","meta":{"correlationId":"c-9"}}}')
       }
 
+      // A proxy in front of the gateway answering with its own HTML page.
+      if (url.includes('html503')) {
+        res.statusCode = 503
+        res.setHeader('content-type', 'text/html')
+        return res.end(`<html>\n<head><title>503 Service Temporarily Unavailable</title></head>\n<body><center><h1>503 Service Temporarily Unavailable</h1></center>${'x'.repeat(800)}</body></html>`)
+      }
+
+      if (url.includes('json503')) {
+        res.statusCode = 503
+        return res.end(
+          JSON.stringify({
+            responseStatus: {
+              errorCode: 'CM-ERRORS-FILES-020',
+              message: 'Storage is not available',
+              errors: [
+                {errorCode: 'CM-ERRORS-FILES-020', message: 'Storage is not available'},
+                {errorCode: 'CM-ERRORS-FILES-021', message: 'The bucket did not answer in time'},
+              ],
+            },
+          }),
+        )
+      }
+
+      // Files register refused: two register calls already run (the gateway's FileRegisterBusyError).
+      if (url.includes('busy429')) {
+        res.statusCode = 429
+        return res.end(
+          JSON.stringify({
+            responseStatus: {
+              errorCode: 'CM-ERRORS-FILES-031',
+              message: 'The project already has 2 register calls running.',
+              errors: [
+                {
+                  errorCode: 'CM-ERRORS-FILES-031',
+                  message: 'The project already has 2 register calls running.',
+                  context: {ErrorCode: 'CM-ERRORS-FILES-031', RetryAfterSeconds: 15},
+                },
+              ],
+            },
+          }),
+        )
+      }
+
       res.end('{"ok":true}')
     })
   })

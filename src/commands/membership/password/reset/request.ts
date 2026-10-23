@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../../base.js'
+import {readNorbixResponse} from '../../../../lib/http-response.js'
 
 /** The admin answer of `POST /{version}/membership/userauth/password/reset/test` (gateway N45). */
 export interface TestPasswordResetAnswer {
@@ -138,18 +139,9 @@ The user really gets a working reset link: use a test address.`
     }
 
     const res = await fetch(url, {method: 'POST', headers, body: JSON.stringify(body)})
-    const text = await res.text()
-    let answer: TestPasswordResetAnswer
-    try {
-      answer = JSON.parse(text) as TestPasswordResetAnswer
-    } catch {
-      this.error(`HTTP ${res.status}: ${text.slice(0, 300)}`)
-    }
-
-    if (!res.ok || answer.responseStatus?.isSuccess === false) {
-      const why = answer.responseStatus?.errors?.map((e) => [e.errorCode, e.message].filter(Boolean).join(' ')).join('; ')
-      this.error(`HTTP ${res.status}${why ? `: ${why}` : ''}${res.status === 401 || res.status === 403 ? ' (an admin sign-in is needed)' : ''}`)
-    }
+    const answer = (await readNorbixResponse(res, url, {
+      note: (status) => (status === 401 || status === 403 ? 'an admin sign-in is needed' : undefined),
+    })) as TestPasswordResetAnswer
 
     let delivery: DeliveryResult = {status: 'unknown'}
     if (answer.queued && answer.correlationId && flags.wait > 0) {
