@@ -9,7 +9,7 @@ export default class PaymentsTriggerSave extends BaseCommand {
 
 "when" says what fires it:
 - OnWebhookCallReceived (default): a provider webhook (Stripe, Apple In-App,
-  Google In-App, Montonio, …) reached Norbix; "events" = provider event names
+  Google In-App, Montonio, Neopay, …) reached Norbix; "events" = provider event names
   such as payment_intent.succeeded.
 - OnOrderPaid: a verified callback made a stored payment order Paid.
 - OnOrderPaymentChanged: a stored order was paid, refunded, reversed or

@@ -7,7 +7,8 @@ export default class PaymentsOrderCheckout extends BaseCommand {
 
 Sends the stored price to the payment provider and answers the payment URL
 to send the buyer to. An open checkout that has more than two minutes left is
-reused. --integration names the payments integration (Montonio sandbox today);
+reused. --integration names the payments integration (a Montonio sandbox store or a
+Neopay test project); --method is bankLink (default) or card (applePay / googlePay: Montonio only);
 --return-url must be on one of the project's allowed origins. After the buyer
 comes back, read the result with \`payments order <id>\` — the order moves only
 when the provider's signed callback arrives.`
