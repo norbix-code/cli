@@ -63,7 +63,7 @@ norbix sms integration confirm-delivery int_123
 | `norbix sms template render --code <razor> [--token key=value]... [--preview]` | render text with token values | `POST /templates/render` |
 | `norbix sms archive <id>` | archive a template | `PUT /templates/{Id}/archive` |
 | `norbix sms unarchive <id>` | restore an archived template | `PUT /templates/{Id}/unarchive` |
-| `norbix sms clone <id>` | copy a template | `POST /templates/{Id}/clone` |
+| `norbix sms clone <id>` | copy a template; prints the new copy's id (`--json`: `{"id": "…"}`) | `POST /templates/{Id}/clone` |
 | `norbix sms delete <id> [--yes]` | delete a template | `DELETE /templates/{Id}` |
 
 `create` and `update` also take `--description`, `--channel`
