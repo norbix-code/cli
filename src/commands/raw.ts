@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../base.js'
+import {parseBody, responseError} from '../lib/http-response.js'
 import {readJsonInput} from '../lib/json.js'
 
 /**
@@ -81,19 +82,9 @@ path and it becomes v3.`
     }
 
     const res = await fetch(url, {method: flags.method, headers, body})
+    if (!res.ok) throw responseError(res.status, parseBody(await res.text()), url.toString(), res.headers.get('retry-after') ?? undefined)
     const text = await res.text()
-    let data: unknown
-    try {
-      data = JSON.parse(text)
-    } catch {
-      data = text
-    }
-
-    if (!res.ok) {
-      this.warn(`HTTP ${res.status} ${res.statusText}`)
-      this.print(data)
-      this.exit(1)
-    }
+    const data = parseBody(text) ?? text
 
     this.print(data)
     return data

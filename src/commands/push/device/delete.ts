@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
+import {readNorbixResponse} from '../../../lib/http-response.js'
 
 export default class PushDeviceDelete extends BaseCommand {
   static description = `Delete a registered push device, whichever user it belongs to (admin)
@@ -57,19 +58,9 @@ the right to delete push devices (push:delete on push:device:all). Works in the
     await this.confirmOrFail(`Delete push device ${args.id}${ctx.env ? ` in ${ctx.env}` : ''}?`, flags)
 
     const res = await fetch(url, {method: 'DELETE', headers})
-    const text = await res.text()
-    let answer: {responseStatus?: {isSuccess?: boolean; errors?: Array<{message?: string; errorCode?: string}>}} = {}
-    try {
-      answer = text ? JSON.parse(text) : {}
-    } catch {
-      this.error(`HTTP ${res.status}: ${text.slice(0, 300)}`)
-    }
-
-    if (!res.ok || answer.responseStatus?.isSuccess === false) {
-      const why = answer.responseStatus?.errors?.map((e) => [e.errorCode, e.message].filter(Boolean).join(' ')).join('; ')
-      const hint = res.status === 405 ? ' (this hub is older than the admin device delete — upgrade it)' : ''
-      this.error(`HTTP ${res.status}${why ? `: ${why}` : ''}${hint}`)
-    }
+    await readNorbixResponse(res, url, {
+      note: (status) => (status === 405 ? 'this hub is older than the admin device delete — upgrade it' : undefined),
+    })
 
     this.print(`Push device ${args.id} deleted.`)
     return {id: args.id, deleted: true}
