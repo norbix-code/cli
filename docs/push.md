@@ -99,7 +99,7 @@ stopping at the first short page.
 | `norbix push template render --code <razor> [--token key=value]... [--preview]` | render one field with token values | `POST /templates/render` |
 | `norbix push archive <id>` | archive a template | `PUT /templates/{Id}/archive` |
 | `norbix push unarchive <id>` | restore an archived template | `PUT /templates/{Id}/unarchive` |
-| `norbix push clone <id>` | copy a template | `POST /templates/{Id}/clone` |
+| `norbix push clone <id>` | copy a template; prints the new copy's id (`--json`: `{"id": "…"}`) | `POST /templates/{Id}/clone` |
 | `norbix push delete <id> [--yes]` | delete a template | `DELETE /templates/{Id}` |
 
 `create` and `update` also take `--description`, `--channel`

@@ -100,7 +100,7 @@ to keep.
 | `norbix email system-template <id>` | show one ready-made template | `GET /system-templates/{id}` |
 | `norbix email archive <id>` | archive a template | `PUT /templates/{Id}/archive` |
 | `norbix email unarchive <id>` | restore an archived template | `PUT /templates/{Id}/unarchive` |
-| `norbix email clone <id>` | copy a template | `POST /templates/{Id}/clone` |
+| `norbix email clone <id>` | copy a template; prints the new copy's id (`--json`: `{"id": "…"}`) | `POST /templates/{Id}/clone` |
 | `norbix email delete <id> [--yes]` | delete a template | `DELETE /templates/{Id}` |
 
 `create` and `update` also take `--description`, `--channel`
