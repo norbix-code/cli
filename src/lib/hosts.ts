@@ -1,5 +1,5 @@
 import {chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs'
-import {join} from 'node:path'
+import {dirname, join} from 'node:path'
 
 import {CliError, usageError} from './cli-error.js'
 import {EXIT} from './exit-codes.js'
@@ -148,11 +148,39 @@ function readJson<T>(path: string): T | undefined {
   }
 }
 
-function writeJson(path: string, data: unknown): void {
-  mkdirSync(HOSTS_DIR, {recursive: true})
+/** Errors Windows gives while another process has the target file open. */
+const LOCKED = new Set(['EPERM', 'EACCES', 'EBUSY'])
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+/**
+ * Write a cache file atomically (temp file + rename). Every file under
+ * ~/.norbix/hosts is a cache, so a write that cannot land is dropped: the
+ * next command reads the network again. On Windows the rename fails with
+ * EPERM / EBUSY while another norbix process (agents run several at once)
+ * has the file open; that is retried a few times, then given up.
+ */
+export function writeJson(path: string, data: unknown, rename: (from: string, to: string) => void = renameSync): void {
   const tmp = `${path}.${process.pid}.tmp`
-  writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', {mode: 0o600})
-  renameSync(tmp, path)
+  try {
+    mkdirSync(dirname(path), {recursive: true})
+    writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', {mode: 0o600})
+    for (let attempt = 0; ; attempt++) {
+      try {
+        rename(tmp, path)
+        break
+      } catch (error) {
+        if (attempt >= 4 || !LOCKED.has((error as NodeJS.ErrnoException).code ?? '')) throw error
+        sleepSync(10 * 2 ** attempt)
+      }
+    }
+  } catch {
+    rmSync(tmp, {force: true})
+    return
+  }
+
   try {
     chmodSync(path, 0o600)
   } catch {
