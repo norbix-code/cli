@@ -44,11 +44,11 @@ and every project-scoped command prints it on stderr ("env: TEST (saved by norbi
       return {env: args.name, profile: flags.profile}
     }
 
-    const {hubKey} = this.resolveContext(flags)
-    const session = readSession(hubKey)
+    const {sessionKey} = this.resolveContext(flags)
+    const session = readSession(sessionKey)
     if (isSessionUsable(session)) {
-      if (flags['dry-run']) return dry('session', sessionPath(hubKey))
-      writeSession(hubKey, {...session, env: args.name})
+      if (flags['dry-run']) return dry('session', sessionPath(sessionKey))
+      writeSession(sessionKey, {...session, env: args.name})
       this.print(`Session now targets environment ${args.name}.`)
       return {env: args.name, target: 'session'}
     }

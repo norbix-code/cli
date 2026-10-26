@@ -1,9 +1,9 @@
 import {BaseCommand} from '../base.js'
-import {PROFILES_PATH, SESSIONS_DIR, isSessionRefreshable, isSessionValid, listSessions, readProfiles} from '../lib/profiles.js'
+import {PROFILES_PATH, SESSIONS_DIR, isSessionRefreshable, isSessionValid, listSessions, readProfiles, sessionPath} from '../lib/profiles.js'
 import {redact} from '../lib/store.js'
 
 export default class Profiles extends BaseCommand {
-  static description = 'List profiles from ~/.norbix/config (keys redacted) and every host you are signed in to'
+  static description = 'List profiles from ~/.norbix/config (keys redacted) and every sign-in on this machine — which Hub and project each is for'
 
   static examples = ['<%= config.bin %> profiles', '<%= config.bin %> profiles --json']
 
@@ -20,13 +20,15 @@ export default class Profiles extends BaseCommand {
       ]),
     )
 
-    // One browser sign-in per Hub; never its tokens.
-    const signedIn = listSessions().map(({hubKey, session}) => ({
+    // One browser sign-in per Hub and project; never its tokens.
+    const signedIn = listSessions().map(({key, hubKey, projectId, session}) => ({
       hub: hubKey,
       host: session.host ?? hubKey,
       hubUrl: session.hubUrl,
       user: session.displayName ?? session.userName ?? session.userId,
-      projectId: session.projectId,
+      /** The project the sign-in is for (none: made with no project, usable for any). */
+      projectId: projectId ?? session.projectId,
+      file: sessionPath(key),
       valid: isSessionValid(session),
       refreshes: isSessionRefreshable(session),
       expiresAt: session.expiresAt,

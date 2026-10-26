@@ -10,7 +10,7 @@ import {BaseCommand} from '../src/base.js'
 import Login from '../src/commands/login.js'
 import {CliError} from '../src/lib/cli-error.js'
 import {HOSTS_DIR} from '../src/lib/hosts.js'
-import {NORBIX_DIR, PROFILES_PATH, SESSIONS_DIR, pendingPath, sessionPath} from '../src/lib/profiles.js'
+import {NORBIX_DIR, PROFILES_PATH, SESSIONS_DIR, pendingPath, sessionKey, sessionPath} from '../src/lib/profiles.js'
 import {ownerOnly, seedDefaultHost} from './seed.js'
 
 /**
@@ -88,7 +88,12 @@ const SUCCESS = {
   projectId: 'p1',
 }
 
-const HUB_SESSION = () => sessionPath('hub.example.com')
+/** The sign-in for project p1 on the Hub: ~/.norbix/sessions/hub.example.com@p1.json. */
+const HUB_SESSION = () => sessionPath(sessionKey('hub.example.com', 'p1'))
+/** A sign-in made with no project: ~/.norbix/sessions/hub.example.com.json. */
+const NO_PROJECT_SESSION = () => sessionPath('hub.example.com')
+/** The code of a sign-in started for p1 (its profile's project). */
+const PENDING_P1 = () => pendingPath(sessionKey('hub.example.com', 'p1'))
 const readJson = (path: string) => JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>
 
 let output: string[]
@@ -121,7 +126,7 @@ afterEach(() => {
 })
 
 describe('norbix login (browser sign-in)', () => {
-  it('discovers the Hub, starts the device flow there, polls, and stores the session under the Hub host', async () => {
+  it('discovers the Hub, starts the device flow there, polls, and stores the session under the Hub host and project', async () => {
     const hits = stubNetwork({
       '/v3/echo': [{body: ECHO}],
       '/v3/auth/device/start': [{body: START}],
@@ -149,7 +154,8 @@ describe('norbix login (browser sign-in)', () => {
     expect(opened).toEqual(['https://cloud.example.com/device?code=BCDF-GHJK'])
     const done = output.at(-1)!.split('\n')
     expect(done[0]).toBe('Signed in to hub.example.com as Norbix CLI (mac) (norbix-cli-mac) — an AI service user with the roles you picked.')
-    expect(done[2]).toBe(`Session saved to ${join(SESSIONS_DIR, 'hub.example.com.json')}.`)
+    expect(done[2]).toBe(`Session saved to ${join(SESSIONS_DIR, 'hub.example.com@p1.json')} (project p1).`)
+    expect(output).toContain('Signing in to hub.example.com (profile [default]) for project p1 (from project_id of profile [default]).')
     expect(output.join('\n')).not.toMatch(/access-1|refresh-1/)
 
     const session = readJson(HUB_SESSION())
@@ -187,7 +193,7 @@ describe('norbix login (browser sign-in)', () => {
     })
     const result = await runLogin()
     expect(hits.at(-1)).toMatchObject({method: 'GET', url: 'https://hub.example.com/v3/account/projects'})
-    expect(readJson(HUB_SESSION()).projectId).toBe('p-only')
+    expect(readJson(NO_PROJECT_SESSION()).projectId).toBe('p-only')
     expect(output.at(-1)).toBe('Project: Finlo (p-only) — the only project of this account, saved to the sign-in.')
     expect(result).toMatchObject({status: 'signed-in', projectId: 'p-only'})
   })
@@ -201,7 +207,7 @@ describe('norbix login (browser sign-in)', () => {
       '/v3/account/projects': [{body: {list: [{viewId: 'p-a', name: 'Alpha'}, {viewId: 'p-b', name: 'Beta'}]}}],
     })
     const result = await runLogin()
-    expect(readJson(HUB_SESSION()).projectId).toBeUndefined()
+    expect(readJson(NO_PROJECT_SESSION()).projectId).toBeUndefined()
     expect(output.at(-1)).toBe(
       'This account has 2 projects and none is chosen yet. Pick one: norbix config set project_id <id>, or pass --project <id> / set NORBIX_PROJECT_ID.\n  p-a  Alpha\n  p-b  Beta',
     )
@@ -240,7 +246,7 @@ describe('norbix login (browser sign-in)', () => {
     })
     const result = await runLogin()
     expect(hits.at(-1)).toMatchObject({method: 'GET', url: 'https://hub.example.com/v3/account/projects'})
-    const session = readJson(HUB_SESSION())
+    const session = readJson(NO_PROJECT_SESSION())
     expect([session.projectId, session.region]).toEqual(['p-only', undefined])
     expect(result).not.toHaveProperty('region')
   })
@@ -339,7 +345,7 @@ describe('norbix login (browser sign-in)', () => {
       'POST https://hub.finlo.space/v3/auth/device/start',
       'POST https://hub.finlo.space/v3/auth/device/token',
     ])
-    const session = readJson(sessionPath('hub.finlo.space'))
+    const session = readJson(sessionPath(sessionKey('hub.finlo.space', 'p1')))
     expect([session.hubUrl, session.hubVersion]).toEqual(['https://hub.finlo.space', 'v3'])
     expect(stderr.mock.calls.map((c) => String(c[0])).join('')).toContain('Warning: NORBIX_HUB_URL is deprecated')
   })
@@ -423,7 +429,7 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
   function writePendingFile(over: Record<string, unknown> = {}): void {
     mkdirSync(SESSIONS_DIR, {recursive: true})
     writeFileSync(
-      pendingPath('hub.example.com'),
+      PENDING_P1(),
       JSON.stringify({
         deviceCode: 'dc-1',
         userCode: 'BCDF-GHJK',
@@ -457,9 +463,9 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
     })
     expect(hits.map((h) => new URL(h.url).pathname)).toEqual(['/.well-known/norbix.json', '/v3/echo', '/v3/auth/device/start'])
     expect(opened).toEqual([])
-    const pending = readJson(pendingPath('hub.example.com'))
+    const pending = readJson(PENDING_P1())
     expect(pending).toMatchObject({deviceCode: 'dc-1', userCode: 'BCDF-GHJK', hubUrl: 'https://hub.example.com', hubVersion: 'v3', host: 'hub.example.com'})
-    expect(ownerOnly(pendingPath('hub.example.com'))).toBe(true)
+    expect(ownerOnly(PENDING_P1())).toBe(true)
     expect(existsSync(HUB_SESSION())).toBe(false)
   })
 
@@ -472,7 +478,7 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
     })
     const result = (await runLogin(['--no-browser', '--json', '--host', 'cloud.example.com'])) as {next: string}
     expect(result.next).toBe('norbix login --wait --host cloud.example.com')
-    expect(existsSync(pendingPath('hub.example.com'))).toBe(true)
+    expect(existsSync(PENDING_P1())).toBe(true)
   })
 
   it('--wait: approved → the session is saved and the pending code removed', async () => {
@@ -486,7 +492,7 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
     expect(result).toMatchObject({status: 'signed-in', host: 'hub.example.com', userName: 'norbix-cli-mac'})
     expect(hits.filter((h) => h.url.endsWith('/auth/device/token')).map((h) => h.body)).toEqual([{deviceCode: 'dc-1'}, {deviceCode: 'dc-1'}])
     expect(readJson(HUB_SESSION())).toMatchObject({bearerToken: 'access-1', hubUrl: 'https://hub.example.com', host: 'hub.example.com', projectId: 'p1'})
-    expect(existsSync(pendingPath('hub.example.com'))).toBe(false)
+    expect(existsSync(PENDING_P1())).toBe(false)
   })
 
   it('--wait: still pending after ~90 s → exit 4 AUTHORIZATION_PENDING, the code is kept, and a re-run finishes it', async () => {
@@ -502,14 +508,14 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
     expect([error.exit, error.code]).toEqual([4, 'AUTHORIZATION_PENDING'])
     expect(error.message).toContain('https://cloud.example.com/device?code=BCDF-GHJK')
     expect(error.hint).toContain('norbix login --wait')
-    expect(existsSync(pendingPath('hub.example.com'))).toBe(true)
+    expect(existsSync(PENDING_P1())).toBe(true)
 
     // Back to the real clock (the fake one stamped the host cache in the future, so it is fetched again).
     nowSpy.mockRestore()
     stubNetwork({'/v3/echo': [{body: ECHO}], '/v3/auth/device/token': [{body: SUCCESS}]})
     await runLogin(['--wait', '--json'])
     expect(readJson(HUB_SESSION()).bearerToken).toBe('access-1')
-    expect(existsSync(pendingPath('hub.example.com'))).toBe(false)
+    expect(existsSync(PENDING_P1())).toBe(false)
   })
 
   it('--wait: the code ran out → exit 4 EXPIRED_TOKEN and the pending file is removed', async () => {
@@ -518,7 +524,7 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
     const hits = stubNetwork({'/v3/echo': [{body: ECHO}]})
     const error = (await runLogin(['--wait', '--json']).catch((e: unknown) => e)) as CliError
     expect([error.exit, error.code]).toEqual([4, 'EXPIRED_TOKEN'])
-    expect(existsSync(pendingPath('hub.example.com'))).toBe(false)
+    expect(existsSync(PENDING_P1())).toBe(false)
     expect(hits.some((h) => h.url.includes('/auth/device/token'))).toBe(false)
   })
 
@@ -528,7 +534,7 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
     stubNetwork({'/v3/echo': [{body: ECHO}], '/v3/auth/device/token': [{body: {error: 'access_denied'}}]})
     const error = (await runLogin(['--wait', '--json']).catch((e: unknown) => e)) as CliError
     expect([error.exit, error.code]).toEqual([4, 'ACCESS_DENIED'])
-    expect(existsSync(pendingPath('hub.example.com'))).toBe(false)
+    expect(existsSync(PENDING_P1())).toBe(false)
     expect(existsSync(HUB_SESSION())).toBe(false)
   })
 
@@ -537,7 +543,7 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
     stubNetwork({'/v3/echo': [{body: ECHO}]})
     const error = (await runLogin(['--wait']).catch((e: unknown) => e)) as CliError
     expect([error.exit, error.code]).toEqual([2, 'USAGE_ERROR'])
-    expect(error.message).toBe('No browser sign-in is waiting for hub.example.com.')
+    expect(error.message).toBe('No browser sign-in is waiting for hub.example.com for project p1.')
     expect(error.hint).toContain('norbix login --no-browser --json')
   })
 })

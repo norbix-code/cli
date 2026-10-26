@@ -18,8 +18,11 @@ import {DEFAULT_HOST, cachedHost, hostKey, normalizeHost, storedHost} from '../l
 import {type HubEndpoint} from '../lib/hub-version.js'
 import {
   clearPending,
+  listPendingKeys,
+  parseSessionKey,
   readPending,
   readProfiles,
+  sessionKey,
   sessionPath,
   writePending,
   writeProfile,
@@ -41,10 +44,17 @@ can remove it any time in the dashboard under Account → AI service users.
 
 Which Norbix: --host (or NORBIX_HOST, or \`host\` in the --profile) names
 your dashboard or Hub, e.g. cloud.example.com; the default is hub.norbix.ai.
-The Hub tells the CLI every other address. One sign-in per Hub: it is saved
-to ~/.norbix/sessions/<hub>.json, every terminal window and every profile of
-that host without an API key uses it. The access token lasts one hour and
-is refreshed by itself; when the sign-in is removed or runs out, the next
+The Hub tells the CLI every other address.
+
+Which project: --project (or NORBIX_PROJECT_ID), else the project_id of the
+profile (--profile / NORBIX_PROFILE, else [default]). The Hub pins the
+sign-in to that project, so it is saved per Hub AND project:
+~/.norbix/sessions/<hub>@<project>.json. A sign-in for another project on
+the same Hub stays as it is — several projects can be signed in at once,
+and every command uses the sign-in of the project it is for (its --project
+or profile). With no project named the sign-in is saved to
+~/.norbix/sessions/<hub>.json. The access token lasts one hour and is
+refreshed by itself; when the sign-in is removed or runs out, the next
 command asks you to log in again (exit 4).
 
 Over SSH, in a container, or with --no-browser the CLI never opens a
@@ -71,6 +81,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     '<%= config.bin %> login',
     '<%= config.bin %> login --host cloud.example.com',
     '<%= config.bin %> login --profile finlo',
+    '<%= config.bin %> login --project 66b2f0a1c3d4e5f6a7b8c9d0',
     '<%= config.bin %> login --no-browser --json',
     '<%= config.bin %> login --wait --json',
     '<%= config.bin %> login --api-key nbsu_7hK2abc --project 66b2f0a1c3d4e5f6a7b8c9d0 --region nb-eu-germany --profile ci',
@@ -115,7 +126,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     const ctx = this.resolveContext(flags)
 
     // Mode 3: the second step of the agent sign-in.
-    if (flags.wait) return this.pickProject(flags, await this.finishPending(ctx))
+    if (flags.wait) return this.pickProject(flags, await this.finishPending(ctx, flags))
 
     if (ctx.hostInfo?.source !== 'discovered') this.assertEndpoints(ctx)
 
@@ -209,16 +220,19 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     flags: {account?: string; env?: string; region?: string; project?: string; 'no-browser': boolean},
   ): Promise<unknown> {
     const hub = await this.hubEndpoint(ctx)
-    const projectId = ctx.projectId
+    // Only what was asked for — never the project of an older sign-in.
+    const projectId = ctx.requestedProjectId
+    const host = new URL(ctx.host).host
+    const agentStep = flags['no-browser'] && this.jsonEnabled()
+    if (!agentStep) this.log(describeTarget(ctx, flags))
     const start = await startDeviceFlow(hub, {deviceName: deviceName(), projectId})
     const link = start.verificationUriComplete ?? start.verificationUri
     const expiresIn = start.expiresIn ?? 600
-    const host = new URL(ctx.host).host
 
     // Agent step 1: save the code, print the link, exit at once.
-    if (flags['no-browser'] && this.jsonEnabled()) {
+    if (agentStep) {
       const now = Date.now()
-      writePending(ctx.hubKey, {
+      writePending(sessionKey(ctx.hubKey, projectId), {
         deviceCode: start.deviceCode,
         userCode: start.userCode,
         verificationUri: start.verificationUri,
@@ -242,7 +256,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
         verificationUri: start.verificationUri,
         verificationUriComplete: start.verificationUriComplete ?? start.verificationUri,
         expiresIn,
-        next: `norbix login --wait${hostArgs(ctx)}`,
+        next: `norbix login --wait${hostArgs(ctx, flags)}`,
       }
     }
 
@@ -274,13 +288,14 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
   }
 
   /** Agent step 2: poll the saved code for up to 90 s. */
-  private async finishPending(ctx: ResolvedContext): Promise<unknown> {
-    const pending = readPending(ctx.hubKey)
+  private async finishPending(ctx: ResolvedContext, flags: {project?: string}): Promise<unknown> {
     const host = new URL(ctx.host).host
+    const {key, pending} = this.pendingFor(ctx)
     if (!pending) {
+      const forProject = ctx.requestedProjectId ? ` for project ${ctx.requestedProjectId}` : ''
       throw usageError(
-        `No browser sign-in is waiting for ${host}.`,
-        `Start one with \`norbix login --no-browser --json${hostArgs(ctx)}\`, show the link to the person, then run \`norbix login --wait\`.`,
+        `No browser sign-in is waiting for ${host}${forProject}.`,
+        `Start one with \`norbix login --no-browser --json${hostArgs(ctx, flags)}\`, show the link to the person, then run \`norbix login --wait${hostArgs(ctx, flags)}\`.`,
         'norbix login --help',
       )
     }
@@ -288,7 +303,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     const now = Date.now()
     const left = Math.floor((Date.parse(pending.expiresAt) - now) / 1000)
     if (!(left > 0)) {
-      clearPending(ctx.hubKey)
+      clearPending(key)
       throw expiredError()
     }
 
@@ -307,18 +322,30 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
         (m) => this.log(m),
         {
           until: now + WAIT_SLICE_MS,
-          onSlowDown: (interval) => writePending(ctx.hubKey, {...pending, interval}),
+          onSlowDown: (interval) => writePending(key, {...pending, interval}),
         },
       )
     } catch (error) {
       // Denied, expired, refused: this code can never succeed.
-      if (error instanceof CliError && error.exit === EXIT.AUTH) clearPending(ctx.hubKey)
+      if (error instanceof CliError && error.exit === EXIT.AUTH) clearPending(key)
       throw error
     }
 
-    if (!token) throw notApprovedYet(pending, ctx)
-    clearPending(ctx.hubKey)
+    if (!token) throw notApprovedYet(pending, ctx, flags)
+    clearPending(key)
     return this.saveSignIn(ctx, hub, token, pending)
+  }
+
+  /**
+   * The code waiting for this Hub and the requested project. With no project
+   * requested, the Hub's only waiting code is taken, whatever its project.
+   */
+  private pendingFor(ctx: ResolvedContext): {key: string; pending?: PendingSignIn} {
+    const key = sessionKey(ctx.hubKey, ctx.requestedProjectId)
+    const own = readPending(key)
+    if (own || ctx.requestedProjectId) return {key, pending: own}
+    const waiting = listPendingKeys().filter((k) => parseSessionKey(k).hubKey === ctx.hubKey)
+    return waiting.length === 1 ? {key: waiting[0], pending: readPending(waiting[0])} : {key}
   }
 
   /**
@@ -359,7 +386,11 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     meta: Pick<PendingSignIn, 'host' | 'projectId' | 'accountId' | 'env' | 'region' | 'apiUrl'>,
   ): unknown {
     const now = Date.now()
-    writeSession(ctx.hubKey, {
+    // Saved under the project the Hub pinned the token to (the one asked for,
+    // or the one the chosen roles imply); a sign-in for another project stays.
+    const projectId = token.projectId ?? meta.projectId
+    const key = sessionKey(ctx.hubKey, projectId)
+    writeSession(key, {
       bearerToken: token.bearerToken,
       refreshToken: token.refreshToken,
       expiresAt: typeof token.expiresIn === 'number' ? new Date(now + token.expiresIn * 1000).toISOString() : undefined,
@@ -369,7 +400,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       hubUrl: hub.base,
       apiUrl: meta.apiUrl,
       host: meta.host,
-      projectId: token.projectId ?? meta.projectId,
+      projectId,
       accountId: token.accountId ?? meta.accountId,
       env: meta.env,
       region: meta.region,
@@ -385,7 +416,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       [
         `Signed in to ${meta.host} as ${who}${token.userName && token.displayName && token.userName !== token.displayName ? ` (${token.userName})` : ''} — an AI service user with the roles you picked.`,
         'Remove it any time in the dashboard: Account → AI service users.',
-        `Session saved to ${sessionPath(ctx.hubKey)}.`,
+        `Session saved to ${sessionPath(key)}${projectId ? ` (project ${projectId})` : ' (no project)'}.`,
         ...(defaultProfile.note ? [defaultProfile.note] : []),
       ].join('\n'),
     )
@@ -399,25 +430,38 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       userName: token.userName,
       displayName: token.displayName,
       accountId: token.accountId ?? meta.accountId,
-      projectId: token.projectId ?? meta.projectId,
+      projectId,
     }
   }
 }
 
-/** ` --host x` / ` --profile p` so a printed next step reaches the same Hub. */
-function hostArgs(ctx: ResolvedContext): string {
-  if (ctx.hostSource === 'flag/env') return ` --host ${storedHost(ctx.host)}`
-  if (ctx.profileName && ctx.profileName !== 'default') return ` --profile ${ctx.profileName}`
-  return ''
+/** One line, before anything is sent: which host, profile and project the sign-in is for. */
+function describeTarget(ctx: ResolvedContext, flags: {project?: string}): string {
+  const host = new URL(ctx.host).host
+  const profile = ctx.profileName ? `profile [${ctx.profileName}]` : 'no profile'
+  const project = ctx.requestedProjectId
+  const source = flags.project ? '--project / NORBIX_PROJECT_ID' : `project_id of ${profile}`
+  return project
+    ? `Signing in to ${host} (${profile}) for project ${project} (from ${source}).`
+    : `Signing in to ${host} (${profile}) with no project named — pass --project <id> to sign in for one; with one project in the account it is picked by itself.`
 }
 
-function notApprovedYet(pending: PendingSignIn, ctx: ResolvedContext): CliError {
+/** ` --host x` / ` --profile p` / ` --project id` so a printed next step reaches the same Hub and project. */
+function hostArgs(ctx: ResolvedContext, flags: {project?: string}): string {
+  let args = ''
+  if (ctx.hostSource === 'flag/env') args += ` --host ${storedHost(ctx.host)}`
+  else if (ctx.profileName && ctx.profileName !== 'default') args += ` --profile ${ctx.profileName}`
+  if (flags.project) args += ` --project ${flags.project}`
+  return args
+}
+
+function notApprovedYet(pending: PendingSignIn, ctx: ResolvedContext, flags: {project?: string}): CliError {
   const link = pending.verificationUriComplete ?? pending.verificationUri
   return new CliError({
     exit: EXIT.AUTH,
     code: 'AUTHORIZATION_PENDING',
     message: `Not approved yet. The person must open ${link} and check the code ${pending.userCode}.`,
-    hint: `Run \`norbix login --wait${hostArgs(ctx)}\` again. The code expires at ${pending.expiresAt}.`,
+    hint: `Run \`norbix login --wait${hostArgs(ctx, flags)}\` again. The code expires at ${pending.expiresAt}.`,
     docs: 'norbix login --help',
   })
 }

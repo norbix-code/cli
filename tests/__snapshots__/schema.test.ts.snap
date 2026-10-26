@@ -2091,6 +2091,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [],
     "destructive": false,
     "flags": [
+      "all:boolean",
       "dry-run:boolean",
     ],
     "id": "logout",
