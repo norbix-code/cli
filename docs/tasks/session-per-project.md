@@ -14,7 +14,7 @@ Not in scope: a new Hub contract (the device sign-in is unchanged); the 1.18 `~/
 6. [done] feat(cli:profiles,whoami): `profiles` lists every sign-in with its Hub, project and file; `whoami` names the file in use
 7. [done] test(cli:auth:sessions): two logins coexist; logout one keeps the other; `--all`; the 1.47.1 file is used for its project and not for another; `--project` beats the profile; a stale `[default]` project does not leak into `login --profile b`; `--json` keys unchanged
 8. [done] docs(cli:readme,auth-design,agents): where sessions live and how logout scopes
-9. [doing] release(cli): pull request opened with `nbx-ship --no-merge`; not merged here because merging `main` publishes to npm (release.yml) and the owner asked for no release
+9. [done] release(cli): pull request #103 opened with `nbx-ship --no-merge` — https://github.com/norbix-code/cli/pull/103; not merged here because merging `main` publishes to npm (release.yml) and the owner asked for no release
 
 ## Changes
 | file (absolute, branch) | what changed | step |
@@ -56,7 +56,7 @@ Not in scope: a new Hub contract (the device sign-in is unchanged); the 1.18 `~/
 - decision(cli:auth:sessions): sessions keyed by profile name (`sessions/<profile>.json`, as the ask suggested) — rejected — a profile is only a pointer to a host and a project; `--project` with a profile, `NORBIX_PROJECT_ID`, and `--host` with no profile all need the same answer, so the file is keyed by what the Hub pins the token to: Hub + project. Two profiles for the same Hub and project share one sign-in, which is right.
 
 ## Needs you
-- [ ] release(cli): merge the pull request when you want the patch published — `main` publishes to npm by itself (release.yml, semantic-release: `fix:` → 1.47.2) · action: approve + merge the PR (or `~/Projects/norbix/scripts/git/nbx-ship` from the worktree)
+- [ ] release(cli): merge pull request #103 (https://github.com/norbix-code/cli/pull/103) when you want the patch published — `main` publishes to npm by itself (release.yml, semantic-release: `fix:` → 1.47.2) · action: approve + merge the PR (or `~/Projects/norbix/scripts/git/nbx-ship` from the worktree)
 
 ## Open questions
 - none
