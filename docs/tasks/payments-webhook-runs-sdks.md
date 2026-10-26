@@ -143,9 +143,14 @@ clean, vitest 46 files / 1164 tests.
    ```
 
    Blast radius: sdk-ts #112 (and #110) cannot merge → no TS release → mcp
-   and the CLI cannot raise `@norbix.ai/ts` and did not ship this run. Once
-   the scan is green: `nbx-ship --wait-release --cleanup` in
-   `worktrees/norbix-js/feat/payments-webhook-runs`, then Plan steps 5 and 6.
+   and the CLI cannot raise `@norbix.ai/ts` and did not ship this run. Next
+   step depends on where the fix lands. On the branch: commit it in
+   `worktrees/norbix-js/feat/payments-webhook-runs`, then
+   `nbx-ship --wait-release --cleanup` there. On `main` (an ignore commit or
+   #111): first `git rebase origin/main` in that worktree (nbx-ship does not
+   rebase, and a push to main does not re-run the PR's checks); if #110 merged
+   meanwhile, re-run `sync-types --remote` + `generate-endpoints` + `prettier`
+   on the rebase. Then Plan steps 5 and 6.
 
 ## Open questions
 
