@@ -176,12 +176,21 @@ still work in this release, with a warning on stderr; replace them with
 `~/.config/norbix/config.json` is still read as a last fallback, never
 written; `norbix config list` shows what is left in it.
 
-**Sessions** — one browser sign-in per Hub, in
-`~/.norbix/sessions/<hub>.json`. `cloud.example.com` and `hub.example.com`
-lead to the same Hub, so they share one sign-in. Every terminal window, and
-every profile of that host without an `api_key`, uses it. `norbix logout`
-removes all of them; `norbix logout --host h` or `--profile p` only that
-host's. Profiles are never touched by logout. After `norbix login --host h`
+**Sessions** — one browser sign-in per Hub **and project**, in
+`~/.norbix/sessions/<hub>@<project>.json` (the Hub pins the sign-in to the
+project it was asked for: `--project`, else the profile's `project_id`). A
+sign-in made with no project lands in `~/.norbix/sessions/<hub>.json` and
+serves any project. Several projects can be signed in at once on one Hub;
+every terminal window, and every profile of that host without an
+`api_key`, uses the sign-in of the project it is for — a `norbix login` for
+project B never touches the sign-in for project A. `cloud.example.com` and
+`hub.example.com` lead to the same Hub, so they share sign-ins.
+`norbix login` prints which host, profile and project it signs in for
+before anything opens. `norbix profiles` lists every sign-in with its
+project; `norbix whoami` names the file in use. `norbix logout` removes
+only the sign-in the command would use (`--host`, `--profile`, `--project`
+pick it; else the `[default]` profile's); `norbix logout --all` removes
+every one. Profiles are never touched by logout. After `norbix login --host h`
 with no `[default]` profile yet, the CLI saves `host = h` there so plain
 commands use the sign-in; an existing `[default]` for another host is left
 alone and the CLI prints how to switch.

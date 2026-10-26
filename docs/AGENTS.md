@@ -37,7 +37,10 @@ token in the chat.
      person to verify their email in the dashboard first).
 
   Not on norbix.ai? Add `--host <their dashboard or Hub address>` (or
-  `--profile <name>`) to both steps. The user can also sign in themselves
+  `--profile <name>`) to both steps. For a project other than the profile's,
+  add `--project <id>` to both steps (`next` in the step-1 answer carries
+  the right flags). A sign-in is per Hub and project: signing in for another
+  project never ends an existing one. The user can also sign in themselves
   with `norbix login` in their own terminal.
 - **In CI:** never a browser sign-in. **Environment variables**
   (`NORBIX_HOST` — omit for norbix.ai —, `NORBIX_API_KEY`,
