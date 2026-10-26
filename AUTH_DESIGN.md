@@ -1,7 +1,9 @@
 # Auth, hosts & profiles design
 
 Decided 2026-07-21 (profiles, sessions). Hosts, discovery and one sign-in
-per Hub: 2026-10-08 (CLI 1.19). Task file: `docs/tasks/hosts-discovery.md`.
+per Hub: 2026-10-08 (CLI 1.19). One sign-in per Hub and project: 2026-10-26
+(CLI 1.47.2). Task files: `docs/tasks/hosts-discovery.md`,
+`docs/tasks/session-per-project.md`.
 
 ## The model in one paragraph
 
@@ -9,9 +11,10 @@ The CLI needs exactly one address: a **host** (your Norbix dashboard or Hub,
 default `hub.norbix.ai`). The Hub decides every other address (Api, Hub,
 regions, sign-in URLs). A **profile** is a saved identity in one INI file,
 `~/.norbix/config` (AWS-style). A **session** is what a browser sign-in
-creates, one per Hub, in `~/.norbix/sessions/<hub-host>.json`. A profile
-with an `api_key` uses it; a profile without one uses the browser sign-in
-of its host.
+creates, one per Hub **and project**, in
+`~/.norbix/sessions/<hub-host>@<project-id>.json` (`<hub-host>.json` when
+it was made with no project). A profile with an `api_key` uses it; a
+profile without one uses the browser sign-in of its host for its project.
 
 ## Hosts and discovery
 
@@ -86,7 +89,7 @@ release and print a deprecation warning on stderr; `config set host` and
 `login --api-key --host` remove them.
 
 ```jsonc
-// ~/.norbix/sessions/hub.finlo.space.json  (mode 600, machine-managed)
+// ~/.norbix/sessions/hub.finlo.space@64ff….json  (mode 600, machine-managed)
 { "bearerToken": "...", "refreshToken": "...", "expiresAt": "...", "clientId": "norbix-cli",
   "method": "browser", "hubUrl": "https://hub.finlo.space", "hubVersion": "v3",
   "host": "cloud.finlo.space", "projectId": "...", "userName": "...", "displayName": "..." }
@@ -94,16 +97,30 @@ release and print a deprecation warning on stderr; `config set host` and
 
 Sessions are separate files because they rotate on every refresh; the
 config file is edited by people. The session stores the Hub that issued the
-token, so refresh and revoke reach it without discovery. The one file of
-CLI 1.18 and older, `~/.norbix/session.json`, is moved to
-`sessions/<its hub>.json` on first read (its `hubUrl`, else `hub.norbix.ai`);
-it never overwrites a newer sign-in.
+token, so refresh and revoke reach it without discovery.
+
+**One file per Hub and project.** The Hub pins a device sign-in to the
+project the CLI asked for (the roles must reach it), so a token for project
+A cannot serve project B. The file name carries the project:
+`<hub>@<project>.json`. A command picks its session by the project it is
+for — `--project` / `NORBIX_PROJECT_ID`, else the profile's `project_id` —
+BEFORE reading any session, so a stored sign-in never decides the project.
+With a project: its own file, else `<hub>.json` when that sign-in was made
+with no project or for this same project. With no project: `<hub>.json`,
+else the Hub's only project sign-in; with several, the "no project" error
+lists them. A sign-in for another project is never used.
+
+Older files. CLI 1.19–1.47 wrote every sign-in to `<hub>.json` with the
+project inside; it is read as above for that project, never moved or
+deleted. The one file of CLI 1.18 and older, `~/.norbix/session.json`, is
+moved to `sessions/<its hub>.json` on first read (its `hubUrl`, else
+`hub.norbix.ai`); it never overwrites a newer sign-in.
 
 ## Credential order
 
 1. `--api-key` / `NORBIX_API_KEY`
 2. the profile's `api_key` (`--profile` / `NORBIX_PROFILE`, else `[default]`)
-3. the browser session of the profile's host's Hub
+3. the browser session of the profile's host's Hub, for the project asked for
 4. the old per-OS `config.json` (CLI 0.1; not with an explicit `--profile`)
 
 A profile is only used for its own host: with `--host` for another Hub the
@@ -116,9 +133,13 @@ host, Hub, Api, profile and auth source that won.
 
 ## Login
 
-- `norbix login [--profile p | --host h]` — browser sign-in (RFC 8628) to
-  that host's Hub. The person approves on `<cloud>/device` and picks the
-  roles; the CLI becomes the AI service user "Norbix CLI (<computer>)".
+- `norbix login [--profile p | --host h] [--project id]` — browser sign-in
+  (RFC 8628) to that host's Hub, for `--project`, else the profile's
+  `project_id` — never the project of an older sign-in. The CLI prints the
+  host, profile and project first. The person approves on `<cloud>/device`
+  and picks the roles; the CLI becomes the AI service user "Norbix CLI
+  (<computer>)". The session is saved under the project the Hub pinned it
+  to; a sign-in for another project on the same Hub stays.
 - After `login --host h` (or `NORBIX_HOST`), later commands use the sign-in
   only when they reach that host. With no `[default]` profile yet, the CLI
   writes `host = h` into a new `[default]`; an existing `[default]` for
@@ -135,9 +156,11 @@ host, Hub, Api, profile and auth source that won.
 
 ## Logout
 
-`norbix logout` revokes (RFC 7009) and removes every host's sign-in, and any
-pending agent sign-in. `logout --host h` / `logout --profile p` does it for
-that host's Hub only. Logout never touches profiles.
+`norbix logout` revokes (RFC 7009) and removes the one sign-in the command
+would use — the Hub and project of `--host` / `--profile` / `--project`,
+else the `[default]` profile's — and its pending agent sign-in. Other
+projects and Hubs stay signed in. `logout --all` does it for every sign-in.
+Logout never touches profiles.
 
 ## Agents
 
@@ -145,7 +168,8 @@ A coding agent's shell commands time out after about 2 minutes; the device
 code lives 10 minutes. So the agent signs in in two steps:
 
 1. `norbix login --no-browser --json` starts the device flow, saves the
-   pending code in `~/.norbix/sessions/<hub-host>.pending.json` (mode 600)
+   pending code in `~/.norbix/sessions/<hub-host>@<project>.pending.json`
+   (`<hub-host>.pending.json` with no project; mode 600)
    and prints `{status: "pending", userCode, verificationUri,
    verificationUriComplete, expiresIn, next}` — then exits 0 at once.
    The agent shows the link and the code to the person.
