@@ -380,11 +380,25 @@ describe('context: credential order', () => {
 
   it('a profile WITHOUT an api_key uses the sign-in of its host — even with an explicit --profile', async () => {
     writeFileSync(PROFILES_PATH, '[finlo]\nhost = cloud.finlo.space\nproject_id = p1\n')
-    signIn('hub.finlo.space', {projectId: 'p-session', userName: 'norbix-cli-mac'})
+    signIn('hub.finlo.space', {userName: 'norbix-cli-mac'}) // made with no project: usable for p1
     signIn('hub.norbix.ai')
     stubFinlo()
     const ctx = await (await probe()).context({profile: 'finlo'})
-    expect([ctx.authSource, ctx.bearerToken, ctx.projectId, ctx.userName]).toEqual(['session', 'token-hub.finlo.space', 'p1', 'norbix-cli-mac'])
+    expect([ctx.authSource, ctx.bearerToken, ctx.projectId, ctx.userName, ctx.sessionKey]).toEqual([
+      'session',
+      'token-hub.finlo.space',
+      'p1',
+      'norbix-cli-mac',
+      'hub.finlo.space',
+    ])
+  })
+
+  it('a sign-in made for ANOTHER project of the Hub is never used: the token is pinned to that project', async () => {
+    writeFileSync(PROFILES_PATH, '[finlo]\nhost = cloud.finlo.space\nproject_id = p1\n')
+    signIn('hub.finlo.space', {projectId: 'p-session', userName: 'norbix-cli-mac'})
+    stubFinlo()
+    const ctx = await (await probe()).context({profile: 'finlo'})
+    expect([ctx.authSource, ctx.bearerToken, ctx.projectId, ctx.sessionKey]).toEqual(['none', undefined, 'p1', 'hub.finlo.space@p1'])
   })
 
   it('--host for another Hub: the [default] profile and its key are left out — never sent to another host', async () => {
@@ -469,12 +483,12 @@ describe('norbix logout', () => {
     return Logout.run(argv, await Config.load(fileURLToPath(new URL('..', import.meta.url))))
   }
 
-  it('without flags revokes and removes every host sign-in; profiles stay', async () => {
+  it('--all revokes and removes every host sign-in; profiles stay', async () => {
     writeFileSync(PROFILES_PATH, '[ci]\nhost = hub.finlo.space\napi_key = nbsu_k\n')
     signIn('hub.finlo.space')
     signIn('hub.norbix.ai')
     const urls = stubFinlo({'hub.finlo.space/v3/oauth/revoke': {body: {}}, 'hub.norbix.ai/v3/oauth/revoke': {body: {}}})
-    const result = (await runLogout(['--json'])) as {sessions: Array<{hub: string; revoked: string}>}
+    const result = (await runLogout(['--all', '--json'])) as {sessions: Array<{hub: string; revoked: string}>}
     expect(result.sessions).toEqual([
       {hub: 'hub.finlo.space', revoked: 'revoked'},
       {hub: 'hub.norbix.ai', revoked: 'revoked'},

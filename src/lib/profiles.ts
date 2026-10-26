@@ -24,10 +24,14 @@ import {join} from 'node:path'
  * fallback, never written. `api_url` / `hub_url` are still read for one
  * release (deprecated: `host` replaces them).
  *
- * Browser sign-in sessions live in ~/.norbix/sessions/<hub-host>.json, one
- * per Hub — separate on purpose: sessions rotate and are machine-managed,
- * the config file is edited by people. `cloud.x` and `hub.x` lead to the
- * same Hub, so they share one sign-in.
+ * Browser sign-in sessions live in ~/.norbix/sessions/, one file per Hub
+ * AND project: `<hub-host>@<project-id>.json` for a sign-in made for a
+ * project (the Hub pins its token to that project), `<hub-host>.json` for
+ * one made with no project. Separate from the config on purpose: sessions
+ * rotate and are machine-managed, the config file is edited by people.
+ * `cloud.x` and `hub.x` lead to the same Hub, so they share sign-ins.
+ * CLI 1.47 and older wrote every sign-in to `<hub-host>.json`; that file is
+ * still read for its own project (see `findSession`), never moved or deleted.
  */
 
 export const NORBIX_DIR = join(homedir(), '.norbix')
@@ -194,12 +198,29 @@ export interface Session {
   savedAt?: string
 }
 
-export function sessionPath(hubKey: string): string {
-  return join(SESSIONS_DIR, `${hubKey}.json`)
+/** Between the Hub key and the project id in a session file name. */
+const PROJECT_SEPARATOR = '@'
+
+/**
+ * The file-name key of a sign-in: `hub.finlo.space@64ff…` for a project,
+ * `hub.finlo.space` for a sign-in made with no project.
+ */
+export function sessionKey(hubKey: string, projectId?: string): string {
+  return projectId ? `${hubKey}${PROJECT_SEPARATOR}${projectId}` : hubKey
 }
 
-export function pendingPath(hubKey: string): string {
-  return join(SESSIONS_DIR, `${hubKey}.pending.json`)
+/** The Hub key and the project of a session key (see `sessionKey`). */
+export function parseSessionKey(key: string): {hubKey: string; projectId?: string} {
+  const at = key.indexOf(PROJECT_SEPARATOR)
+  return at < 0 ? {hubKey: key} : {hubKey: key.slice(0, at), projectId: key.slice(at + 1) || undefined}
+}
+
+export function sessionPath(key: string): string {
+  return join(SESSIONS_DIR, `${key}.json`)
+}
+
+export function pendingPath(key: string): string {
+  return join(SESSIONS_DIR, `${key}.pending.json`)
 }
 
 /** The file-name key of a URL's host: `hub.finlo.space`, `localhost_5001`. */
@@ -241,18 +262,26 @@ export function migrateLegacySession(): string | undefined {
   return key
 }
 
-export function readSession(hubKey: string): Session | undefined {
+export function readSession(key: string): Session | undefined {
   migrateLegacySession()
   try {
-    const s = JSON.parse(readFileSync(sessionPath(hubKey), 'utf8')) as Session
+    const s = JSON.parse(readFileSync(sessionPath(key), 'utf8')) as Session
     return s.bearerToken ? s : undefined
   } catch {
     return undefined
   }
 }
 
-/** Every stored sign-in, by Hub key. */
-export function listSessions(): Array<{hubKey: string; session: Session}> {
+/** One stored sign-in: its file key, the Hub, the project the file is for (none = made with no project). */
+export interface StoredSession {
+  key: string
+  hubKey: string
+  projectId?: string
+  session: Session
+}
+
+/** Every stored sign-in, sorted by file key. */
+export function listSessions(): StoredSession[] {
   migrateLegacySession()
   let names: string[]
   try {
@@ -265,10 +294,42 @@ export function listSessions(): Array<{hubKey: string; session: Session}> {
     .filter((n) => n.endsWith('.json') && !n.endsWith('.pending.json'))
     .map((n) => n.slice(0, -'.json'.length))
     .sort()
-    .flatMap((hubKey) => {
-      const session = readSession(hubKey)
-      return session ? [{hubKey, session}] : []
+    .flatMap((key) => {
+      const session = readSession(key)
+      return session ? [{key, ...parseSessionKey(key), session}] : []
     })
+}
+
+/** The stored sign-ins of one Hub. */
+export function hubSessions(hubKey: string): StoredSession[] {
+  return listSessions().filter((s) => s.hubKey === hubKey)
+}
+
+/**
+ * The sign-in a command on this Hub uses, without judging whether it is
+ * still valid:
+ *
+ * - for a project: `<hub>@<project>.json`; else `<hub>.json` when that
+ *   sign-in was made with no project or for this very project (CLI 1.47
+ *   and older wrote every sign-in there). A sign-in made for ANOTHER
+ *   project is never used — the Hub pinned its token to that project.
+ * - for no project: `<hub>.json`; else the Hub's only project sign-in.
+ *   With several project sign-ins and no project named there is no answer:
+ *   the caller lists them (`hubSessions`).
+ */
+export function findSession(hubKey: string, projectId?: string): StoredSession | undefined {
+  if (projectId) {
+    const key = sessionKey(hubKey, projectId)
+    const own = readSession(key)
+    if (own) return {key, hubKey, projectId, session: own}
+    const hub = readSession(hubKey)
+    return hub && (!hub.projectId || hub.projectId === projectId) ? {key: hubKey, hubKey, session: hub} : undefined
+  }
+
+  const hub = readSession(hubKey)
+  if (hub) return {key: hubKey, hubKey, session: hub}
+  const mine = hubSessions(hubKey).filter((s) => s.projectId)
+  return mine.length === 1 ? mine[0] : undefined
 }
 
 /** Write a file in one step (temporary file, then rename), mode 600. */
@@ -285,12 +346,12 @@ function writeSecretJson(path: string, data: object): void {
  * A refresh rotates the refresh token, so a half-written file would lose the
  * only token that can get a new one.
  */
-export function writeSession(hubKey: string, session: Session): void {
-  writeSecretJson(sessionPath(hubKey), session)
+export function writeSession(key: string, session: Session): void {
+  writeSecretJson(sessionPath(key), session)
 }
 
-export function clearSession(hubKey: string): void {
-  if (existsSync(sessionPath(hubKey))) unlinkSync(sessionPath(hubKey))
+export function clearSession(key: string): void {
+  if (existsSync(sessionPath(key))) unlinkSync(sessionPath(key))
 }
 
 /** A device sign-in started by `login --no-browser --json`, waiting for `login --wait`. */
@@ -314,20 +375,20 @@ export interface PendingSignIn {
   startedAt: string
 }
 
-export function readPending(hubKey: string): PendingSignIn | undefined {
+export function readPending(key: string): PendingSignIn | undefined {
   try {
-    const p = JSON.parse(readFileSync(pendingPath(hubKey), 'utf8')) as PendingSignIn
+    const p = JSON.parse(readFileSync(pendingPath(key), 'utf8')) as PendingSignIn
     return p.deviceCode ? p : undefined
   } catch {
     return undefined
   }
 }
 
-export function writePending(hubKey: string, pending: PendingSignIn): void {
-  writeSecretJson(pendingPath(hubKey), pending)
+export function writePending(key: string, pending: PendingSignIn): void {
+  writeSecretJson(pendingPath(key), pending)
 }
 
-/** The Hub keys with a sign-in waiting for `login --wait`. */
+/** The session keys (Hub, or Hub@project) with a sign-in waiting for `login --wait`. */
 export function listPendingKeys(): string[] {
   try {
     return readdirSync(SESSIONS_DIR)
@@ -339,8 +400,8 @@ export function listPendingKeys(): string[] {
   }
 }
 
-export function clearPending(hubKey: string): void {
-  if (existsSync(pendingPath(hubKey))) unlinkSync(pendingPath(hubKey))
+export function clearPending(key: string): void {
+  if (existsSync(pendingPath(key))) unlinkSync(pendingPath(key))
 }
 
 /** Decode a JWT `exp` claim (ms). Returns undefined when not decodable. */

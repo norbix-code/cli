@@ -26,10 +26,13 @@ import {cleanVersion, resolveHubEndpoint, splitVersionedUrl, type HubEndpoint} f
 import {
   DEFAULT_API_URL,
   DEFAULT_HUB_URL,
+  findSession,
+  hubSessions,
   isSessionRefreshable,
   isSessionUsable,
   readProfiles,
   readSession,
+  sessionKey,
   writeSession,
   type Profile,
   type Session,
@@ -106,6 +109,11 @@ export interface GlobalFlags {
 
 export interface ResolvedContext {
   projectId?: string
+  /**
+   * The project named by --project / NORBIX_PROJECT_ID or the profile —
+   * never one taken from a stored sign-in. `login` signs in for exactly this.
+   */
+  requestedProjectId?: string
   accountId?: string
   env?: string
   /** Where `env` came from (the env rule: src/lib/env-rule.ts). */
@@ -120,8 +128,14 @@ export interface ResolvedContext {
   host: string
   /** Where the host came from. */
   hostSource: 'flag/env' | `profile [${string}]` | 'deprecated url' | 'default'
-  /** The Hub's key — the name of its session file: `hub.finlo.space`. */
+  /** The Hub's key — the first part of its session file names: `hub.finlo.space`. */
   hubKey: string
+  /**
+   * The session file in use (`hub.finlo.space@<project>`, or `hub.finlo.space`
+   * for a sign-in made with no project) — or, with no sign-in yet, the file a
+   * `norbix login` for the requested project would write.
+   */
+  sessionKey: string
   /** What discovery learned about the Hub; undefined when nothing is known yet. */
   hostInfo?: HostInfo
   /** The Hub that signs in, refreshes and revokes (not regional), no version. */
@@ -531,9 +545,15 @@ export abstract class BaseCommand extends Command {
     const apiFull = target.apiOverride ?? info?.apiUrl ?? (isDefault ? DEFAULT_API_URL : target.origin)
     const hubKey = target.hubOverride ? hostKey(originOf(target.hubOverride)) : (known?.hubKey ?? hostKey(hubFull))
 
-    // The browser sign-in of this Hub — also for a profile without an API key.
-    const stored = readSession(hubKey)
+    // The browser sign-in of this Hub for the requested project — also for a
+    // profile without an API key. The project is asked for BEFORE the session
+    // is read: a sign-in made for another project is never used, and never
+    // tells the next `norbix login` which project to ask for.
+    const requestedProjectId = flags.project ?? prof.project_id
+    const found = findSession(hubKey, requestedProjectId)
+    const stored = found?.session
     const session = isSessionUsable(stored) ? stored : undefined
+    const sessionFile = found?.key ?? sessionKey(hubKey, requestedProjectId)
 
     const apiKeyOverride = flags['api-key']
     const bearerToken = apiKeyOverride || prof.api_key ? undefined : session?.bearerToken
@@ -557,7 +577,7 @@ export abstract class BaseCommand extends Command {
     const {base: apiUrlBase, version: apiUrlVersion} = splitVersionedUrl(apiFull)
     const {base: hubUrlBase, version: hubUrlVersion} = splitVersionedUrl(hubFull)
 
-    const projectId = flags.project ?? prof.project_id ?? session?.projectId ?? fromLegacy(legacy.projectId)
+    const projectId = requestedProjectId ?? session?.projectId ?? fromLegacy(legacy.projectId)
     const region =
       flags.region ??
       prof.region ??
@@ -589,6 +609,7 @@ export abstract class BaseCommand extends Command {
     return {
       usesDefaultEndpoints,
       projectId,
+      requestedProjectId,
       accountId: flags.account ?? prof.account_id ?? session?.accountId ?? fromLegacy(legacy.accountId),
       env,
       envSource,
@@ -600,6 +621,7 @@ export abstract class BaseCommand extends Command {
       host: target.origin,
       hostSource: target.hostSource,
       hubKey,
+      sessionKey: sessionFile,
       hostInfo: info,
       // Sign-in, refresh and revoke go to the Hub itself; with the built-in
       // norbix.ai addresses that is the regional Hub, as before discovery.
@@ -755,7 +777,7 @@ export abstract class BaseCommand extends Command {
     this.refresher ??= new SessionRefresher(
       session,
       () => (session.hubUrl ? resolveHubEndpoint(session.hubUrl, {stored: session.hubVersion}) : this.hubEndpoint(ctx)),
-      {hubKey: ctx.hubKey},
+      {sessionKey: ctx.sessionKey},
     )
     return this.refresher
   }
@@ -956,17 +978,28 @@ export abstract class BaseCommand extends Command {
     // project. A self-hosted Hub needs none, so nothing changes there.
     const region = ctx.usesDefaultEndpoints && !ctx.region ? only.region : undefined
     if (region) saveProjectRegion(ctx.hubKey, only.id, region)
-    const session = ctx.authSource === 'session' ? readSession(ctx.hubKey) : undefined
+    const session = ctx.authSource === 'session' ? readSession(ctx.sessionKey) : undefined
     if (!session) return {state: 'one', projects}
-    writeSession(ctx.hubKey, {...session, projectId: only.id, ...(region ? {region} : {})})
+    writeSession(ctx.sessionKey, {...session, projectId: only.id, ...(region ? {region} : {})})
     return {state: 'saved', projects, projectId: only.id, ...(region ? {region} : {})}
   }
 
   /** "No project ID configured", with the account's projects in the hint (and the only one saved). */
   private async explainNoProject(error: NoProjectError): Promise<CliError> {
     const adoption = await this.adoptOnlyProject(error.flags)
-    if (adoption.state === 'not checked') return error
     const choose = 'pass --project <id>, set NORBIX_PROJECT_ID, or save one: norbix config set project_id <id>'
+    if (adoption.state === 'not checked') {
+      // No usable sign-in because none is for "no project": several projects
+      // are signed in on this Hub, and the command did not say which.
+      const ctx = this.resolveContext(error.flags)
+      const signedIn = hubSessions(ctx.hubKey).filter((s) => s.projectId)
+      if (ctx.authSource !== 'none' || signedIn.length < 2) return error
+      const hint =
+        `You are signed in to ${signedIn.length} projects on ${new URL(ctx.host).host} — ${choose}:\n` +
+        signedIn.map((s) => `  ${s.projectId}`).join('\n')
+      return new CliError({exit: error.exit, code: error.code, message: error.message, hint, docs: error.docs})
+    }
+
     const hint =
       adoption.state === 'saved'
         ? `Your account has one project, ${projectLabel(adoption.projects[0])}; it is now saved to your sign-in. Run the command again.`

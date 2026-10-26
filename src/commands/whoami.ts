@@ -46,7 +46,7 @@ export default class Whoami extends BaseCommand {
       apiUrl: ctx.apiUrl,
       hubUrl: ctx.hubUrl,
       profilesFile: PROFILES_PATH,
-      sessionFile: sessionPath(ctx.hubKey),
+      sessionFile: sessionPath(ctx.sessionKey),
     }
 
     let verified = false
@@ -71,7 +71,7 @@ export default class Whoami extends BaseCommand {
     }
 
     // Read after the check: it may have refreshed (or ended) the sign-in.
-    const signIn = ctx.session ? describeSession(readSession(ctx.hubKey)) : undefined
+    const signIn = ctx.session ? describeSession(readSession(ctx.sessionKey)) : undefined
 
     this.print(
       [
@@ -80,7 +80,7 @@ export default class Whoami extends BaseCommand {
         `API:      ${summary.api}`,
         `Profile:  ${summary.profile}`,
         `Auth:     ${summary.auth}${summary.apiKey ? ` (${summary.apiKey})` : ''}`,
-        ...(signIn ? signInLines(signIn) : []),
+        ...(signIn ? [...signInLines(signIn), `Session:  ${summary.sessionFile}`] : []),
         `Project:  ${summary.projectId ?? '(not set)'}`,
         `Account:  ${summary.accountId ?? '(not set)'}`,
         `Env:      ${ctx.env ? `${ctx.env} (${ctx.envSource})` : 'PROD (none named)'}`,

@@ -36,8 +36,8 @@ export const REFRESH_SKEW_MS = 60_000
 export interface RefreshDeps {
   fetch?: typeof fetch
   now?: () => number
-  /** The Hub whose session file is read and written (~/.norbix/sessions/<hubKey>.json). */
-  hubKey?: string
+  /** The session file read and written (~/.norbix/sessions/<sessionKey>.json). */
+  sessionKey?: string
   /** Read / write the stored session — the Hub's file in ~/.norbix/sessions by default. */
   read?: () => Session | undefined
   write?: (session: Session) => void
@@ -85,7 +85,7 @@ export class SessionRefresher {
   ) {
     this.fetchFn = deps.fetch ?? fetch
     this.now = deps.now ?? Date.now
-    const key = deps.hubKey
+    const key = deps.sessionKey
     const none = () => undefined
     this.read = deps.read ?? (key ? () => readSession(key) : none)
     this.write = deps.write ?? (key ? (s: Session) => writeSession(key, s) : () => {})
