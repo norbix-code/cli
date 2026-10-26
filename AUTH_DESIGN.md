@@ -2,7 +2,7 @@
 
 Decided 2026-07-21 (profiles, sessions). Hosts, discovery and one sign-in
 per Hub: 2026-10-08 (CLI 1.19). One sign-in per Hub and project: 2026-10-26
-(CLI 1.47.2). Task files: `docs/tasks/hosts-discovery.md`,
+(CLI 1.48.1). Task files: `docs/tasks/hosts-discovery.md`,
 `docs/tasks/session-per-project.md`.
 
 ## The model in one paragraph
