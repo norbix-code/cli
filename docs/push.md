@@ -131,6 +131,31 @@ norbix push template render --code "Hi @Model.Name" --token Name=Ada
 | `norbix push campaign batch <id> <batchId> <notificationId>` | show one notification in a batch | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
 | `norbix push campaign messages <id> [--batch <batchId>]` | list the messages it sent | `GET /campaigns/{campaignId}/messages` |
 | `norbix push campaign message <id> <messageId> --batch <batchId>` | show one message (same as `campaign batch <id> <batchId> <messageId>`) | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
+
+### Delivery state, attempts and retrying the failed recipients (gateway 2.3.9)
+
+Every recipient row of a campaign carries `state` (`Pending`, `Sending`,
+`Retrying`, `Accepted`, `Failed`, `Blocked`, `Cancelled`), `attempts[]` (one
+per send: outcome, failure class `Transient` / `Permanent` / `Unknown` /
+`Ambiguous`, error, trigger `Initial` / `AutoRetry` / `ManualRetry`) and
+`deliveryEvents[]` (what the provider reported afterwards). The statistics
+carry `failedRetryable` and `cancelled`. In human output the hub's `Completed`
+reads **Accepted** (the provider took the message); `--json` shows the values
+as the hub sends them.
+
+| Command | What it does | Endpoint |
+|---|---|---|
+| `norbix push notifications <id> [--state failed]` | every recipient row across all batches, `--state` filtered here (no hub filter) | `GET /campaigns/{id}/batches` + `GET /notifications/push/campaigns/{campaignId}/messages` per batch |
+| `norbix push retry-failed <id> --key <k> [--notification <id>…] [--category Transient\|Permanent\|Unknown…] [--include-ambiguous] [--dry-run]` | send the failed recipients again (never an accepted one); `--key` is your idempotency key — the same key again replays the first answer and sends nothing; `--include-ambiguous` also retries timeouts and **may send a duplicate** (the answer's `warning` says so) | `POST /campaigns/{Id}/retry-failed` |
+
+```bash
+norbix push notifications cmp_123 --state failed --json
+norbix push retry-failed cmp_123 --key nightly-1
+norbix push retry-failed cmp_123 --key nightly-2 --category Transient --category Unknown
+```
+
+Non-PROD environments with the Sandbox provider fail on purpose for magic
+recipients (tokens `sandbox-fail-transient-2`, `sandbox-fail-permanent`, `sandbox-fail-timeout`; for push "Accepted" is terminal — no delivery events), so the retry flow can be rehearsed without a real provider.
 | `norbix push preview <hash>` (or `--hash <hash>`) | render the title, body and subtitle behind a preview link | `GET /preview` |
 
 `--audience` decides who receives the campaign:

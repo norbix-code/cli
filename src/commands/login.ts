@@ -11,6 +11,7 @@ import {
   pollDeviceToken,
   pollDeviceTokenUntil,
   startDeviceFlow,
+  credentialVersionOf,
   type DeviceTokenSuccess,
 } from '../lib/device-login.js'
 import {EXIT} from '../lib/exit-codes.js'
@@ -407,6 +408,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       userId: token.userId,
       userName: token.userName,
       displayName: token.displayName,
+      credentialVersion: credentialVersionOf(token),
       savedAt: new Date(now).toISOString(),
     })
 
@@ -417,6 +419,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
         `Signed in to ${meta.host} as ${who}${token.userName && token.displayName && token.userName !== token.displayName ? ` (${token.userName})` : ''} — an AI service user with the roles you picked.`,
         'Remove it any time in the dashboard: Account → AI service users.',
         `Session saved to ${sessionPath(key)}${projectId ? ` (project ${projectId})` : ' (no project)'}.`,
+        ...(credentialVersionOf(token) ? [`Credential version: ${credentialVersionOf(token)} (changes when the password changes; then sign in again).`] : []),
         ...(defaultProfile.note ? [defaultProfile.note] : []),
       ].join('\n'),
     )
@@ -431,6 +434,8 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
       displayName: token.displayName,
       accountId: token.accountId ?? meta.accountId,
       projectId,
+      // Only when the Hub sent one: the --json shape stays as before otherwise.
+      ...(credentialVersionOf(token) ? {credentialVersion: credentialVersionOf(token)} : {}),
     }
   }
 }

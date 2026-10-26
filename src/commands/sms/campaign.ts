@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
+import {describeStats} from '../../lib/notifications.js'
 
 export default class SmsCampaign extends BaseCommand {
   static description = 'Show one SMS campaign (or its statistics with --stats)'
@@ -23,7 +24,7 @@ export default class SmsCampaign extends BaseCommand {
       ? await client.hub.notifications.getSmsCampaignStatistics({id: args.id})
       : await client.hub.notifications.getSmsCampaign({id: args.id})
 
-    this.print(res)
+    this.print(flags.stats ? describeStats(res) : res)
     return res
   }
 }
