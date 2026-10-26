@@ -14,7 +14,7 @@ Not in scope: a new Hub contract (the device sign-in is unchanged); the 1.18 `~/
 6. [done] feat(cli:profiles,whoami): `profiles` lists every sign-in with its Hub, project and file; `whoami` names the file in use
 7. [done] test(cli:auth:sessions): two logins coexist; logout one keeps the other; `--all`; the 1.47.1 file is used for its project and not for another; `--project` beats the profile; a stale `[default]` project does not leak into `login --profile b`; `--json` keys unchanged
 8. [done] docs(cli:readme,auth-design,agents): where sessions live and how logout scopes
-9. [done] release(cli): pull request opened with `nbx-ship --no-merge`; not merged here because merging `main` publishes to npm (release.yml) and the owner asked for no release
+9. [doing] release(cli): pull request opened with `nbx-ship --no-merge`; not merged here because merging `main` publishes to npm (release.yml) and the owner asked for no release
 
 ## Changes
 | file (absolute, branch) | what changed | step |
@@ -28,7 +28,8 @@ Not in scope: a new Hub contract (the device sign-in is unchanged); the 1.18 `~/
 | /Users/djovaisas/Projects/norbix/worktrees/cli/fix/session-per-project/src/commands/env/use.ts | writes the env into the session in use | 3 |
 | /Users/djovaisas/Projects/norbix/worktrees/cli/fix/session-per-project/src/lib/session-auth.ts | refresher deps take `sessionKey` | 3 |
 | /Users/djovaisas/Projects/norbix/worktrees/cli/fix/session-per-project/test/session-per-project.test.ts | new — the 7 cases of step 7 | 7 |
-| /Users/djovaisas/Projects/norbix/worktrees/cli/fix/session-per-project/test/hosts.test.ts, test/login.test.ts, tests/session-refresh.test.ts | existing cases follow the new file names and `logout --all` | 7 |
+| /Users/djovaisas/Projects/norbix/worktrees/cli/fix/session-per-project/test/hosts.test.ts, test/login.test.ts | existing cases follow the new file names and `logout --all` | 7 |
+| /Users/djovaisas/Projects/norbix/worktrees/cli/fix/session-per-project/tests/__snapshots__/schema.test.ts.snap | `logout` gained `all:boolean` | 5 |
 | /Users/djovaisas/Projects/norbix/worktrees/cli/fix/session-per-project/README.md, AUTH_DESIGN.md, docs/AGENTS.md | sessions per Hub and project; `logout` / `logout --all`; `--project` on both agent steps | 8 |
 
 ## Findings
@@ -45,6 +46,10 @@ Not in scope: a new Hub contract (the device sign-in is unchanged); the 1.18 `~/
     const projectId = flags.project ?? prof.project_id ?? session?.projectId ?? fromLegacy(legacy.projectId)
     //                                                     ^-- here: the last sign-in's project leaks into the next `norbix login`
 ```
+- decision(cli:logout): `norbix logout` with no flags used to sign out of everything; it now removes one sign-in and `--all` is the old behaviour — as asked; said plainly in the pull request
+- chore(cli:logout): without `--all`, logout now discovers the host (`prepareHost`) to know the Hub; on a custom host never seen before it needs the network once — the cache, stale cache and built-in norbix.ai addresses cover every normal case; left as is
+- docs(cli:auth-design): AUTH_DESIGN.md names "CLI 1.47.2" — right only if this is the next change merged to `main`; left as is
+- docs(cli:agent-contract): docs/agent-contract.md does not document where sessions live, so it was not changed
 - chore(git:cli): the main checkout `sdks/cli` is on `fix/sdk-1.3-and-deps` with 1 changed file (nbx-doctor WARN) — left as is, not mine
 
 ## Rejected / moved out
