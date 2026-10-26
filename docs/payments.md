@@ -13,7 +13,7 @@ the order triggers.
 Every endpoint a person calls has a command. Every command is covered by
 `tests/payments-routes.test.ts`, which runs it through the real SDK with
 `fetch` replaced and checks the verb and path it sends, plus the request
-fields of `save`, `test`, `webhook-log` and the toggles. No test contacts a
+fields of `save`, `test`, `webhook-log`, `webhook-runs` and the toggles. No test contacts a
 payment provider.
 
 All paths below are under `/{version}/payments`. The order commands go to the
@@ -26,6 +26,8 @@ Api host, everything else to the Hub.
 | `norbix payments enable` | turn the Payments module on | `PUT /enable` |
 | `norbix payments disable [--yes]` | turn the Payments module off | `PUT /disable` |
 | `norbix payments webhook-log [--integration <id>] [--limit <n>]` | the provider webhooks the project received, newest first | `GET /webhooks/log` |
+| `norbix payments webhook-runs [--integration <id>] [--event <name>] [--trigger <id>] [--outcome <o>] [--from <utc>] [--to <utc>] [--page-size <n>] [--after <run> \| --before <run>]` | the received webhooks as records: answer, order change, trigger outcomes | `GET /webhooks/runs` |
+| `norbix payments webhook-run <run> [--raw]` | one record, with the masked raw call on `--raw` | `GET /webhooks/runs/{Id}` |
 
 `norbix module enable payments` / `norbix module disable payments` do the
 same as the first two, for scripts that treat every module alike.
@@ -42,6 +44,44 @@ answered (200 processed, 400 bad signature, 404 unknown integration, …) with
 a description, and when it arrived. Look here first when a trigger did not
 fire: no row means the provider never reached Norbix; a 400 usually means the
 signing secret in the integration is wrong.
+
+### Received webhooks as records: `webhook-runs` and `webhook-run`
+
+Since gateway 86f24ecd2 every event a payment gateway sends is also kept as a
+record for 30 days: the payment fact, Norbix's answer, what happened to the
+stored order, and every trigger the event reached with what its action did.
+Use these when the question is "why did my trigger (not) fire?".
+
+```
+$ norbix payments webhook-runs --outcome refused
+RECEIVED              INTEGRATION          EVENT                     ANSWER                            TRIGGERS            RUN
+2026-10-26T08:00:00Z  int_stripe (Stripe)  payment_intent.succeeded  400 Refused — signature-mismatch  —                   pwr_1p4R3gTobGZpD6fXvHT4rd
+
+1 run. Read one: norbix payments webhook-run <run>
+```
+
+- **ANSWER** is the HTTP status and outcome Norbix answered: `200 Applied`
+  (processed), `200 Ignored — duplicate`, `400 Refused — <reason>` (for
+  example a wrong signing secret), `500 Failed — <reason>` (the provider
+  retries).
+- **TRIGGERS** counts the trigger actions by result: `2 sent · 1 skipped`
+  (also `failed` and `not run` — an earlier trigger with "break on failure"
+  failed); `—` when the event reached no trigger.
+- Filters: `--integration`, `--event` (the provider's event name), `--trigger`,
+  `--outcome` (`applied`, `ignored`, `refused`, `failed`, `all`), `--from` /
+  `--to` (UTC, ISO 8601). Paging: `--page-size`, then `--after <run>` (the
+  command prints it) or `--before <run>`.
+- A gateway call that carries several events (Neopay: one token, many
+  transactions) is several runs; the event shows `[2/3]`.
+
+`norbix payments webhook-run <run>` prints the record: the answer with its
+description, the order change (`ord_… Applied Pending → Paid`), a line per
+trigger (status, trigger, action, the Norbix event it fired on, the reason,
+deliveries or queue), the payment fact the triggers got, and the command that
+opens the log trail. `--raw` adds the call as it came in — the safe headers,
+the body and Norbix's answer — with the payer's personal values masked by the
+gateway; raw calls are kept 7 days. Without `--raw` the raw call is left out
+of `--json` as well.
 
 ## Integrations
 

@@ -5,6 +5,7 @@ import {join} from 'node:path'
 import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 import {envListAnswer} from './_env.js'
+import {formatWebhookRun, formatWebhookRuns, webhookRunAnswer, webhookRunTriggers} from '../src/lib/payments.js'
 
 /**
  * One row per Payments endpoint: run the command the way a user types it,
@@ -19,6 +20,7 @@ import {envListAnswer} from './_env.js'
 
 const ID = '66b2f0a1'
 const ORD = 'ord_2ToIiRM03X63TZaJ2dJdv2'
+const RUN = 'pwr_1p4R3gTobGZpD6fXvHT4rd'
 
 interface Call {
   method: string
@@ -28,11 +30,14 @@ interface Call {
 }
 
 let calls: Call[]
+/** What the fake Hub answers; a test may set it before running a command. */
+let answer: string
 let realFetch: typeof globalThis.fetch
 let dir: string
 
 beforeEach(() => {
   calls = []
+  answer = '{}'
   dir = mkdtempSync(join(tmpdir(), 'norbix-payments-'))
   realFetch = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -45,7 +50,7 @@ beforeEach(() => {
       query: url.searchParams,
       body: typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : undefined,
     })
-    return new Response('{}', {status: 200, headers: {'Content-Type': 'application/json'}})
+    return new Response(answer, {status: 200, headers: {'Content-Type': 'application/json'}})
   }) as typeof globalThis.fetch
 })
 
@@ -74,6 +79,8 @@ const routes: Array<[() => string[], string, string]> = [
   [() => ['enable'], 'PUT', `${P}/enable`],
   [() => ['disable', '--yes'], 'PUT', `${P}/disable`],
   [() => ['webhook-log'], 'GET', `${P}/webhooks/log`],
+  [() => ['webhook-runs'], 'GET', `${P}/webhooks/runs`],
+  [() => ['webhook-run', RUN], 'GET', `${P}/webhooks/runs/${RUN}`],
 
   // Integrations
   [() => ['integrations'], 'GET', `${P}/integrations`],
@@ -113,11 +120,11 @@ describe('every payments command reaches its route', () => {
   }
 })
 
-it('covers all 21 payments routes a person calls', () => {
-  // The manifests (sdks/typegen/coverage/endpoints.{hub,api}.json) list 17 Hub
-  // and 4 Api Payments entries, the same as @norbix.ai/ts 4.29.0; the inbound
-  // provider webhook is called by the provider.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(21)
+it('covers all 23 payments routes a person calls', () => {
+  // The manifests (sdks/typegen/coverage/endpoints.{hub,api}.json) list 19 Hub
+  // and 4 Api Payments entries (the two webhook-runs routes since gateway
+  // 86f24ecd2); the inbound provider webhook is called by the provider.
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(23)
 })
 
 /** Run a command and return the one request it sent. */
@@ -377,5 +384,157 @@ describe('payments orders / order / checkout', () => {
     const {error} = await runCommand(['payments', 'order', 'checkout', ORD, ...globalArgs])
     expect(error?.message).toMatch(/Missing required flag/)
     expect(calls).toHaveLength(0)
+  })
+})
+
+/** A received event as GET /payments/webhooks/runs answers it: refused, two trigger actions. */
+const RUN_ROW = {
+  id: RUN,
+  callId: 'pwc_7Hq2mN4bV8cX1zL6kP3rT9',
+  env: 'PROD',
+  integrationId: 'int_stripe',
+  source: 'Stripe',
+  receivedOn: '2026-10-26T08:00:00Z',
+  statusCode: 400,
+  outcome: 'Refused',
+  reason: 'signature-mismatch',
+  description: 'Signature does not match.',
+  eventName: 'payment_intent.succeeded',
+  providerEventId: 'evt_1',
+  correlationId: 'corr-1',
+  order: {orderId: 'ord_1', kind: 'Applied', from: 'Pending', to: 'Paid', reason: 'paid'},
+  actions: [
+    {triggerId: 'trg_email', triggerName: 'Receipt', action: 'Email', status: 'Sent', queue: 'emails', norbixEvent: 'payments.order.paid', at: '2026-10-26T08:00:01Z'},
+    {triggerId: 'trg_hook', action: 'WebhookCall', status: 'Sent', deliveries: 2, norbixEvent: 'payments.order.paid', at: '2026-10-26T08:00:01Z'},
+    {triggerId: 'trg_code', action: 'Code', status: 'Skipped', reason: 'condition false', norbixEvent: 'payments.webhook.received', at: '2026-10-26T08:00:01Z'},
+  ],
+  part: 1,
+  parts: 1,
+}
+
+const RAW_CALL = {
+  callId: 'pwc_7Hq2mN4bV8cX1zL6kP3rT9',
+  receivedOn: '2026-10-26T08:00:00Z',
+  contentType: 'application/json',
+  body: '{"id":"evt_1","data":{"name":"J*** D***"}}',
+  truncated: false,
+  maskedFields: 1,
+  headers: {'Stripe-Signature': 't=1,v1=…'},
+  answerStatus: 400,
+  answerBody: '{"error":"signature"}',
+  parts: 1,
+}
+
+describe('payments webhook-runs', () => {
+  it('sends every filter and the paging as query parameters, no body', async () => {
+    const call = await callOf([
+      'webhook-runs', '--integration', 'int_stripe', '--event', 'payment_intent.succeeded', '--trigger', 'trg_email',
+      '--outcome', 'refused', '--from', '2026-10-25T00:00:00Z', '--to', '2026-10-26T00:00:00Z',
+      '--page-size', '20', '--after', 'pwr_prev',
+    ])
+    expect(call.method).toBe('GET')
+    expect(call.path).toBe(`${P}/webhooks/runs`)
+    expect(Object.fromEntries(call.query)).toMatchObject({
+      integrationId: 'int_stripe',
+      eventName: 'payment_intent.succeeded',
+      triggerId: 'trg_email',
+      outcome: 'refused',
+      fromUtc: '2026-10-25T00:00:00Z',
+      toUtc: '2026-10-26T00:00:00Z',
+      pageSize: '20',
+      startingAfter: 'pwr_prev',
+    })
+    expect(call.body).toBeUndefined()
+  })
+
+  it('--before pages backwards', async () => {
+    const call = await callOf(['webhook-runs', '--before', 'pwr_next'])
+    expect(call.query.get('endingBefore')).toBe('pwr_next')
+    expect(call.query.has('startingAfter')).toBe(false)
+  })
+
+  it('refuses an unknown --outcome and --after with --before before sending anything', async () => {
+    const bad = await runCommand(['payments', 'webhook-runs', '--outcome', 'paid', ...globalArgs])
+    expect(bad.error?.message).toMatch(/Expected --outcome=paid to be one of: applied, ignored, refused, failed, all/)
+    const both = await runCommand(['payments', 'webhook-runs', '--after', 'a', '--before', 'b', ...globalArgs])
+    expect(both.error?.message).toMatch(/cannot also be provided/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('returns the page as the Hub sent it (what --json prints)', async () => {
+    answer = JSON.stringify({list: {items: [RUN_ROW], hasMore: false}})
+    const {result, error} = await runCommand(['payments', 'webhook-runs', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(result).toEqual({list: {items: [RUN_ROW], hasMore: false}})
+  })
+})
+
+describe('payments webhook-run', () => {
+  it('puts the run id in the path, nowhere else', async () => {
+    const call = await callOf(['webhook-run', RUN])
+    expect(call.path).toBe(`${P}/webhooks/runs/${RUN}`)
+    expect(call.query.has('id')).toBe(false)
+    expect(call.body).toBeUndefined()
+  })
+
+  it('returns the run without the raw call unless --raw is given (what --json prints)', async () => {
+    answer = JSON.stringify({item: {run: RUN_ROW, raw: RAW_CALL}})
+    const plain = await runCommand(['payments', 'webhook-run', RUN, ...globalArgs])
+    expect(plain.error).toBeUndefined()
+    expect(JSON.parse(JSON.stringify(plain.result))).toEqual({item: {run: RUN_ROW}})
+    const raw = await runCommand(['payments', 'webhook-run', RUN, '--raw', ...globalArgs])
+    expect(raw.result).toEqual({item: {run: RUN_ROW, raw: RAW_CALL}})
+  })
+})
+
+describe('webhook run formatting', () => {
+  it('answer and trigger cells', () => {
+    expect(webhookRunAnswer({statusCode: 200, outcome: 'Applied', reason: 'processed'})).toBe('200 Applied')
+    expect(webhookRunAnswer({statusCode: 200, outcome: 'Ignored', reason: 'duplicate'})).toBe('200 Ignored — duplicate')
+    expect(webhookRunAnswer({statusCode: 500, outcome: 'Failed', reason: 'unexpected'})).toBe('500 Failed — unexpected')
+    expect(webhookRunTriggers([])).toBe('—')
+    expect(webhookRunTriggers([{status: 'Failed'}, {status: 'NotRun'}, {status: 'Sent'}, {status: 'NotRun'}])).toBe('1 sent · 1 failed · 2 not run')
+  })
+
+  it('the list table: received, integration, event, answer, triggers summary, run id, next page', () => {
+    const out = formatWebhookRuns({
+      list: {
+        items: [RUN_ROW, {...RUN_ROW, id: 'pwr_2', statusCode: 200, outcome: 'Applied', reason: 'processed', actions: []}],
+        hasMore: true,
+        startingAfter: 'pwr_2',
+      },
+    })
+    const lines = out.split('\n')
+    expect(lines[0]).toMatch(/^RECEIVED +INTEGRATION +EVENT +ANSWER +TRIGGERS +RUN$/)
+    expect(lines[1]).toMatch(/^2026-10-26T08:00:00Z +int_stripe \(Stripe\) +payment_intent\.succeeded +400 Refused — signature-mismatch +2 sent · 1 skipped +pwr_1p4R3gTobGZpD6fXvHT4rd$/)
+    expect(lines[2]).toMatch(/ 200 Applied +— +pwr_2$/)
+    expect(out).toContain('2 runs. Read one: norbix payments webhook-run <run>')
+    expect(out).toContain('More: add --after pwr_2')
+  })
+
+  it('one run: answer, order change, every trigger action; the raw call only with raw', () => {
+    const plain = formatWebhookRun({item: {run: RUN_ROW}})
+    expect(plain).toContain('Answer       400 Refused — signature-mismatch: Signature does not match.')
+    expect(plain).toContain('Order        ord_1 Applied Pending → Paid — paid')
+    expect(plain).toContain('Log trail    norbix logs trail corr-1')
+    expect(plain).toContain('Triggers     2 sent · 1 skipped')
+    expect(plain).toMatch(/Sent +Receipt \(trg_email\) +Email +payments\.order\.paid +queue emails/)
+    expect(plain).toContain('2 deliveries')
+    expect(plain).toMatch(/Skipped +trg_code +Code +payments\.webhook\.received +condition false/)
+    expect(plain).not.toContain('Stripe-Signature')
+    expect(plain).toContain('add --raw')
+
+    const raw = formatWebhookRun({item: {run: RUN_ROW, raw: RAW_CALL}}, {raw: true})
+    expect(raw).toContain('Raw call pwc_7Hq2mN4bV8cX1zL6kP3rT9: application/json, 1 value(s) masked')
+    expect(raw).toContain('  Stripe-Signature: t=1,v1=…')
+    expect(raw).toContain('"name": "J*** D***"')
+    expect(raw).toContain('Answered 400 {"error":"signature"}')
+  })
+
+  it('empty pages, a split call and an expired raw call say so', () => {
+    expect(formatWebhookRuns({list: {items: []}})).toBe('No received payment webhooks match (records are kept 30 days).')
+    expect(formatWebhookRuns({list: {items: [{...RUN_ROW, part: 2, parts: 3}]}})).toContain('payment_intent.succeeded [2/3]')
+    expect(formatWebhookRun({item: {run: RUN_ROW, raw: null}}, {raw: true})).toContain('Raw call: not kept')
+    expect(formatWebhookRun({})).toBe('No such received payment webhook.')
   })
 })
