@@ -2439,6 +2439,34 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "raw:boolean",
+    ],
+    "id": "payments webhook-run",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "event:string",
+      "trigger:string",
+      "outcome:option",
+      "from:string",
+      "to:string",
+      "page-size:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "payments webhook-runs",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [],
