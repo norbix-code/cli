@@ -159,4 +159,4 @@ None.
 | sdk-go | https://github.com/norbix-code/sdk-go/pull/58 | merged, v2.40.0 |
 | sdk-ts | https://github.com/norbix-code/sdk-ts/pull/112 | open — Security scan (Needs you 1) |
 | mcp | — | not started (waits for the TS release) |
-| cli | see the PR of branch `feat/payments-webhook-runs` | open, not merged — waits for the TS release |
+| cli | https://github.com/norbix-code/cli/pull/105 | open, not merged — waits for the TS release |
