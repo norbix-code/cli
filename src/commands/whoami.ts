@@ -111,6 +111,8 @@ interface SignIn {
   aiServiceUser: boolean
   expiresAt?: string
   refreshes: boolean
+  /** The login's credential version at sign-in (gateway N-29), when the Hub sent it. */
+  credentialVersion?: string
 }
 
 /** Who the session is — never its tokens. */
@@ -127,6 +129,7 @@ function describeSession(session: Session | undefined): SignIn | undefined {
     aiServiceUser: method === 'browser',
     expiresAt: exp === undefined ? undefined : new Date(exp).toISOString(),
     refreshes,
+    credentialVersion: session.credentialVersion,
   }
 }
 
@@ -140,6 +143,7 @@ function signInLines(s: SignIn): string[] {
     const when = left > 0 ? `in ${left} min` : 'expired'
     lines.push(`Token:    expires ${s.expiresAt} (${when})${s.refreshes ? ', refreshed by itself' : ''}`)
   }
+  if (s.credentialVersion) lines.push(`Credential version: ${s.credentialVersion} (changes with the password; a changed one means: sign in again)`)
 
   return lines
 }

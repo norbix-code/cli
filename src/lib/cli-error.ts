@@ -294,8 +294,29 @@ function hintForExit(exit: ExitCode, env: {status?: number; url?: string; code?:
   }
 }
 
+/** The Hub refused a session whose password changed since it was signed in (gateway N-29, 401). */
+export const CREDENTIALS_CHANGED_CODE = 'CM-ERRORS-MEMBERSHIP-USERS-050'
+export const CREDENTIALS_CHANGED_MESSAGE = 'Your password was changed since this session was signed in. Sign in again.'
+
 /** Map any thrown value to the one error envelope. */
 export function toEnvelope(err: unknown, ctx: {command?: string} = {}): ErrorEnvelope {
+  const envelope = envelopeOf(err, ctx)
+  // A credential-version mismatch is an auth failure with one fixed answer,
+  // whichever path (SDK transport or a direct call) reported it.
+  if (envelope.code === CREDENTIALS_CHANGED_CODE || envelope.errors?.some((e) => e.code === CREDENTIALS_CHANGED_CODE)) {
+    return {
+      ...envelope,
+      code: CREDENTIALS_CHANGED_CODE,
+      exit: EXIT.AUTH,
+      message: CREDENTIALS_CHANGED_MESSAGE,
+      hint: 'Run `norbix login` again (the old sign-in is refused by the Hub).',
+    }
+  }
+
+  return envelope
+}
+
+function envelopeOf(err: unknown, ctx: {command?: string} = {}): ErrorEnvelope {
   const docs = ctx.command ? `norbix ${ctx.command} --help` : 'norbix --help'
 
   if (err instanceof CliError) {

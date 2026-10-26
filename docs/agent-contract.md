@@ -59,6 +59,11 @@ Exit codes are identical with and without `--json`. The table is also in
 `norbix schema --json` under `exitCodes`, and in code at
 `src/lib/exit-codes.ts`.
 
+One code has a fixed answer: `CM-ERRORS-MEMBERSHIP-USERS-050` (the Hub
+refuses a session whose password changed since it was signed in, gateway
+N-29) always exits 4 with the message "Your password was changed since this
+session was signed in. Sign in again." — whichever path reported it.
+
 ## 3. The JSON error envelope
 
 One document on stdout, nothing on stderr:
@@ -146,13 +151,17 @@ command that makes several calls (`files upload`) shows the first.
 - **Mutating** (`supportsDryRun: true`, no confirmation): `create`,
   `insert`, `update --id`, `replace`, `archive`, `unarchive`, `clone`,
   `enable`, `invite`, `unblock`, `upload`, `publish`, `unpublish`,
-  `config set / unset`, `env use`, `logout`, `raw`. `identities create` is one
+  `retry-failed` (`email|sms|push`; `--key` makes a repeat a no-op, so it
+  needs no confirmation — `--include-ambiguous` prints a duplicate warning on
+  stderr), `config set / unset`, `env use`, `logout`, `raw`. `identities create` is one
   of these.
 - **Preview by default** (`env promote`, `env rollback`, `env built-ins repair`):
   without `--yes` they ask the Hub for the plan and change nothing — here
   `--dry-run` is that preview (the request is sent with `dryRun: true`), not
   "send nothing". `--yes` runs them for real.
-- **Read-only**: everything else; no `--yes`, no `--dry-run`.
+- **Read-only**: everything else (`email|sms|push notifications <id>`
+  included: it walks the batches and filters `--state` client-side); no
+  `--yes`, no `--dry-run`.
 
 ## 6. Saves that warn, and who a save runs as
 

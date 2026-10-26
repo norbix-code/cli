@@ -57,6 +57,15 @@ export interface DeviceTokenSuccess {
   displayName?: string
   projectId?: string
   accountId?: string
+  /** The login's credential version (gateway N-29); sign-in answers carry it as `meta.credentialVersion`. */
+  credentialVersion?: string
+  meta?: Record<string, string>
+}
+
+/** The credential version of a sign-in answer: top-level or under `meta`, whichever the Hub sent. */
+export function credentialVersionOf(answer: {credentialVersion?: string; meta?: Record<string, string>} | undefined): string | undefined {
+  const value = answer?.credentialVersion ?? answer?.meta?.credentialVersion
+  return typeof value === 'string' && value !== '' ? value : undefined
 }
 
 /** The Hub has no device sign-in (HTTP 404 / 405 / 501): an older Hub. */

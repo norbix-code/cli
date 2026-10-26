@@ -29,6 +29,8 @@ credentials — put the provider-specific fields in --config (inline JSON,
     id: Flags.string({description: 'Integration ID — set it to update instead of create'}),
     disabled: Flags.boolean({description: 'Save it turned off', default: false}),
     config: Flags.string({description: 'Provider-specific fields as a JSON object, @file or -'}),
+    'delivery-events': Flags.boolean({description: 'Twilio: let Twilio report each message\'s status (delivered / undelivered / failed) to the hub, which settles the recipient rows; needs --status-callback-url', default: false}),
+    'status-callback-url': Flags.string({description: 'Twilio delivery events: the absolute https URL Twilio calls — https://<hub>/v3/sms/webhooks/twilio/<projectId>/<integrationId>?env=<env>; paste the same URL here and in Twilio (signature verified)'}),
   }
 
   async run(): Promise<unknown> {
@@ -36,8 +38,11 @@ credentials — put the provider-specific fields in --config (inline JSON,
     const client = this.client(flags)
 
     const extra = flags.config ? await readJsonObject(flags.config, 'config') : {}
+    const deliveryEvents = flags['delivery-events'] ? true : (extra.deliveryEventsEnabled as boolean | undefined)
     const integration = {
       ...extra,
+      ...(deliveryEvents === undefined ? {} : {deliveryEventsEnabled: deliveryEvents}),
+      ...(flags['status-callback-url'] === undefined ? {} : {statusCallbackUrl: flags['status-callback-url']}),
       provider: flags.provider,
       integrationId: flags.id,
       integrationName: flags.name ?? '',

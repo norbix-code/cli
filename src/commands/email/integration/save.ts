@@ -2,10 +2,10 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
 import {providerFlag} from '../../../lib/providers.js'
-import {readJsonObject} from '../../../lib/email.js'
+import {readJsonObject, readSecret} from '../../../lib/email.js'
 
 /** The real provider names the server's integration converter accepts (Sandbox is added by providerFlag). */
-const PROVIDERS = ['Smtp', 'SendGrid', 'MailGun', 'AwsSes']
+const PROVIDERS = ['Smtp', 'SendGrid', 'MailGun', 'AwsSes', 'AzureCommunication']
 
 export default class EmailIntegrationSave extends BaseCommand {
   static description = `Create or update an email integration
@@ -17,13 +17,25 @@ providers need a sender (--from) and their credentials: put the
 provider-specific fields in --config (inline JSON, @file.json, or - for stdin).
 Pass --id to update an existing integration. The output of \`email integration
 get\` can be fed back as --config (bare or wrapped in {"integration": …}): its
-viewId picks the integration to update, so no second one is created.`
+viewId picks the integration to update, so no second one is created.
+
+Delivery events (gateway 2.3.9): with --delivery-events the provider reports
+each message's fate (delivered, bounced, complained, rejected, deferred) back
+to the hub, which settles the recipient rows (\`norbix email notifications\`).
+AwsSes needs --sns-topic-arn, SendGrid --event-webhook-public-key,
+AzureCommunication --event-grid-key; the hub's endpoint to register with the
+provider is /v3/email/webhooks/<ses-sns|sendgrid|azure-eventgrid>/<projectId>/<integrationId>?env=<env>
+(Azure: also the header aeg-sas-key: <event grid key>). Signatures are verified.
+AzureCommunication needs --endpoint (https://<resource>.communication.azure.com)
+and --access-key.`
 
   static examples = [
     '<%= config.bin %> email integration save --provider Sandbox',
     '<%= config.bin %> email integration save --provider SendGrid --name SendGrid --from hello@example.com --config @sendgrid.json',
     '<%= config.bin %> email integration save --provider Sandbox --dry-run',
     '<%= config.bin %> email integration save --provider SendGrid --config @integration-from-get.json',
+    '<%= config.bin %> email integration save --provider azureCommunication --name Azure --from hello@example.com --endpoint https://my-resource.communication.azure.com --access-key @key.txt --delivery-events --event-grid-key @grid.txt',
+    '<%= config.bin %> email integration save --provider AwsSes --id 66b2f0a1 --config @ses.json --delivery-events --sns-topic-arn arn:aws:sns:eu-west-1:123456789012:ses-events',
   ]
 
   static flags = {
@@ -35,6 +47,12 @@ viewId picks the integration to update, so no second one is created.`
     'sender-name': Flags.string({description: 'Sender display name'}),
     disabled: Flags.boolean({description: 'Save it turned off', default: false}),
     config: Flags.string({description: 'Provider-specific fields as a JSON object, @file or -'}),
+    endpoint: Flags.string({description: 'AzureCommunication: the resource endpoint, https://<resource>.communication.azure.com'}),
+    'access-key': Flags.string({description: 'AzureCommunication: the access key (secret, write-only; @file or - to read it from a file / stdin)'}),
+    'delivery-events': Flags.boolean({description: 'Let the provider report delivery events (delivered / bounced / …) to the hub; AwsSes, SendGrid, AzureCommunication', default: false}),
+    'sns-topic-arn': Flags.string({description: 'AwsSes delivery events: the SNS topic the SES configuration set publishes to'}),
+    'event-webhook-public-key': Flags.string({description: 'SendGrid delivery events: the Event Webhook verification public key'}),
+    'event-grid-key': Flags.string({description: 'AzureCommunication delivery events: the shared secret of the Event Grid subscription (secret, write-only; @file or -)'}),
   }
 
   async run(): Promise<unknown> {
@@ -43,8 +61,15 @@ viewId picks the integration to update, so no second one is created.`
 
     const config = flags.config ? await readJsonObject(flags.config, 'config') : {}
     const {id, extra} = splitConfig(config)
+    const deliveryEvents = flags['delivery-events'] ? true : (extra.deliveryEventsEnabled as boolean | undefined)
     const integration = {
       ...extra,
+      ...(flags.endpoint === undefined ? {} : {endpoint: flags.endpoint}),
+      ...(flags['access-key'] === undefined ? {} : {accessKey: await readSecret(flags['access-key'], 'access-key')}),
+      ...(deliveryEvents === undefined ? {} : {deliveryEventsEnabled: deliveryEvents}),
+      ...(flags['sns-topic-arn'] === undefined ? {} : {snsTopicArn: flags['sns-topic-arn']}),
+      ...(flags['event-webhook-public-key'] === undefined ? {} : {eventWebhookPublicKey: flags['event-webhook-public-key']}),
+      ...(flags['event-grid-key'] === undefined ? {} : {eventGridKey: await readSecret(flags['event-grid-key'], 'event-grid-key')}),
       provider: flags.provider,
       integrationId: flags.id ?? id,
       integrationName: flags.name ?? (extra.integrationName as string | undefined) ?? '',

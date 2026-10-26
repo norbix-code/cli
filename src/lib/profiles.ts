@@ -195,6 +195,12 @@ export interface Session {
   userId?: string
   userName?: string
   displayName?: string
+  /**
+   * The login's credential version at sign-in (gateway N-29), when the sign-in
+   * answer carried it (`meta.credentialVersion`). It changes only with the
+   * password: a mismatch means the password changed since this sign-in.
+   */
+  credentialVersion?: string
   savedAt?: string
 }
 
