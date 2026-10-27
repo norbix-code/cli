@@ -3,7 +3,7 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**261 endpoints have a dedicated CLI command (the sum of the table below;
+**287 endpoints have a dedicated CLI command (the sum of the table below;
 the line said 117 until the Project campaign, 2026-10-03, and had not kept
 up with the push / SMS / Email rows). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
@@ -40,6 +40,7 @@ out of reach.
 | ai/integrations (LLM, MCP) | 15/20 | every LLM and MCP route — see `docs/ai.md`, same route test. Missing: the 5 embedding-integration routes (not asked for; `norbix hub ai …` reaches them) |
 | account/ai/service-users | 5/5 | list, create, delete, rotate-key, revoke-key — see `docs/ai.md`, same route test |
 | apikeys | 2/2 | list + regenerate |
+| code/workflows (beta) | 26/30 | every route a person calls (24 Hub + the Api host's waiting list and resume) — see `docs/code.md`; each command is run through the real transport in `tests/code-workflows-routes.test.ts`. Not commands: the four signed resume-link routes (`GET`/`POST /code/workflows/resume/{token}`, Hub and Api), opened by an approver's browser from an e-mail |
 
 Cross-cutting commands: `norbix integrations <module>` lists integrations for
 9 modules; `norbix module enable|disable <name>` toggles 10 modules.

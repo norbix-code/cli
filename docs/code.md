@@ -158,3 +158,91 @@ norbix code marketplace runs --function func_4hT8rW2nQ6xLmP0vZ3kJ1c --limit 5 --
 The function runs as the caller: a manual `invoke` as you, a trigger or a
 scheduler task as its run-as user. That user's roles decide which collections
 `db.find` may read.
+
+## `norbix code workflows` (beta)
+
+**Workflows are in beta; bugs may occur.** A workflow is a definition of steps
+(actions, database and AI steps, branches, loops, waits for a delay, an event
+or an approval) that runs as its execution identity. The definition is JSON on
+the wire; the CLI also reads and writes YAML (`yaml` package, at the edge
+only). Every command mirrors one route under `/{version}/code/workflows`
+(Hub; `--app-user` uses the Api host's twin) and is covered by
+`tests/code-workflows-routes.test.ts` (the real SDK, `fetch` replaced; the
+verb, path, query and body are checked). `--env` is the `norbix-env` header,
+as everywhere; workflows live per environment.
+
+| command | what it does | endpoint |
+|---|---|---|
+| `norbix code workflows list [--enabled\|--disabled] [--limit <n>] [--after\|--before <cursor>]` | the workflows: id, name, published version, `hasDraft`, `isEnabled` (`disabledReason`), last run, waiting runs | `GET /` |
+| `norbix code workflows get <wf_…> [--version <n>] [--format json\|yaml]` | one workflow — the latest published definition or version `n` (`pinnedVersion`); `--format yaml` prints the definition alone as YAML, ready to edit and `save` | `GET /{id}` |
+| `norbix code workflows save --file <flow.yaml\|flow.json\|->` | saves the file as the **draft**: a new workflow without `workflowId`, that workflow's draft with it; YAML or JSON by extension, by content for stdin; prints id, version, draft, warnings | `PUT /` |
+| `norbix code workflows validate --file <…>` | every save check, nothing written: `Valid.` or `NOT valid`, then each error and warning (code, step, message, path, line:column); **exits 6** when not valid (also with `--json`) | `POST /validate` |
+| `norbix code workflows publish <wf_…> [--yes]` | the draft becomes published version N+1 | `POST /{id}/publish` |
+| `norbix code workflows draft <wf_…> [--format json\|yaml]` | the draft (`--format yaml`: its definition as YAML) | `GET /{id}/draft` |
+| `norbix code workflows draft <wf_…> --discard [--yes]` | deletes the draft; the published version stays | `DELETE /{id}/draft` |
+| `norbix code workflows versions <wf_…>` | the published versions: number, when, by whom, name, step count | `GET /{id}/versions` |
+| `norbix code workflows diff <wf_…> --from <n> --to <m>` | added / removed / changed steps (with the changed paths) and changed top-level fields | `GET /{id}/versions/diff` |
+| `norbix code workflows delete <wf_…> [--yes]` | deletes it; waiting runs are cancelled | `DELETE /{id}` |
+| `norbix code workflows enable <wf_…>` | turns it on (and resets the runaway counters) | `PUT /{id}/enable` |
+| `norbix code workflows disable <wf_…> [--yes]` | turns it off: no new run; runs in flight continue | `PUT /{id}/disable` |
+| `norbix code workflows invoke <wf_…> [--payload '<json>'\|--payload-file <f>] [--wait <0-30>] [--version draft\|<n>] [--follow [--timeout <s>]]` | starts a run (`waitSeconds`, `runVersion`); finished within the wait: status, output, duration, error; not finished: the run id and `running` / `waiting`. `--follow` polls the run (`workflows.waitForRun`) until it finishes or parks on a wait and prints it like `run`; past `--timeout` (default 60 s) it exits 7 with the run id | `POST /{id}/invoke` (+ `GET /runs/{runId}`) |
+| `norbix code workflows runs <wf_…> [--status <s>] [--from <iso>] [--to <iso>] [--limit <n>]` | the workflow's runs, newest first | `GET /{id}/runs` |
+| `norbix code workflows run <wfr_…>` | one run: status, version, source, timing, what it waits on, its error, then a step table — step, kind, status (approval decision), attempt, pass, duration — and the output; `--json` the whole run with every step's input and output | `GET /runs/{runId}` |
+| `norbix code workflows logs <wfr_…> [--step <stepId>] [--level Information\|Warning\|Error]` | the run's log lines (needs the Logs module on and `logs:read`) | `GET /runs/{runId}/logs` |
+| `norbix code workflows waiting [--mine\|--assignee <usr_…>] [--kind approval\|event\|delay] [--workflow <wf_…>] [--key <key>] [--status <s>] [--app-user]` | the inbox: runs waiting on a person, an event or a delay; `--mine` = `assignee=me` | `GET /runs` (Hub, or Api with `--app-user`) |
+| `norbix code workflows resume <wfr_…> [--step <id>] [--decision approved\|rejected] [--payload '<json>'] [--app-user] [--yes]` | resumes a waiting run (answers an approval, delivers an event); prints the run | `POST /runs/{runId}/resume` (Hub, or Api with `--app-user`) |
+| `norbix code workflows resume --workflow <wf_…> --key <key> [--step] [--decision] [--payload] [--yes]` | the same, the run found by its wait's `key` (for an outside system); Hub only | `POST /{id}/resume` |
+| `norbix code workflows retry <wfr_…> [--step <id>] [--yes]` | a new attempt of the failed step from its stored input; the run continues | `POST /runs/{runId}/retry` |
+| `norbix code workflows cancel <wfr_…> [--reason <text>] [--yes]` | stops a running or waiting run | `POST /runs/{runId}/cancel` |
+| `norbix code workflows schema [--format json\|yaml]` | the definition's JSON Schema, every step kind (config / output schema, permissions it needs), the binding families; works with the beta switch off | `GET /schema` |
+| `norbix code workflows beta enable` | turns the Workflows beta on in this environment (on by default) | `PUT /enable` |
+| `norbix code workflows beta disable [--yes]` | turns it off: every route but `schema` refuses, starts are skipped; runs in flight continue | `PUT /disable` |
+
+Notes:
+
+- `resume` takes the run id **or** `--workflow` with `--key` — exactly one;
+  both or neither is a usage error (exit 2).
+- `--app-user` (on `waiting` and `resume <runId>`) calls the Api host's twin
+  route, for an app user's login (a project user, not a team member): it lists
+  and answers only that user's own approvals. The CLI does not guess from the
+  login which host to use. The signed resume links in an approval e-mail
+  (`/code/workflows/resume/{token}`) are opened by the approver's browser and
+  have no command.
+- `publish`, `draft --discard`, `delete`, `disable`, `resume`, `retry`,
+  `cancel` and `beta disable` ask first; pass `--yes` in a script (without it
+  they exit 3 and send nothing). Every command that changes something takes
+  `--dry-run`. `--json` prints the raw answer.
+
+### Recipe: from a YAML file to a run
+
+```sh
+# 1. What a definition may contain (step kinds, their config, bindings)
+norbix code workflows schema --format yaml > workflow-schema.yaml
+
+# 2. Write flow.yaml — e.g. load an order, wait for an approval, send an e-mail
+#    (schemaVersion: "1", name, executionIdentityId: usr_…, steps: [...])
+
+# 3. Check it; exit 6 and the errors with path and line when it is not valid
+norbix code workflows validate --file flow.yaml
+
+# 4. Save it as the draft — prints the new id
+norbix code workflows save --file flow.yaml
+#   Workflow wf_3kQ9mZ2vXc8LpR4wT7yH1n (Approve big orders) saved (draft).
+
+# 5. Try the draft before publishing, and follow the run to its end
+norbix code workflows invoke wf_3kQ9mZ2vXc8LpR4wT7yH1n --version draft \
+  --payload '{"orderId":"6ac54a59212c29912eaddd81"}' --wait 0 --follow
+
+# 6. Publish (version 1); later edits: get --format yaml > flow.yaml, edit, save, diff, publish
+norbix code workflows publish wf_3kQ9mZ2vXc8LpR4wT7yH1n --yes
+
+# 7. Read a run, its steps and its log lines
+norbix code workflows runs wf_3kQ9mZ2vXc8LpR4wT7yH1n --status failed
+norbix code workflows run wfr_5nB2xQ7wLk9RmT3vYc1HdP
+norbix code workflows logs wfr_5nB2xQ7wLk9RmT3vYc1HdP --step notify
+
+# 8. A failed step: retry it. A run waiting on an approval: answer it
+norbix code workflows retry wfr_5nB2xQ7wLk9RmT3vYc1HdP --yes
+norbix code workflows waiting --mine
+norbix code workflows resume wfr_5nB2xQ7wLk9RmT3vYc1HdP --decision approved --yes
+```
