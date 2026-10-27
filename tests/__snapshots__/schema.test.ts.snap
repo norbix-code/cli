@@ -715,6 +715,280 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "code workflows beta disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "code workflows beta enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "runId",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "reason:string",
+    ],
+    "id": "code workflows cancel",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "code workflows delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "from:string",
+      "to:string",
+    ],
+    "id": "code workflows diff",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "code workflows disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "discard:boolean",
+      "format:option",
+    ],
+    "id": "code workflows draft",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "code workflows enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "version:string",
+      "format:option",
+    ],
+    "id": "code workflows get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "payload:string",
+      "payload-file:string",
+      "wait:string",
+      "version:string",
+      "follow:boolean",
+      "timeout:string",
+    ],
+    "id": "code workflows invoke",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "enabled:boolean",
+      "disabled:boolean",
+      "limit:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "code workflows list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "runId",
+    ],
+    "destructive": false,
+    "flags": [
+      "step:string",
+      "level:option",
+      "limit:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "code workflows logs",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "code workflows publish",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "[runId]",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "workflow:string",
+      "key:string",
+      "step:string",
+      "decision:option",
+      "payload:string",
+      "payload-file:string",
+      "app-user:boolean",
+    ],
+    "id": "code workflows resume",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "runId",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "step:string",
+    ],
+    "id": "code workflows retry",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "runId",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "code workflows run",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "status:option",
+      "from:string",
+      "to:string",
+      "limit:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "code workflows runs",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file:string",
+    ],
+    "id": "code workflows save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "format:option",
+    ],
+    "id": "code workflows schema",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "file:string",
+    ],
+    "id": "code workflows validate",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "code workflows versions",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "mine:boolean",
+      "assignee:string",
+      "kind:option",
+      "workflow:string",
+      "key:string",
+      "status:option",
+      "app-user:boolean",
+      "limit:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "code workflows waiting",
+    "supportsDryRun": false,
+  },
+  {
     "args": [
       "key",
     ],
