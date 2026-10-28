@@ -44,6 +44,8 @@ out of reach.
 
 Cross-cutting commands: `norbix integrations <module>` lists integrations for
 9 modules; `norbix module enable|disable <name>` toggles 10 modules.
+`norbix integrations keyless-setup <module> <cloud>` covers
+`GET /integrations/keyless/setup` (tests/integrations-keyless-setup.test.ts).
 
 ## Deliberately skipped (and why)
 
