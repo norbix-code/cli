@@ -2359,6 +2359,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [
       "integration-id:string",
+      "template:option",
     ],
     "id": "integrations keyless-setup",
     "supportsDryRun": false,
