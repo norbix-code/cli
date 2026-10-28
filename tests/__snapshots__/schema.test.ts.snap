@@ -2352,6 +2352,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "module",
+      "cloud",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration-id:string",
+    ],
+    "id": "integrations keyless-setup",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [
