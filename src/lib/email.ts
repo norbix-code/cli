@@ -21,6 +21,28 @@ export async function readJsonArray(value: string, flagName: string): Promise<un
  * (`@Model.Name`), so a body can not use the `@file` shorthand — the file has
  * its own flag.
  */
+/**
+ * A secret flag value: `@path` reads the file (trimmed), `-` reads stdin, else
+ * the value itself. Keeps keys out of the shell history when the user wants.
+ */
+export async function readSecret(value: string, flagName: string): Promise<string> {
+  if (value === '-') {
+    const chunks: Buffer[] = []
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
+    return Buffer.concat(chunks).toString('utf8').trim()
+  }
+
+  if (value.startsWith('@')) {
+    try {
+      return readFileSync(value.slice(1), 'utf8').trim()
+    } catch {
+      throw new Error(`--${flagName}: cannot read the file "${value.slice(1)}".`)
+    }
+  }
+
+  return value
+}
+
 export function textOrFile(text: string | undefined, file: string | undefined): string | undefined {
   if (file) return readFileSync(file, 'utf8')
   return text
