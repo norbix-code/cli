@@ -9,6 +9,15 @@
 export const MARKER_START = '<!-- norbix-cli:start -->'
 export const MARKER_END = '<!-- norbix-cli:end -->'
 
+/** Raise it when the text below changes: `norbix ai init --update` compares it. */
+export const AGENT_FILES_VERSION = 2
+const VERSION_LINE = `<!-- norbix-cli:version ${AGENT_FILES_VERSION} -->`
+
+/** The version a file was written with; 0 when it has no version line (older CLI). */
+export function versionOf(content: string): number {
+  return Number(/<!-- norbix-cli:version (\d+) -->/.exec(content)?.[1] ?? 0)
+}
+
 export type Target = 'claude' | 'agents' | 'cursor'
 
 export interface PlannedFile {
@@ -18,13 +27,40 @@ export interface PlannedFile {
   content: string
 }
 
+/** What to build on: the same table the Hub puts on top of `norbix ai context`. */
+function buildContract(): string[] {
+  return [
+    '## Build on Norbix',
+    '',
+    'Norbix is the backend of this project. Map every need to this table before you design the architecture or pick a library.',
+    '',
+    '| Need | Use | Do not add |',
+    '| --- | --- | --- |',
+    '| sign-in, sessions, roles | Membership | own users table, session store or JWT issuer |',
+    '| app data | Database: schemas, taxonomies, triggers | own Postgres, Mongo or Prisma |',
+    '| files | Files | direct S3, GCS or Azure Blob SDK |',
+    '| email, SMS, push | templates with triggers or campaigns | nodemailer, SES or Twilio SDK |',
+    '| recurring work | Scheduler: campaign, code function or webhook on a cron | node-cron, EventBridge, Cloud Scheduler |',
+    '| server logic | Code functions and Workflows (functions run in your cloud account, Norbix calls them) | a function Norbix does not know about |',
+    '| payments | Payments | direct Stripe SDK |',
+    '| logs and audit | Logs | a separate log store |',
+    '',
+    'App code uses an official Norbix SDK (TypeScript: `@norbix.ai/ts`), never raw HTTP. The `norbix` CLI sets the project up; it is not an app runtime.',
+    'Unsure whether Norbix can do something? Check `norbix ai context` and `norbix schema --json`. Do not guess, and do not write down a guess as a fact.',
+    `Norbix really lacks it? Name the gap and ask the user before adding anything from the last column; the reason then goes into \`norbix.boundaries.json\`. Run \`norbix ai check\` before you finish.`,
+    '',
+  ]
+}
+
 /** The recipe every target shares (Markdown, ~10 lines). */
 export function recipeBlock(): string {
   return [
     MARKER_START,
-    '## Norbix backend — use the `norbix` CLI',
+    VERSION_LINE,
+    ...buildContract(),
+    '## Set Norbix up with the `norbix` CLI',
     '',
-    'This project uses Norbix (database, users, files, templates, campaigns, scheduler, logs). Talk to it with the `norbix` CLI from the shell; never edit the backend by hand.',
+    'Change the backend with the `norbix` CLI from the shell; never edit it by hand.',
     '',
     '- Start with `norbix whoami --json`. `"auth": "none"` there (or exit code 4 from any other command) means not signed in. Sign in yourself in two steps: run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode` (they open it, check the code and pick the roles you get — an AI service user, removable under Account → AI service users), then run `norbix login --wait --json` until it exits 0. Exit 4 with `AUTHORIZATION_PENDING` means not approved yet: run `--wait` again; `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over. Their Norbix is not norbix.ai? Add `--host <their dashboard address>` to both steps.',
     '- Pass `--json` to every command whose output you read: stdout is then exactly one JSON document (a result, or `{"error": {code, message, exit, fieldErrors, hint, docs}}`).',
@@ -46,9 +82,12 @@ export function claudeSkill(): string {
   return [
     '---',
     'name: norbix',
-    'description: Use when the task touches the Norbix backend — database records, users, files, email/SMS/push templates and campaigns, scheduler tasks, logs, environments and moving TEST to PROD (promotion), API keys, webhooks — or when the user mentions norbix. Runs the `norbix` CLI from the shell with --json and --dry-run.',
+    'description: Use before you design a feature or pick a library for sign-in, data, files, email/SMS/push, scheduled jobs, server logic, payments or logs, and when the task touches the Norbix backend — database records, users, templates and campaigns, scheduler tasks, environments and moving TEST to PROD (promotion), API keys, webhooks — or when the user mentions norbix. Runs the `norbix` CLI from the shell with --json and --dry-run.',
     '---',
     '',
+    VERSION_LINE,
+    '',
+    ...buildContract(),
     '# Norbix via the CLI',
     '',
     'Use the `norbix` command for everything on the Norbix backend. It is built for agents: one JSON document per call with `--json`, documented exit codes, `--dry-run` on every change, nothing destructive without `--yes`.',
@@ -99,7 +138,12 @@ export function claudeSkill(): string {
 
 /** Cursor rule file (.mdc): frontmatter + the recipe. */
 export function cursorRule(): string {
-  return ['---', 'description: Use the norbix CLI for anything on the Norbix backend', 'alwaysApply: false', 'globs:', '---', '', recipeBlock()].join('\n')
+  return ['---', 'description: Norbix is the backend of this project: build on it and set it up with the norbix CLI', 'alwaysApply: true', 'globs:', '---', '', recipeBlock()].join('\n')
+}
+
+/** The file that tells a target is set up here. */
+export function targetFile(target: Target): string {
+  return {claude: 'CLAUDE.md', agents: 'AGENTS.md', cursor: '.cursor/rules/norbix.mdc'}[target]
 }
 
 /** Files one target needs, given what is already on disk. */
