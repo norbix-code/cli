@@ -30,7 +30,7 @@ first two, for scripts that treat every module alike.
 |---|---|---|
 | `norbix email integrations [--page-size <n>] [--after <cursor>]` | list the integrations | `GET /integrations` |
 | `norbix email integration <id>` | show one integration | `GET /integrations/{id}` |
-| `norbix email integration save --provider <p> [--name <n>] [--id <id>] [--from <address>] [--sender-name <n>] [--disabled] [--config <json>]` | create or update an integration | `POST /integrations` |
+| `norbix email integration save --provider <p> [--name <n>] [--id <id>] [--from <address>] [--sender-name <n>] [--disabled] [--config <json>] [--delivery-events] [--sns-topic-arn <arn>] [--event-webhook-public-key <key>] [--endpoint <url>] [--access-key <k>] [--event-grid-key <k>]` | create or update an integration; `--provider azureCommunication` (Azure Communication Services Email, needs `--endpoint` and `--access-key`); `--delivery-events` turns on provider delivery reports — AwsSes via SNS (`--sns-topic-arn`), SendGrid's Event Webhook (`--event-webhook-public-key`), Azure's Event Grid (`--event-grid-key`); register `https://<hub>/v3/email/webhooks/<ses-sns\|sendgrid\|azure-eventgrid>/<projectId>/<integrationId>?env=<env>` with the provider (Azure: header `aeg-sas-key`); signatures are verified | `POST /integrations` |
 | `norbix email integration enable <id>` | turn it on | `PUT /integrations/{Id}/enable` |
 | `norbix email integration disable <id>` | turn it off | `PUT /integrations/{Id}/disable` |
 | `norbix email integration default <id>` | make it the project default | `PUT /integrations/{Id}/default` |
@@ -137,6 +137,38 @@ norbix email template tokens tpl_123
 | `norbix email campaign batch <id> <batchId>` | list the e-mails in a batch | `GET /campaigns/{id}/batches/{batchId}` |
 | `norbix email campaign batch <id> <batchId> <notificationId>` | show one e-mail in a batch | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
 | `norbix email campaign messages <id> --batch <batchId>` | list the e-mails it sent in a batch | `GET /notifications/emails/campaigns/{campaignId}/messages` |
+
+### Delivery state, attempts and retrying the failed recipients (gateway 2.3.9)
+
+Every recipient row of a campaign carries `state` (`Pending`, `Sending`,
+`Retrying`, `Accepted`, `Failed`, `Blocked`, `Cancelled`), `attempts[]` (one
+per send: outcome, failure class `Transient` / `Permanent` / `Unknown` /
+`Ambiguous`, error, trigger `Initial` / `AutoRetry` / `ManualRetry`) and
+`deliveryEvents[]` (what the provider reported afterwards). The statistics
+carry `failedRetryable` and `cancelled`. In human output the gateway's `Completed`
+reads **Accepted** (the provider took the message); `--json` shows the values
+as the gateway sends them.
+
+An attempt the send gates stopped has the outcome `Blocked`; `notifications` prints
+`last attempt Blocked`. `retry-failed` prints the rows left out under `Skipped`, and
+under `Stopped by the send gates` the `skipped` keys `optedOut`, `compliance` and
+`undeliverable`: those people count in `selected`, and the keys reach the stored answer
+later, so a repeat with the same `--key` shows them. `<channel> campaign <id> --stats`
+prints `Blocked`, `Removed` and `In progress` too.
+
+| Command | What it does | Endpoint |
+|---|---|---|
+| `norbix email notifications <id> [--state failed]` | every recipient row across all batches, `--state` filtered here (no hub filter) | `GET /campaigns/{id}/batches` + `GET /notifications/emails/campaigns/{campaignId}/messages` per batch |
+| `norbix email retry-failed <id> --key <k> [--notification <id>…] [--category Transient\|Permanent\|Unknown…] [--include-ambiguous] [--dry-run]` | send the failed recipients again (never an accepted one); `--key` is your idempotency key — the same key again replays the first answer and sends nothing; `--include-ambiguous` also retries timeouts and **may send a duplicate** (the answer's `warning` says so) | `POST /campaigns/{Id}/retry-failed` |
+
+```bash
+norbix email notifications cmp_123 --state failed --json
+norbix email retry-failed cmp_123 --key nightly-1
+norbix email retry-failed cmp_123 --key nightly-2 --category Transient --category Unknown
+```
+
+Non-PROD environments with the Sandbox provider fail on purpose for magic
+recipients (`fail-transient-<k>@sandbox.norbix` with k 1..5, `fail-permanent@sandbox.norbix`, `fail-timeout@sandbox.norbix`, `bounce@sandbox.norbix`), so the retry flow can be rehearsed without a real provider.
 | `norbix email preview <hash>` (or `--hash <hash>`) | show the subject and HTML behind a preview link | `GET /preview` |
 | `norbix email preview --notification <id>` | show the subject and HTML of one sent e-mail of your project | `GET /preview` |
 

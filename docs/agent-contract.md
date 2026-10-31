@@ -59,6 +59,11 @@ Exit codes are identical with and without `--json`. The table is also in
 `norbix schema --json` under `exitCodes`, and in code at
 `src/lib/exit-codes.ts`.
 
+One code has a fixed answer: `CM-ERRORS-MEMBERSHIP-USERS-050` (the Hub
+refuses a session whose password changed since it was signed in, gateway
+N-29) always exits 4 with the message "Your password was changed since this
+session was signed in. Sign in again." — whichever path reported it.
+
 ## 3. The JSON error envelope
 
 One document on stdout, nothing on stderr:
@@ -146,14 +151,38 @@ command that makes several calls (`files upload`) shows the first.
 - **Mutating** (`supportsDryRun: true`, no confirmation): `create`,
   `insert`, `update --id`, `replace`, `archive`, `unarchive`, `clone`,
   `enable`, `invite`, `unblock`, `upload`, `publish`, `unpublish`,
-  `config set / unset`, `env use`, `logout`, `raw`.
+  `retry-failed` (`email|sms|push`; `--key` makes a repeat a no-op, so it
+  needs no confirmation — `--include-ambiguous` prints a duplicate warning on
+  stderr), `config set / unset`, `env use`, `logout`, `raw`. `identities create` is one
+  of these.
 - **Preview by default** (`env promote`, `env rollback`, `env built-ins repair`):
   without `--yes` they ask the Hub for the plan and change nothing — here
   `--dry-run` is that preview (the request is sent with `dryRun: true`), not
   "send nothing". `--yes` runs them for real.
-- **Read-only**: everything else; no `--yes`, no `--dry-run`.
+- **Read-only**: everything else (`email|sms|push notifications <id>`
+  included: it walks the batches and filters `--state` client-side); no
+  `--yes`, no `--dry-run`.
 
-## 6. Shared code
+## 6. Saves that warn, and who a save runs as
+
+- **Warnings.** A template create or update can answer with `warnings` (strings:
+  a tag that is not enabled on the channel, for example). A warning never stops
+  the save. In text mode each one goes to **stderr**, after the result; with
+  `--json` stdout stays the one document, which carries `warnings` itself, and
+  the same lines still go to stderr. `hub ... updateEmailTemplate` and the SMS and
+  Push twins answer `{id, warnings}`.
+- **Who it runs as.** `db trigger create`, `payments trigger save` and
+  `scheduler save` take `--execution-identity <id|default>`. Left out on a trigger
+  save, the file's `executionIdentityId` stands; with neither, the project default.
+  A Code or Marketplace action in a `--file` takes no `runAsUserId`: the gateway
+  refuses one that differs from the trigger's identity (`CM-ERRORS-TRIGGERS-013`).
+- **Reading runs.** `trigger runs <triggerType> <triggerId>` and `trigger run <id>`
+  are read-only. The Hub reads a run by id **and** type. `trigger run <id>` without
+  `--type` tries Membership, Schema, Files, Payments, Ai in that order, one call
+  each, and moves on after a 403 or a 404; every other failure exits at once. After
+  five refusals it exits with the last one. Pass `--type` from a script.
+
+## 7. Shared code
 
 `src/lib/exit-codes.ts`, `src/lib/cli-error.ts` (envelope),
 `src/lib/schema.ts` (schema document) and `src/lib/request-fields.ts`

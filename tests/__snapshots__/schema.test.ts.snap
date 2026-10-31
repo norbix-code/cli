@@ -1506,6 +1506,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "file:string",
       "schema:string",
       "id:string",
+      "execution-identity:string",
       "order:string",
       "break-on-error:boolean",
     ],
@@ -1873,13 +1874,19 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [
       "dry-run:boolean",
-      "provider:option",
+      "provider:string",
       "name:string",
       "id:string",
       "from:string",
       "sender-name:string",
       "disabled:boolean",
       "config:string",
+      "endpoint:string",
+      "access-key:string",
+      "delivery-events:boolean",
+      "sns-topic-arn:string",
+      "event-webhook-public-key:string",
+      "event-grid-key:string",
     ],
     "id": "email integration save",
     "supportsDryRun": true,
@@ -1907,6 +1914,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "state:string",
+      "database-integration:string",
+    ],
+    "id": "email notifications",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
       "[hash]",
     ],
     "destructive": false,
@@ -1916,6 +1935,22 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "email preview",
     "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "key:string",
+      "notification:string",
+      "include-ambiguous:boolean",
+      "category:option",
+      "database-integration:string",
+    ],
+    "id": "email retry-failed",
+    "supportsDryRun": true,
   },
   {
     "args": [],
@@ -2363,6 +2398,24 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "role:string",
+    ],
+    "id": "identities create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "identities list",
+    "supportsDryRun": false,
+  },
+  {
     "args": [
       "module",
     ],
@@ -2722,6 +2775,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "when:option",
       "event:string",
       "integration:string",
+      "execution-identity:string",
       "order:string",
       "break-on-error:boolean",
     ],
@@ -3442,7 +3496,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [
       "dry-run:boolean",
-      "provider:option",
+      "provider:string",
       "name:string",
       "id:string",
       "disabled:boolean",
@@ -3475,6 +3529,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "state:string",
+      "database-integration:string",
+    ],
+    "id": "push notifications",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
       "[hash]",
     ],
     "destructive": false,
@@ -3483,6 +3549,22 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "push preview",
     "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "key:string",
+      "notification:string",
+      "include-ambiguous:boolean",
+      "category:option",
+      "database-integration:string",
+    ],
+    "id": "push retry-failed",
+    "supportsDryRun": true,
   },
   {
     "args": [],
@@ -3673,6 +3755,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "name:string",
       "description:string",
       "cron:string",
+      "execution-identity:string",
       "initiator:string",
       "enabled:boolean",
       "stop-on-error:boolean",
@@ -3953,11 +4036,13 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [
       "dry-run:boolean",
-      "provider:option",
+      "provider:string",
       "name:string",
       "id:string",
       "disabled:boolean",
       "config:string",
+      "delivery-events:boolean",
+      "status-callback-url:string",
     ],
     "id": "sms integration save",
     "supportsDryRun": true,
@@ -3985,6 +4070,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "state:string",
+      "database-integration:string",
+    ],
+    "id": "sms notifications",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
       "[hash]",
     ],
     "destructive": false,
@@ -3993,6 +4090,22 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "sms preview",
     "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "key:string",
+      "notification:string",
+      "include-ambiguous:boolean",
+      "category:option",
+      "database-integration:string",
+    ],
+    "id": "sms retry-failed",
+    "supportsDryRun": true,
   },
   {
     "args": [],
@@ -4097,6 +4210,32 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "sms unarchive",
     "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "type:option",
+    ],
+    "id": "trigger run",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "triggerType",
+      "triggerId",
+    ],
+    "destructive": false,
+    "flags": [
+      "status:option",
+      "page-size:string",
+      "after:string",
+      "before:string",
+    ],
+    "id": "trigger runs",
+    "supportsDryRun": false,
   },
   {
     "args": [

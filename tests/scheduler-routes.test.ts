@@ -253,9 +253,9 @@ describe('scheduler save', () => {
     expect((call.body?.task as {campaign: Record<string, unknown>}).campaign.initiatorId).toBe('usr_7')
   })
 
-  it('requires --name, --cron, --initiator, --template, --integration and --audience', async () => {
+  it('requires --name, --cron, --template, --integration and --audience', async () => {
     const {error} = await runCommand(['scheduler', 'save', '--yes', ...globalArgs])
-    for (const flag of ['name', 'cron', 'initiator', 'template', 'integration', 'audience']) {
+    for (const flag of ['name', 'cron', 'template', 'integration', 'audience']) {
       expect(error?.message).toContain(`Missing required flag ${flag}`)
     }
 

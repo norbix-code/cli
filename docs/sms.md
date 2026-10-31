@@ -28,7 +28,7 @@ first two, for scripts that treat every module alike.
 |---|---|---|
 | `norbix sms integrations [--page-size <n>] [--after <cursor>]` | list the integrations | `GET /integrations` |
 | `norbix sms integration <id>` | show one integration | `GET /integrations/{id}` |
-| `norbix sms integration save --provider <p> [--name <n>] [--id <id>] [--disabled] [--config <json>]` | create or update an integration | `POST /integrations` |
+| `norbix sms integration save --provider <p> [--name <n>] [--id <id>] [--disabled] [--config <json>] [--delivery-events --status-callback-url <url>]` | create or update an integration; Twilio: `--delivery-events` with `--status-callback-url https://<hub>/v3/sms/webhooks/twilio/<projectId>/<integrationId>?env=<env>` (paste the same URL in Twilio; the signature is verified) settles the recipient rows from Twilio's status callbacks | `POST /integrations` |
 | `norbix sms integration enable <id>` | turn it on | `PUT /integrations/{Id}/enable` |
 | `norbix sms integration disable <id>` | turn it off | `PUT /integrations/{Id}/disable` |
 | `norbix sms integration default <id>` | make it the project default | `PUT /integrations/{Id}/default` |
@@ -98,6 +98,38 @@ norbix sms template render --code "Hi @Model.Name" --token Name=Ada
 | `norbix sms campaign batch <id> <batchId> <notificationId>` | show one notification in a batch | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
 | `norbix sms campaign messages <id> [--batch <batchId>]` | list the messages it sent | `GET /campaigns/{campaignId}/messages` |
 | `norbix sms campaign message <id> <messageId> --batch <batchId>` | show one message (same as `campaign batch <id> <batchId> <messageId>`) | `GET /campaigns/{id}/batches/{batchId}/{notificationId}` |
+
+### Delivery state, attempts and retrying the failed recipients (gateway 2.3.9)
+
+Every recipient row of a campaign carries `state` (`Pending`, `Sending`,
+`Retrying`, `Accepted`, `Failed`, `Blocked`, `Cancelled`), `attempts[]` (one
+per send: outcome, failure class `Transient` / `Permanent` / `Unknown` /
+`Ambiguous`, error, trigger `Initial` / `AutoRetry` / `ManualRetry`) and
+`deliveryEvents[]` (what the provider reported afterwards). The statistics
+carry `failedRetryable` and `cancelled`. In human output the gateway's `Completed`
+reads **Accepted** (the provider took the message); `--json` shows the values
+as the gateway sends them.
+
+An attempt the send gates stopped has the outcome `Blocked`; `notifications` prints
+`last attempt Blocked`. `retry-failed` prints the rows left out under `Skipped`, and
+under `Stopped by the send gates` the `skipped` keys `optedOut`, `compliance` and
+`undeliverable`: those people count in `selected`, and the keys reach the stored answer
+later, so a repeat with the same `--key` shows them. `<channel> campaign <id> --stats`
+prints `Blocked`, `Removed` and `In progress` too.
+
+| Command | What it does | Endpoint |
+|---|---|---|
+| `norbix sms notifications <id> [--state failed]` | every recipient row across all batches, `--state` filtered here (no hub filter) | `GET /campaigns/{id}/batches` + `GET /notifications/sms/campaigns/{campaignId}/messages` per batch |
+| `norbix sms retry-failed <id> --key <k> [--notification <id>…] [--category Transient\|Permanent\|Unknown…] [--include-ambiguous] [--dry-run]` | send the failed recipients again (never an accepted one); `--key` is your idempotency key — the same key again replays the first answer and sends nothing; `--include-ambiguous` also retries timeouts and **may send a duplicate** (the answer's `warning` says so) | `POST /campaigns/{Id}/retry-failed` |
+
+```bash
+norbix sms notifications cmp_123 --state failed --json
+norbix sms retry-failed cmp_123 --key nightly-1
+norbix sms retry-failed cmp_123 --key nightly-2 --category Transient --category Unknown
+```
+
+Non-PROD environments with the Sandbox provider fail on purpose for magic
+recipients (numbers `+99900000001` / `02` / `03`), so the retry flow can be rehearsed without a real provider.
 | `norbix sms preview <hash>` (or `--hash <hash>`) | render the text behind a preview link | `GET /preview` |
 
 `--audience` decides who receives the campaign:
