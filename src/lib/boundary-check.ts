@@ -1,5 +1,5 @@
 import {existsSync, readdirSync, readFileSync, statSync} from 'node:fs'
-import {extname, join, relative} from 'node:path'
+import {basename, extname, join, relative, sep} from 'node:path'
 
 /**
  * What `norbix ai check` looks for: things an app adds beside Norbix. No oclif
@@ -86,9 +86,9 @@ export function scan(root: string): Finding[] {
   const findings: Finding[] = []
   for (const path of walk(root)) {
     if (statSync(path).size > MAX_BYTES) continue
-    const file = relative(root, path)
+    const file = relative(root, path).split(sep).join('/')
     const ext = extname(path)
-    if (path.endsWith('/package.json') || file === 'package.json') findings.push(...packageFindings(path, file))
+    if (basename(path) === 'package.json') findings.push(...packageFindings(path, file))
     else if (CODE.has(ext)) findings.push(...lineFindings(path, file, (rule) => rule.code))
     else if (INFRA.has(ext)) findings.push(...lineFindings(path, file, (rule) => rule.infra))
   }
