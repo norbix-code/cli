@@ -170,7 +170,9 @@ function parseDts(file) {
         if (v) values.push(v[1])
       }
 
-      enums.set(en[1], values)
+      // A person the event is about: only a membership trigger has one, and a
+      // trigger action is JSON in a --file. No field offers it as a plain option.
+      enums.set(en[1], values.filter((v) => v !== 'TriggerSubject'))
     }
   }
 

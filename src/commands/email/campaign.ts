@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
+import {formatCampaignStats} from '../../lib/campaigns.js'
 
 export default class EmailCampaign extends BaseCommand {
   static description = 'Show one email campaign (or its statistics with --stats)'
@@ -23,7 +24,7 @@ export default class EmailCampaign extends BaseCommand {
       ? await client.api.notifications.getEmailCampaignStatistics({id: args.id})
       : await client.api.notifications.getEmailCampaign({id: args.id})
 
-    this.print(res)
+    this.print(flags.stats ? formatCampaignStats(res) : res)
     return res
   }
 }
