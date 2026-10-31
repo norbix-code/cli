@@ -85,3 +85,8 @@ and `sms campaign message` now read the same notification from the batch route.
 Doc file names (kebab-case) were converted to SDK method names (camelCase) and
 matched against the methods the CLI actually calls. Regenerate with the same
 approach after adding commands.
+
+- **triggers/runs (2), membership/execution-identities (2)** — `trigger runs`,
+  `trigger run`, `identities list`, `identities create`. Not a named command:
+  `triggers/execution-identity/check` (reach it with `norbix hub triggers
+  checkTriggerExecutionIdentity`); the brief of this round did not ask for one.

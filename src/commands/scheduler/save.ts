@@ -8,6 +8,7 @@ import {
   parseTokens,
   readJsonObject,
 } from '../../lib/email.js'
+import {EXECUTION_IDENTITY_HELP, executionIdentityFlag} from '../../lib/triggers.js'
 
 /** Field names of a 5-field cron, for the error message. */
 const CRON_FIELDS = 'minute hour day-of-month month day-of-week'
@@ -19,7 +20,7 @@ Without --id a new task is created; with --id that task is replaced by what the 
 
 The only task type today is an email campaign: each time --cron fires, the task sends the --template to the --audience. --cron has 5 fields (${CRON_FIELDS}) and runs in UTC, e.g. "0 9 * * 1" is every Monday at 09:00 UTC.
 
---initiator is the user the task runs as (usr_…): yourself, or a service user of this project. It must belong to this project.
+--execution-identity says who the task runs as: ${EXECUTION_IDENTITY_HELP}. --initiator is the user the task is attributed to (usr_…; default: you). It must belong to this project.
 
 --integration is required: name the email provider every run sends through (list them with \`norbix email integrations\`). The server never falls back to the project default; a task without one would fail each time it fires. --language forces one language; it must be one of the project's languages (Project settings), and the template must have a translation for every project language. --on-behalf-of sends each run on behalf of another project user (their details fill the Initiator.User.* tokens; default: the --initiator).
 
@@ -31,7 +32,7 @@ Anything the flags do not cover goes in --config as a JSON object and is merged 
     '<%= config.bin %> scheduler save --name "Weekly digest" --cron "0 9 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --yes',
     '<%= config.bin %> scheduler save --name "Beta news" --cron "30 7 1 * *" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --tag beta --no-enabled --yes',
     '<%= config.bin %> scheduler save --id 66b2f0a1c3d4e5f6a7b8c9d0 --name "Weekly digest" --cron "0 10 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience emails --email ada@example.com --yes',
-    '<%= config.bin %> scheduler save --name "Weekly digest" --cron "0 9 * * 1" --initiator usr_66b2f0a1 --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --dry-run',
+    '<%= config.bin %> scheduler save --name "Weekly digest" --cron "0 9 * * 1" --execution-identity default --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --dry-run',
   ]
 
   static flags = {
@@ -40,9 +41,9 @@ Anything the flags do not cover goes in --config as a JSON object and is merged 
     name: Flags.string({required: true, description: 'Task name'}),
     description: Flags.string({description: 'What the task is for'}),
     cron: Flags.string({required: true, description: `When it runs: a 5-field cron (${CRON_FIELDS}) in UTC`}),
+    'execution-identity': executionIdentityFlag,
     initiator: Flags.string({
-      required: true,
-      description: 'User ID (usr_…) the task runs as — yourself or a service user of this project',
+      description: 'User ID (usr_…) the task is attributed to; default: you',
     }),
     enabled: Flags.boolean({
       description: 'Start firing on the cron right away (--no-enabled saves it switched off)',
@@ -105,6 +106,7 @@ Anything the flags do not cover goes in --config as a JSON object and is merged 
       name: flags.name,
       description: flags.description,
       cron: cron.join(' '),
+      executionIdentityId: flags['execution-identity'],
       initiatorUserId: flags.initiator,
       isEnabled: flags.enabled,
       stopOnError: flags['stop-on-error'],

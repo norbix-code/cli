@@ -1,4 +1,5 @@
 import {BaseCommand} from '../../../base.js'
+import {printTemplateWarnings} from '../../../lib/campaigns.js'
 import {emailTemplateBody, emailTemplateFlags} from '../../../lib/email.js'
 
 export default class EmailTemplateCreate extends BaseCommand {
@@ -31,6 +32,7 @@ Check the code first with \`email template render\`.`
     )
 
     this.print(res)
+    printTemplateWarnings(res)
     return res
   }
 }

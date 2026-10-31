@@ -1,4 +1,5 @@
 import {BaseCommand} from '../../../base.js'
+import {printTemplateWarnings} from '../../../lib/campaigns.js'
 import {templateBody, templateFlags} from '../../../lib/push.js'
 
 export default class PushTemplateCreate extends BaseCommand {
@@ -27,6 +28,7 @@ JSON array of {language, content: {title, body}}.`
     )
 
     this.print(res)
+    printTemplateWarnings(res)
     return res
   }
 }

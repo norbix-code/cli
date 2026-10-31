@@ -5,6 +5,7 @@ import {usageError} from './cli-error.js'
 import {MODULE_ALIASES, camelSplit, isDestructive, matchMethods, parseArgv, typeFields} from './dispatch.js'
 import {readJsonInput} from './json.js'
 import {describeFields, fieldKinds, methodInfo, type FieldKind} from './request-fields.js'
+import {printTemplateWarnings} from './campaigns.js'
 import {SCHEMA_RULES_POINTER, printSchemaWarnings, schemaWarnings} from './schema-rules.js'
 
 /** The SDK methods whose `warnings` are schema design warnings. */
@@ -252,6 +253,7 @@ export abstract class NamespaceCommand extends BaseCommand {
     // (bare-text email, link, language, currency, country, user id). Only
     // those two: IdResponse.warnings is shared by every id-returning endpoint.
     if (SCHEMA_WARNING_METHODS.has(method)) printSchemaWarnings(res)
+    if (/^(create|update)(Email|Sms|Push)Template$/.test(method)) printTemplateWarnings(res)
     return res
   }
 

@@ -1,6 +1,7 @@
 import {Args} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
+import {printTemplateWarnings} from '../../../lib/campaigns.js'
 import {emailTemplateBody, emailTemplateFlags} from '../../../lib/email.js'
 
 export default class EmailTemplateUpdate extends BaseCommand {
@@ -32,6 +33,7 @@ The whole template is sent, so pass every language you want to keep.`
     } as unknown as Parameters<typeof client.hub.notifications.updateEmailTemplate>[0])
 
     this.print(`Template ${args.id} updated.`)
+    printTemplateWarnings(res)
     return res
   }
 }

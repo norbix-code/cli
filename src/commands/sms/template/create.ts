@@ -1,4 +1,5 @@
 import {BaseCommand} from '../../../base.js'
+import {printTemplateWarnings} from '../../../lib/campaigns.js'
 import {smsTemplateBody, smsTemplateFlags} from '../../../lib/sms.js'
 
 export default class SmsTemplateCreate extends BaseCommand {
@@ -28,6 +29,7 @@ sender is set on the SMS integration (provider).`
     )
 
     this.print(res)
+    printTemplateWarnings(res)
     return res
   }
 }

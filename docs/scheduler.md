@@ -26,7 +26,7 @@ which the gateway refuses — update the CLI.
 |---|---|---|
 | `norbix scheduler list [--type <type>] [--enabled \| --no-enabled] [--page-size <n>] [--after <cursor>]` | list the tasks | `GET /tasks` |
 | `norbix scheduler get <id>` | show one task | `GET /tasks/{id}` |
-| `norbix scheduler save --name <n> --cron <cron> --initiator <usr_…> --template <id> --integration <id> --audience <a> [--id <id>] [...]` | create a task, or update it with `--id` | `POST /tasks` |
+| `norbix scheduler save --name <n> --cron <cron> [--execution-identity <id\|default>] [--initiator <usr_…>] --template <id> --integration <id> --audience <a> [--id <id>] [...]` | create a task, or update it with `--id` | `POST /tasks` |
 | `norbix scheduler enable <id> [--yes]` | switch it on — it fires on its next cron tick | `PUT /tasks/{Id}/enable` |
 | `norbix scheduler disable <id> [--yes]` | switch it off | `PUT /tasks/{Id}/disable` |
 | `norbix scheduler delete <id> [--yes]` | delete it | `DELETE /tasks/{Id}` |
@@ -82,7 +82,9 @@ Good to know:
 - **`--cron` has 5 fields** — minute, hour, day of month, month, day of week —
   and runs in **UTC**. The CLI checks the field count before it sends anything;
   the gateway checks the rest. Quote it: `--cron "0 9 * * 1"`.
-- **`--initiator`** is the user the task runs as: yourself (`norbix whoami`) or
+- **`--execution-identity`** says who the task runs as: a service user id from
+  `norbix identities list`, or `default` for the project default.
+- **`--initiator`** is the user the task is attributed to (default: you): yourself (`norbix whoami`) or
   a service user of this project. It must belong to the project.
 - **`--id` replaces the task**: send every flag again — a flag you leave out is
   not kept from the stored task.
