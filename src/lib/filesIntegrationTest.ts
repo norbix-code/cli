@@ -1,14 +1,10 @@
 import {NorbixError, type Norbix} from '@norbix.ai/ts'
 
 /**
- * `POST /{version}/files/{filesIntegrationId}/test` — the API-surface probe of
- * a files integration (gateway slice API-TEST, 10b-files, issue #39). It
- * uploads a small file, reads it, lists the folder and deletes it again, and
- * answers one item per step.
- *
- * Sent through the SDK: `api.files.testFilesIntegration`. (`hub.files.
- * testFilesIntegration` is a DIFFERENT endpoint — the Hub one,
- * `POST /{version}/files/integrations/test` — so it is not used here.)
+ * `POST /{version}/files/integrations/test` — the Hub probe of a files
+ * integration. It uploads a small file, reads it, lists the folder and deletes
+ * it again, and answers one item per step. It stays on the Hub because it
+ * records the outcome on the project.
  */
 
 /** One probe step as the gateway answers it. */
@@ -39,7 +35,7 @@ export async function callTestFilesIntegration(
   filesIntegrationId: string,
 ): Promise<TestFilesIntegrationResult> {
   try {
-    const res = await client.api.files.testFilesIntegration({filesIntegrationId})
+    const res = await client.hub.files.testFilesIntegration({integrationId: filesIntegrationId})
     return (res ?? {}) as TestFilesIntegrationResult
   } catch (error) {
     // The SDK throws on a 2xx with `responseStatus.isSuccess = false`. Here

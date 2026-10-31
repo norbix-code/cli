@@ -20,8 +20,8 @@ export default class PushCampaign extends BaseCommand {
     const client = this.client(flags)
 
     const res = flags.stats
-      ? await client.hub.notifications.getPushCampaignStatistics({id: args.id})
-      : await client.hub.notifications.getPushCampaign({id: args.id})
+      ? await client.api.notifications.getPushCampaignStatistics({id: args.id})
+      : await client.api.notifications.getPushCampaign({id: args.id})
 
     this.print(res)
     return res

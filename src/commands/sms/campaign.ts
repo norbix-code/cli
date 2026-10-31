@@ -20,8 +20,8 @@ export default class SmsCampaign extends BaseCommand {
     const client = this.client(flags)
 
     const res = flags.stats
-      ? await client.hub.notifications.getSmsCampaignStatistics({id: args.id})
-      : await client.hub.notifications.getSmsCampaign({id: args.id})
+      ? await client.api.notifications.getSmsCampaignStatistics({id: args.id})
+      : await client.api.notifications.getSmsCampaign({id: args.id})
 
     this.print(res)
     return res

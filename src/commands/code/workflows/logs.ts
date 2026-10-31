@@ -28,7 +28,7 @@ Every step's lines, or one step's with --step. Needs the Logs module enabled in 
     const {args, flags} = await this.parse(CodeWorkflowsLogs)
     const client = this.client(flags)
 
-    const res = await client.hub.code.getCodeWorkflowRunLogs({
+    const res = await client.api.code.getCodeWorkflowRunLogs({
       runId: args.runId,
       ...(flags.step ? {stepId: flags.step} : {}),
       ...(flags.level ? {level: flags.level} : {}),

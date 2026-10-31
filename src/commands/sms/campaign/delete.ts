@@ -24,7 +24,7 @@ export default class SmsCampaignDelete extends BaseCommand {
 
     await this.confirmOrFail(`Delete SMS campaign ${args.id}?`, flags)
 
-    const res = await client.hub.notifications.deleteSmsCampaign({id: args.id})
+    const res = await client.api.notifications.deleteSmsCampaign({id: args.id})
 
     this.print(`Campaign ${args.id} deleted.`)
     return res

@@ -27,8 +27,8 @@ export default class PushStop extends BaseCommand {
     // The route is `/campaigns/{Id}/stop` and the transport fills tokens by
     // exact name, but the generated request type has no field at all — so the
     // id goes in as `Id`. Sending `id` throws NORBIX_MISSING_PATH_PARAM.
-    const res = await client.hub.notifications.stopPushCampaign({Id: args.id} as unknown as Parameters<
-      typeof client.hub.notifications.stopPushCampaign
+    const res = await client.api.notifications.stopPushCampaign({Id: args.id} as unknown as Parameters<
+      typeof client.api.notifications.stopPushCampaign
     >[0])
 
     this.print(`Campaign ${args.id} stopped.`)

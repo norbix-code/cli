@@ -27,7 +27,7 @@ A new attempt of the step runs from its stored input; the run goes back to runni
     const client = this.client(flags)
     await this.confirmOrFail(`Retry ${flags.step ? `step ${flags.step}` : 'the failed step'} of run ${args.runId}?`, flags)
 
-    const res = await client.hub.code.retryCodeWorkflowRunStep({runId: args.runId, ...(flags.step ? {stepId: flags.step} : {})})
+    const res = await client.api.code.retryCodeWorkflowRunStep({runId: args.runId, ...(flags.step ? {stepId: flags.step} : {})})
 
     this.print(formatRun(res.run))
     return res

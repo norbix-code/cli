@@ -85,10 +85,10 @@ goes in --config as a JSON object and is merged into the campaign.`
       ...this.audienceFields(flags),
     }
 
-    const res = await client.hub.notifications.createPushCampaign({
+    const res = await client.api.notifications.createPushCampaign({
       campaign,
       databaseIntegrationId: flags['database-integration'],
-    } as unknown as Parameters<typeof client.hub.notifications.createPushCampaign>[0])
+    } as unknown as Parameters<typeof client.api.notifications.createPushCampaign>[0])
 
     this.print(res)
     return res

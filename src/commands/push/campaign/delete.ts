@@ -26,8 +26,8 @@ export default class PushCampaignDelete extends BaseCommand {
 
     // The route is `/campaigns/{Id}` but the generated request type is empty,
     // so the id goes in as `Id` — the transport fills tokens by exact name.
-    const res = await client.hub.notifications.deletePushCampaign({Id: args.id} as unknown as Parameters<
-      typeof client.hub.notifications.deletePushCampaign
+    const res = await client.api.notifications.deletePushCampaign({Id: args.id} as unknown as Parameters<
+      typeof client.api.notifications.deletePushCampaign
     >[0])
 
     this.print(`Campaign ${args.id} deleted.`)

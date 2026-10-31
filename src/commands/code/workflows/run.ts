@@ -21,7 +21,7 @@ The run's status, version, source and timing, what it waits on, its error, then 
     const {args, flags} = await this.parse(CodeWorkflowsRun)
     const client = this.client(flags)
 
-    const res = await client.hub.code.getCodeWorkflowRun({runId: args.runId})
+    const res = await client.api.code.getCodeWorkflowRun({runId: args.runId})
 
     this.print(formatRun(res.run))
     return res

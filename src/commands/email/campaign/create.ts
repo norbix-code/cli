@@ -75,10 +75,10 @@ object and is merged into the campaign.`
 
     // `campaign` is one of five request subclasses picked by `source`; the
     // generated type is the base, so the body is cast.
-    const res = await client.hub.notifications.createEmailCampaign({
+    const res = await client.api.notifications.createEmailCampaign({
       campaign,
       databaseIntegrationId: flags['database-integration'],
-    } as unknown as Parameters<typeof client.hub.notifications.createEmailCampaign>[0])
+    } as unknown as Parameters<typeof client.api.notifications.createEmailCampaign>[0])
 
     this.print(res)
     return res

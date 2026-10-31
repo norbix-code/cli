@@ -32,7 +32,7 @@ the campaign time (ISO 8601 date-time or Unix seconds, UTC).`
     // Filters are only sent when set, so a plain `sms campaigns` sends the
     // same request as before. From / To are Unix seconds on the wire
     // (Hub.Sms/Campaigns/GetAll.cs).
-    const res = await client.hub.notifications.getSmsCampaigns({
+    const res = await client.api.notifications.getSmsCampaigns({
       pageSize: flags['page-size'],
       startingAfter: flags.after,
       ...(flags['campaign-id'] ? {campaignId: flags['campaign-id']} : {}),

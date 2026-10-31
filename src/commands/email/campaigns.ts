@@ -16,7 +16,7 @@ export default class EmailCampaigns extends BaseCommand {
     const {flags} = await this.parse(EmailCampaigns)
     const client = this.client(flags)
 
-    const res = await client.hub.notifications.getEmailCampaigns({
+    const res = await client.api.notifications.getEmailCampaigns({
       pageSize: flags['page-size'],
       startingAfter: flags.after,
     })

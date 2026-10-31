@@ -24,7 +24,7 @@ export default class EmailCampaignDelete extends BaseCommand {
 
     await this.confirmOrFail(`Delete email campaign ${args.id}?`, flags)
 
-    const res = await client.hub.notifications.deleteEmailCampaign({id: args.id})
+    const res = await client.api.notifications.deleteEmailCampaign({id: args.id})
 
     this.print(`Campaign ${args.id} deleted.`)
     return res

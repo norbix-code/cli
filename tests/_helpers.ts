@@ -42,7 +42,7 @@ export async function runCommand(
   command: {run: (argv: string[], config: Config) => Promise<unknown>},
   argv: string[] = [],
   /**
-   * Replace the stubbed `client.hub` — pass `{notifications: {}}` to test what a
+   * Replace the stubbed `client.hub` and `client.api` — pass `{notifications: {}}` to test what a
    * command does when the installed SDK is missing the method it wants.
    */
   hub?: Record<string, unknown>,
@@ -54,7 +54,10 @@ export async function runCommand(
 
   const clientSpy = vi
     .spyOn(BaseCommand.prototype as unknown as {client: () => unknown}, 'client')
-    .mockReturnValue({hub: hub ?? {notifications: recordingNotifications(calls)}})
+    .mockImplementation(() => {
+      const stub = hub ?? {notifications: recordingNotifications(calls)}
+      return {api: stub, hub: stub}
+    })
   const logSpy = vi
     .spyOn(BaseCommand.prototype as unknown as {log: (m?: string) => void}, 'log')
     .mockImplementation((message?: string) => {

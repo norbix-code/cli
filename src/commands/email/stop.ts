@@ -24,7 +24,7 @@ export default class EmailStop extends BaseCommand {
 
     await this.confirmOrFail(`Stop email campaign ${args.id}?`, flags)
 
-    const res = await client.hub.notifications.stopEmailCampaign({id: args.id})
+    const res = await client.api.notifications.stopEmailCampaign({id: args.id})
     this.print(`Campaign ${args.id} stopped.`)
     return res
   }

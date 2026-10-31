@@ -61,8 +61,8 @@ Address the run by its id, or — when you only know the wait's key (an outside 
         ? await client.api.code.resumeCodeWorkflowRun(request as Parameters<typeof client.api.code.resumeCodeWorkflowRun>[0])
         : await client.hub.code.resumeCodeWorkflowRun(request as Parameters<typeof client.hub.code.resumeCodeWorkflowRun>[0])
     } else {
-      res = await client.hub.code.resumeCodeWorkflowRunByKey({id: flags.workflow!, key: flags.key!, ...answer} as Parameters<
-        typeof client.hub.code.resumeCodeWorkflowRunByKey
+      res = await client.api.code.resumeCodeWorkflowRunByKey({id: flags.workflow!, key: flags.key!, ...answer} as Parameters<
+        typeof client.api.code.resumeCodeWorkflowRunByKey
       >[0])
     }
 

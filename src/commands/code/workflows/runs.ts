@@ -30,7 +30,7 @@ One row per run: runId, version (or draft), status, source (trigger, scheduler, 
     const {args, flags} = await this.parse(CodeWorkflowsRuns)
     const client = this.client(flags)
 
-    const res = await client.hub.code.getCodeWorkflowRuns({
+    const res = await client.api.code.getCodeWorkflowRuns({
       id: args.id,
       ...(flags.status ? {status: flags.status} : {}),
       ...(flags.from ? {from: flags.from} : {}),
