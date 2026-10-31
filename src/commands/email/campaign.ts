@@ -20,8 +20,8 @@ export default class EmailCampaign extends BaseCommand {
     const client = this.client(flags)
 
     const res = flags.stats
-      ? await client.hub.notifications.getEmailCampaignStatistics({id: args.id})
-      : await client.hub.notifications.getEmailCampaign({id: args.id})
+      ? await client.api.notifications.getEmailCampaignStatistics({id: args.id})
+      : await client.api.notifications.getEmailCampaign({id: args.id})
 
     this.print(res)
     return res

@@ -21,12 +21,12 @@ export default class PushCampaignMessages extends BaseCommand {
     const {args, flags} = await this.parse(PushCampaignMessages)
     const client = this.client(flags)
 
-    const res = await client.hub.notifications.getPushCampaignMessages({
+    const res = await client.api.notifications.getPushCampaignMessages({
       campaignId: args.id,
       campaignBatchId: flags.batch,
       pageSize: flags['page-size'],
       startingAfter: flags.after,
-    } as unknown as Parameters<typeof client.hub.notifications.getPushCampaignMessages>[0])
+    } as unknown as Parameters<typeof client.api.notifications.getPushCampaignMessages>[0])
 
     this.print(res)
     return res

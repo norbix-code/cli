@@ -36,7 +36,7 @@ logged in, your session is still sent.`
     // is forced here. A login, when there is one, is still used.
     const client = this.client(flags, {requireAuth: false, requireProject: false})
 
-    const res = await client.hub.notifications.previewPushNotification({hash})
+    const res = await client.api.notifications.previewPushNotification({hash})
 
     this.print(res)
     return res

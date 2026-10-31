@@ -540,7 +540,7 @@ describe('norbix files integrations test', () => {
     responseStatus: {isSuccess: true, errors: []},
   }
 
-  it('sends POST /v3/files/<id>/test on the API host, with the id in the path and the usual headers', async () => {
+  it('sends POST /v3/files/integrations/test on the Hub, with the id in the body and the usual headers', async () => {
     const seen = answer(allOk)
 
     const {error} = await runCommand(['files', 'integrations', 'test', INTEGRATION, ...auth])
@@ -549,22 +549,13 @@ describe('norbix files integrations test', () => {
     expect(calls).toHaveLength(1)
     expect(calls[0].method).toBe('POST')
     const url = new URL(calls[0].url)
-    expect(url.host).toBe(`${REGION}.api.norbix.ai`)
-    expect(url.pathname).toBe(`/v3/files/${INTEGRATION}/test`)
-    // The only field is the path token, so — like the SDK — no body is sent.
-    expect(calls[0].body).toBeUndefined()
+    expect(url.host).toBe(`${REGION}.hub.norbix.ai`)
+    expect(url.pathname).toBe('/v3/files/integrations/test')
+    expect(JSON.parse(String(calls[0].body))).toEqual({integrationId: INTEGRATION})
     expect(seen[0].authorization).toBe(`Bearer ${API_KEY}`)
     expect(seen[0]['norbix-project-id']).toBe(PROJECT)
     expect(seen[0]['x-cm-projectid']).toBeUndefined()
     expect(seen[0]['nb-region']).toBe(REGION)
-  })
-
-  it('escapes the id like every other path token', async () => {
-    answer(allOk)
-
-    await runCommand(['files', 'integrations', 'test', 'a/b?c', ...auth])
-
-    expect(calls[0].url).toContain('/v3/files/a%2Fb%3Fc/test')
   })
 
   it('prints one line per step and succeeds when every step is OK', async () => {

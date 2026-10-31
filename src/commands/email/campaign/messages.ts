@@ -23,7 +23,7 @@ export default class EmailCampaignMessages extends BaseCommand {
     const client = this.client(flags)
 
     // The route is /notifications/emails/... (plural) — the SDK method has it.
-    const res = await client.hub.notifications.getEmailCampaignMessages({
+    const res = await client.api.notifications.getEmailCampaignMessages({
       campaignId: args.id,
       campaignBatchId: flags.batch,
       databaseIntegrationId: flags['database-integration'],

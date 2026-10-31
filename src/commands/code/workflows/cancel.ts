@@ -27,7 +27,7 @@ Queued steps are not started, a running step finishes and keeps its output, wait
     const client = this.client(flags)
     await this.confirmOrFail(`Stop run ${args.runId}?`, flags)
 
-    const res = await client.hub.code.cancelCodeWorkflowRun({runId: args.runId, ...(flags.reason ? {reason: flags.reason} : {})})
+    const res = await client.api.code.cancelCodeWorkflowRun({runId: args.runId, ...(flags.reason ? {reason: flags.reason} : {})})
 
     this.print(formatRun(res.run))
     return res

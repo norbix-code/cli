@@ -27,7 +27,7 @@ Same as \`push campaign batch <id> <batchId> <messageId>\`.`
     // campaign, batch and notification id from the batch route — exactly what
     // `push campaign batch <id> <batchId> <notificationId>` calls. This
     // command stays so scripts that use it keep working.
-    const res = await client.hub.notifications.getPushCampaignBatchNotification({
+    const res = await client.api.notifications.getPushCampaignBatchNotification({
       id: args.id,
       batchId: flags.batch,
       notificationId: args.messageId,

@@ -37,7 +37,7 @@ When you are logged in, your session is sent with a hash too.`
       if (hash) this.error('Pass either a preview hash or --notification, not both.')
       const client = this.client(flags)
       const projectId = this.resolveContext(flags).projectId
-      const res = await client.hub.notifications.previewEmailNotification({
+      const res = await client.api.notifications.previewEmailNotification({
         projectId,
         notificationId: flags.notification,
       })
@@ -53,7 +53,7 @@ When you are logged in, your session is sent with a hash too.`
     // is forced here. A login, when there is one, is still used.
     const client = this.client(flags, {requireAuth: false, requireProject: false})
 
-    const res = await client.hub.notifications.previewEmailNotification({hash})
+    const res = await client.api.notifications.previewEmailNotification({hash})
 
     this.print(res)
     return res

@@ -26,7 +26,7 @@ export default class SmsStop extends BaseCommand {
 
     // The route is `/campaigns/{Id}/stop`; the SDK (4.2.0) fills the token from
     // `id` — the lookup is case-insensitive — so the generated field is enough.
-    const res = await client.hub.notifications.stopSmsCampaign({id: args.id})
+    const res = await client.api.notifications.stopSmsCampaign({id: args.id})
     this.print(`Campaign ${args.id} stopped.`)
     return res
   }

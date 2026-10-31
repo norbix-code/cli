@@ -16,7 +16,7 @@ export default class PushCampaigns extends BaseCommand {
     const {flags} = await this.parse(PushCampaigns)
     const client = this.client(flags)
 
-    const res = await client.hub.notifications.getPushCampaigns({
+    const res = await client.api.notifications.getPushCampaigns({
       pageSize: flags['page-size'],
       startingAfter: flags.after,
     })

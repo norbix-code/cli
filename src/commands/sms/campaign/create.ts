@@ -82,7 +82,7 @@ goes in --config as a JSON object and is merged into the delivery settings.`
 
     // The server reads `deliveryType` and then exactly the matching settings
     // block (allUsers / specifiedUsers / accountUsers / collection / phoneNumbers).
-    const res = await client.hub.notifications.createSmsCampaign({
+    const res = await client.api.notifications.createSmsCampaign({
       templateId: flags.template,
       databaseIntegrationId: flags['database-integration'],
       integrationId: flags.integration,
@@ -90,7 +90,7 @@ goes in --config as a JSON object and is merged into the delivery settings.`
       initiatorId: flags.initiator,
       deliveryType: audience.deliveryType,
       [audience.block]: settings,
-    } as unknown as Parameters<typeof client.hub.notifications.createSmsCampaign>[0])
+    } as unknown as Parameters<typeof client.api.notifications.createSmsCampaign>[0])
 
     this.print(res)
     return res

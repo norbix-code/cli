@@ -21,7 +21,7 @@ export default class SmsCampaignMessages extends BaseCommand {
     const {args, flags} = await this.parse(SmsCampaignMessages)
     const client = this.client(flags)
 
-    const res = await client.hub.notifications.getSmsCampaignMessages({
+    const res = await client.api.notifications.getSmsCampaignMessages({
       campaignId: args.id,
       campaignBatchId: flags.batch,
       pageSize: flags['page-size'],

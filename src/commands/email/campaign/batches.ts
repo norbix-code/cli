@@ -26,7 +26,7 @@ export default class EmailCampaignBatches extends BaseCommand {
     const {args, flags} = await this.parse(EmailCampaignBatches)
     const client = this.client(flags)
 
-    const res = await client.hub.notifications.getEmailCampaignBatches({
+    const res = await client.api.notifications.getEmailCampaignBatches({
       id: args.id,
       batchId: flags.batch,
       emailAddress: flags.email,
