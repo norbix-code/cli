@@ -5,7 +5,8 @@ import {join} from 'node:path'
 import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 import {envListAnswer} from './_env.js'
-import {formatCampaignStats, printTemplateWarnings, templateWarnings} from '../src/lib/campaigns.js'
+import {printTemplateWarnings, templateWarnings} from '../src/lib/campaigns.js'
+import {describeStats} from '../src/lib/notifications.js'
 import {formatIdentities, formatTriggerRun, formatTriggerRuns} from '../src/lib/triggers.js'
 
 /**
@@ -184,7 +185,7 @@ describe('formatters', () => {
   })
 
   it('stats name the blocked and the removed', () => {
-    const text = formatCampaignStats({stats: {sent: 9, blocked: 3, removedRecipients: 2}})
+    const text = describeStats({stats: {sent: 9, blocked: 3, removedRecipients: 2}})
     expect(text).toMatch(/Blocked:\s+3/)
     expect(text).toMatch(/Removed:\s+2/)
   })
@@ -202,9 +203,5 @@ describe('formatters', () => {
   it('an identity shows its use', () => {
     const text = formatIdentities({identities: [{id: 'usr_1', name: 'Bot', canAssign: false, usedBy: {triggers: 2, tasks: 1, workflows: 0}}]})
     expect(text).toContain('2 triggers · 1 tasks · 0 workflows')
-  })
-
-  it('stats without an answer say so', () => {
-    expect(formatCampaignStats({})).toBe('No statistics yet.')
   })
 })

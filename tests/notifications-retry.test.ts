@@ -73,6 +73,24 @@ afterEach(() => {
 })
 
 describe('retry-failed', () => {
+  it('names who the send gates stopped, apart from the rows left out', async () => {
+    answers.push({
+      status: 200,
+      body: {
+        retryRequestId: 'rtr_2',
+        selected: 4,
+        skipped: {AlreadyAccepted: 1, optedOut: 2, compliance: 1, undeliverable: 1},
+        replayed: true,
+      },
+    })
+    const {error} = await runCommand(['email', 'retry-failed', ID, '--key', 'k-1', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(printed.join('\n')).toContain('Skipped: 1 AlreadyAccepted.')
+    expect(printed.join('\n')).toContain(
+      'Stopped by the send gates: 2 opted out, 1 stopped by a compliance rule, 1 undeliverable (counted in the 4).',
+    )
+  })
+
   for (const channel of ['email', 'sms', 'push'] as const) {
     it(`${channel}: POST .../campaigns/{Id}/retry-failed with the selection in the body`, async () => {
       answers.push({status: 200, body: {retryRequestId: 'rtr_1', selected: 2, skipped: {AlreadyAccepted: 5, Ambiguous: 1}, replayed: false}})
@@ -128,6 +146,17 @@ describe('retry-failed', () => {
 })
 
 describe('notifications', () => {
+  it('prints the Blocked outcome of the last attempt', async () => {
+    answers.push({status: 200, body: {list: {items: [{id: 'b1'}], hasMore: false}}})
+    answers.push({
+      status: 200,
+      body: {list: {items: [{notificationId: 'n1', state: 'Blocked', attempts: [{number: 1, outcome: 'Blocked', message: 'opted out'}]}], hasMore: false}},
+    })
+    const {error} = await runCommand(['sms', 'notifications', ID, ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(printed.join('\n')).toContain('n1  Blocked  1 attempt  last attempt Blocked')
+  })
+
   it('walks every batch, lists the rows per batch and filters --state client-side', async () => {
     answers.push({status: 200, body: {list: {items: [{batchId: 'b1'}, {batchId: 'b2'}], hasMore: false}}})
     answers.push({status: 200, body: {list: {items: [{notificationId: 'n1', state: 'Accepted', attempts: [{number: 1, outcome: 'Accepted'}]}, {notificationId: 'n2', state: 'Failed', attempts: [{number: 1, outcome: 'Failed', category: 'Permanent', errorCode: 'CM-ERRORS-EMAILS-005'}]}], hasMore: false}}})
