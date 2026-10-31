@@ -145,9 +145,16 @@ Every recipient row of a campaign carries `state` (`Pending`, `Sending`,
 per send: outcome, failure class `Transient` / `Permanent` / `Unknown` /
 `Ambiguous`, error, trigger `Initial` / `AutoRetry` / `ManualRetry`) and
 `deliveryEvents[]` (what the provider reported afterwards). The statistics
-carry `failedRetryable` and `cancelled`. In human output the hub's `Completed`
+carry `failedRetryable` and `cancelled`. In human output the gateway's `Completed`
 reads **Accepted** (the provider took the message); `--json` shows the values
-as the hub sends them.
+as the gateway sends them.
+
+An attempt the send gates stopped has the outcome `Blocked`; `notifications` prints
+`last attempt Blocked`. `retry-failed` prints the rows left out under `Skipped`, and
+under `Stopped by the send gates` the `skipped` keys `optedOut`, `compliance` and
+`undeliverable`: those people count in `selected`, and the keys reach the stored answer
+later, so a repeat with the same `--key` shows them. `<channel> campaign <id> --stats`
+prints `Blocked`, `Removed` and `In progress` too.
 
 | Command | What it does | Endpoint |
 |---|---|---|

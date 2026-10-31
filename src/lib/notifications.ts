@@ -10,9 +10,10 @@ import {readNorbixResponse} from './http-response.js'
  * `attempts[]` and `deliveryEvents[]`; the campaign statistics carry
  * `failedRetryable` and `cancelled`.
  *
- * `POST /v3/notifications/<channel>/campaigns/{Id}/retry-failed` is newer than
- * the SDK this CLI ships with, so it is called directly with the same headers
- * the SDK transport sends (like `push device delete`).
+ * Campaign data lives on the Api host, like every other campaign command.
+ * `POST /v3/notifications/<channel>/campaigns/{Id}/retry-failed` is called
+ * directly with the headers the SDK transport sends, so an older host that
+ * answers 404 gets a hint (like `push device delete`).
  */
 
 export type Channel = 'email' | 'sms' | 'push'
@@ -33,11 +34,16 @@ export interface RetryFailedBody {
   categories?: string[]
 }
 
-/** The hub's answer to retry-failed. */
+/** The answer to retry-failed. */
 export interface RetryFailedAnswer {
   retryRequestId?: string
   selected?: number
-  /** How many were left out, per reason: AlreadyAccepted, InFlight, Ambiguous, NotFound, Blocked, Category. */
+  /**
+   * How many were left out, per reason: AlreadyAccepted, InFlight, Ambiguous,
+   * NotFound, Blocked, Category. Also who the send gates stopped during the retry:
+   * optedOut, compliance, undeliverable. Those are added to the stored answer
+   * later and are part of `selected`.
+   */
   skipped?: Record<string, number>
   /** True when this key was seen before: the first answer, nothing sent. */
   replayed?: boolean
@@ -55,7 +61,7 @@ export interface HubCall {
 
 /** Builds the retry-failed request; the caller checked that a project and a token are there. */
 export function retryFailedCall(ctx: ResolvedContext, token: string, channel: Channel, campaignId: string, body: RetryFailedBody): HubCall {
-  const url = `${ctx.hubUrl.replace(/\/$/, '')}/v3/notifications/${channel}/campaigns/${encodeURIComponent(campaignId)}/retry-failed`
+  const url = `${ctx.apiUrl.replace(/\/$/, '')}/v3/notifications/${channel}/campaigns/${encodeURIComponent(campaignId)}/retry-failed`
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -72,9 +78,16 @@ export function retryFailedCall(ctx: ResolvedContext, token: string, channel: Ch
 export async function sendRetryFailed(call: HubCall): Promise<RetryFailedAnswer> {
   const res = await fetch(call.url, {method: call.method, headers: call.headers, body: JSON.stringify(call.body)})
   const answer = await readNorbixResponse(res, call.url, {
-    note: (status, hasErrors) => ((status === 404 || status === 405) && !hasErrors ? 'this hub is older than retry-failed (gateway 2.3.9) — upgrade it' : undefined),
+    note: (status, hasErrors) => ((status === 404 || status === 405) && !hasErrors ? 'this host is older than retry-failed (gateway 2.3.9) — upgrade it' : undefined),
   })
   return (answer ?? {}) as RetryFailedAnswer
+}
+
+/** The `skipped` keys of the people the send gates stopped during a retry. */
+const GATE_LABELS: Record<string, string> = {
+  optedOut: 'opted out',
+  compliance: 'stopped by a compliance rule',
+  undeliverable: 'undeliverable',
 }
 
 /** Lines for people: what was selected, what was skipped and why, the duplicate warning. */
@@ -87,8 +100,13 @@ export function describeRetryAnswer(channel: Channel, campaignId: string, answer
       : `Retrying ${selected} failed ${CHANNEL_LABEL[channel]} recipient${selected === 1 ? '' : 's'} of campaign ${campaignId}.`,
   )
   if (answer.retryRequestId) lines.push(`Retry request: ${answer.retryRequestId} (each new attempt names it as retryRequestId).`)
-  const skipped = Object.entries(answer.skipped ?? {}).filter(([, n]) => n > 0)
+  const counts = Object.entries(answer.skipped ?? {}).filter(([, n]) => n > 0)
+  const skipped = counts.filter(([reason]) => !(reason in GATE_LABELS))
+  const stopped = counts.filter(([reason]) => reason in GATE_LABELS)
   if (skipped.length > 0) lines.push(`Skipped: ${skipped.map(([reason, n]) => `${n} ${reason}`).join(', ')}.`)
+  if (stopped.length > 0) {
+    lines.push(`Stopped by the send gates: ${stopped.map(([reason, n]) => `${n} ${GATE_LABELS[reason]}`).join(', ')} (counted in the ${selected}).`)
+  }
   if (answer.warning) lines.push(`Warning: ${answer.warning}`)
   if (selected === 0 && !answer.replayed) lines.push('Nothing to retry: no recipient of this campaign is in a Failed state (see `notifications <campaignId> --state failed`).')
   return lines.join('\n')
@@ -128,7 +146,7 @@ export async function collectNotifications(
   campaignId: string,
   options: {state?: string; databaseIntegrationId?: string} = {},
 ): Promise<{batches: number; rows: NotificationRow[]}> {
-  const n = client.hub.notifications
+  const n = client.api.notifications
   // The generated request types do not all carry the paging fields, so the
   // arguments are passed as the server reads them.
   const batches: PageCall =
@@ -207,6 +225,7 @@ export function describeNotifications(channel: Channel, campaignId: string, foun
       stateLabel(stateOf(row)),
       `${attempts.length} attempt${attempts.length === 1 ? '' : 's'}`,
     ]
+    if (last?.outcome === 'Blocked') parts.push('last attempt Blocked')
     if (last?.category) parts.push(last.category)
     if (last?.errorCode || last?.message) parts.push([last.errorCode, last.message].filter(Boolean).join(' '))
     if (row.deliveryOutcome) parts.push(`delivery: ${row.deliveryOutcome}`)
@@ -225,6 +244,9 @@ export interface CampaignStats {
   failed?: number
   failedRetryable?: number
   cancelled?: number
+  blocked?: number
+  inProgress?: number
+  removedRecipients?: number
   successRate?: number
 }
 
@@ -237,7 +259,10 @@ export function describeStats(answer: unknown): string {
     `Accepted:           ${stats.sent ?? 0}`,
     `Failed:             ${stats.failed ?? 0}`,
     `  retryable:        ${stats.failedRetryable ?? 0}  (retry them with \`retry-failed\`)`,
+    `Blocked:            ${stats.blocked ?? 0}  (not sent on purpose: a preference or a compliance rule; outside the success rate)`,
+    `Removed:            ${stats.removedRecipients ?? 0}  (addresses taken off shared e-mails; the row went to the others)`,
     `Cancelled:          ${stats.cancelled ?? 0}  (stopped before the send; outside the success rate)`,
+    `In progress:        ${stats.inProgress ?? 0}`,
     `Success rate:       ${rate}`,
   ].join('\n')
 }
