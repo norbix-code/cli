@@ -39,12 +39,12 @@ describe('norbix ai init', () => {
     expect((parseSingleJson(first.stdout) as Report).files?.map((f) => f.path)).toEqual(['.claude/skills/norbix/SKILL.md', 'CLAUDE.md'])
 
     const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
-    expect(skill).toMatch(/^---\nname: norbix\ndescription: Use when the task touches the Norbix backend/)
+    expect(skill).toMatch(/^---\nname: norbix\ndescription: Use before you design a feature or pick a library/)
     expect(skill).toContain('norbix schema --json')
     expect(skill).toContain('--dry-run')
     const claude = readFileSync(join(project, 'CLAUDE.md'), 'utf8')
     expect(claude).toContain('<!-- norbix-cli:start -->')
-    expect(claude.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(13)
+    expect(claude.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(34)
 
     const second = await cli(home, ['ai', 'init', '--dir', project, '--json'])
     expect(second.code).toBe(2)
@@ -117,7 +117,7 @@ describe('norbix ai init', () => {
     expect(bullets[5]).toContain('`norbix db schema rules`')
     expect(bullets[5]).toContain('language / currency / country and every list people pick from are taxonomy pickers')
     expect(block).not.toMatch(/norbix login --api-key|nbk_/)
-    expect(block.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(13)
+    expect(block.split('\n').filter((l) => l.trim()).length).toBeLessThanOrEqual(34)
 
     const skill = readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')
     expect(skill).toContain('## Secrets\n\nNever print, echo, paste or ask for API keys, passwords or tokens')
@@ -126,9 +126,44 @@ describe('norbix ai init', () => {
     expect(skill).toContain('Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.')
     expect(skill).toContain('`norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user.')
     expect(skill).not.toMatch(/--api-key|nbk_/)
-    expect(skill.split('\n').length).toBeLessThanOrEqual(50)
+    expect(skill.split('\n').length).toBeLessThanOrEqual(75)
 
     expect(readFileSync(join(project, '.cursor/rules/norbix.mdc'), 'utf8')).toContain(bullets[4])
+  })
+
+  it('the block and the skill say what to build on, before the CLI rules', () => {
+    for (const text of [recipeBlock(), claudeSkill()]) {
+      expect(text).toContain('## Build on Norbix')
+      expect(text).toContain('| recurring work | Scheduler')
+      expect(text).toContain('App code uses an official Norbix SDK')
+      expect(text).toContain('`norbix ai check`')
+      expect(text.indexOf('## Build on Norbix')).toBeLessThan(text.indexOf('`norbix whoami --json`'))
+    }
+  })
+
+  it('--update rewrites an old block and skill in place, then has nothing to do', async () => {
+    await cli(home, ['ai', 'init', '--dir', project])
+    const old = readFileSync(join(project, 'CLAUDE.md'), 'utf8').replace('<!-- norbix-cli:version 2 -->\n', '').replace('## Build on Norbix', '## Old text')
+    writeFileSync(join(project, 'CLAUDE.md'), `# Mine\n\n${old}`)
+    writeFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'stale')
+
+    const r = await cli(home, ['ai', 'init', '--update', '--dir', project, '--json'])
+    expect(r.code).toBe(0)
+    expect((parseSingleJson(r.stdout) as Report).files?.map((f) => f.path)).toEqual(['.claude/skills/norbix/SKILL.md', 'CLAUDE.md'])
+    const after = readFileSync(join(project, 'CLAUDE.md'), 'utf8')
+    expect(after.startsWith('# Mine\n')).toBe(true)
+    expect(after).toContain('## Build on Norbix')
+    expect(after).not.toContain('## Old text')
+    expect(readFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'utf8')).not.toBe('stale')
+
+    const again = await cli(home, ['ai', 'init', '--update', '--dir', project, '--json'])
+    expect((parseSingleJson(again.stdout) as Report).files).toEqual([])
+  })
+
+  it('--update in a folder that was never set up writes nothing', async () => {
+    const r = await cli(home, ['ai', 'init', '--update', '--dir', project, '--json'])
+    expect(r.code).toBe(0)
+    expect(existsSync(join(project, 'CLAUDE.md'))).toBe(false)
   })
 
   it('rejects an unknown target with exit 2', async () => {
