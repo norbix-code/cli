@@ -70,6 +70,8 @@ norbix scheduler list
 | `norbix raw <path>` | Low-level HTTP escape hatch (hub by default, `--api` for API) |
 | `norbix schema [command]` | Describe every command as data (`--json`) — for scripts and agents |
 | `norbix ai init` | Set up a project for Claude Code / Cursor / AGENTS.md agents |
+| `norbix ai context` | Print what an agent needs: what to build on, your projects, modules, integrations |
+| `norbix ai check` | Find what was added beside Norbix (for CI and agent hooks) |
 | `norbix ai context` | The project context for an AI agent: your projects, environments, modules, integrations — no secrets |
 
 ### Plain-word access to every endpoint
@@ -399,6 +401,7 @@ server needed: one JSON document per call (`--json`), documented exit codes
 ```sh
 norbix ai init                 # writes .claude/skills/norbix/SKILL.md + a CLAUDE.md block
 norbix ai init --target all    # also AGENTS.md (Codex, OpenCode) and a Cursor rule
+norbix ai init --update        # bring the files already here to this CLI's version
 ```
 
 The agent rebuilds what it knows about your projects from one summary —

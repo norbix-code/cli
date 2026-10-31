@@ -190,6 +190,8 @@ cd my-project
 norbix ai init                 # Claude Code skill + CLAUDE.md block
 norbix ai init --target all    # also AGENTS.md and a Cursor rule
 norbix ai init --dry-run       # see what it would write
+norbix ai init --update        # bring the files already here to this CLI's version
+norbix ai check                # find what was added beside Norbix; exits 6 when something is left
 ```
 
 Files are never overwritten without `--force`; an existing block is left
