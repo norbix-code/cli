@@ -58,6 +58,18 @@ function docBefore(block, at) {
   return start === -1 ? '' : before.slice(start)
 }
 
+/** Send calls inside `name = async (...) => {` members of a module class. */
+function sendsInHandWritten(block) {
+  let count = 0
+  for (const m of block.matchAll(/^ {2}\w+ = async \(/gm)) {
+    const rest = block.slice(m.index + m[0].length)
+    const next = rest.search(/^ {2}\w+/m)
+    count += (next === -1 ? rest : rest.slice(0, next)).split(SEND).length - 1
+  }
+
+  return count
+}
+
 /**
  * Every SDK method in one module class block.
  *
@@ -123,7 +135,9 @@ export function methodsOf(block, label = 'module') {
     if (/@deprecated\b/.test(doc)) forwarders.add(name)
   }
 
-  const sends = block.split(SEND).length - 1
+  // A hand-written `name = async (...)` (sign-in, sign-out, 4.44.0) is not an
+  // endpoint method: it has no request DTO, so its send calls are not counted.
+  const sends = block.split(SEND).length - 1 - sendsInHandWritten(block)
   if (sends !== sendsInMethods) {
     problems.push(`${label}: ${sends - sendsInMethods} send call(s) outside a method of the shape \`name = (request = {}, options = {}) => {\``)
   }

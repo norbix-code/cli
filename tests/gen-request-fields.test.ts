@@ -4,7 +4,7 @@ import {dirname, join} from 'node:path'
 import {describe, expect, it} from 'vitest'
 
 // A plain .mjs build script (no type declarations); tests are not type-checked.
-import {sdkMethods} from '../scripts/gen-request-fields.mjs'
+import {methodsOf, sdkMethods} from '../scripts/gen-request-fields.mjs'
 
 /**
  * `npm run gen:fields` reads the SDK's dist/index.js as text. It once matched
@@ -180,6 +180,22 @@ describe('gen:fields reads SDK methods', () => {
       'hub.gone: class GoneModule not found in dist/index.js',
     ])
     expect(Object.keys(methods.hub.things)).toEqual(['ok', 'wrongTarget', 'forwarder'])
+  })
+
+  it('leaves a hand-written async member out, and still reports a send call it cannot read', () => {
+    const signOut = `  signOut = async (options = {}) => {
+    await this.transport.send({ target: "api", path: "/v3/auth/logout", method: "POST", ...options });
+  };
+`
+    const source = moduleClass('AuthModule', method('getThing', ['GET /{version}/things', 'Request DTO: GetThing']) + signOut)
+    expect(methodsOf(source, 'api.auth').problems).toEqual([])
+    expect(Object.keys(methodsOf(source, 'api.auth').methods)).toEqual(['getThing'])
+
+    const stray = `  other(x) {
+    return this.transport.send({ target: "api", path: "/v3/x", method: "GET" });
+  }
+`
+    expect(methodsOf(source + stray, 'api.auth').problems).toHaveLength(1)
   })
 
   it('reads every method of the installed @norbix.ai/ts with no problem', () => {
