@@ -144,6 +144,8 @@ interface RunStep {
   status?: string
   attempt?: number
   pass?: number
+  foreachStepId?: string
+  itemIndex?: number
   durationMs?: number
   error?: {code?: string; message?: string}
   decision?: string
@@ -165,10 +167,16 @@ interface Run {
   steps?: RunStep[]
 }
 
+/** The element of a `foreach` body row, from 0: `#0`, `#1`. A plain step has none. */
+function itemOf(step: RunStep): string {
+  return step.itemIndex === undefined || step.itemIndex === null ? '' : `#${step.itemIndex}`
+}
+
 /**
  * A run for the terminal: the header (status, version, source, timing), what
  * it waits on, its error, then one row per step execution — stepId, kind,
- * status, attempt, pass, duration — and the run's output.
+ * status, attempt, pass, the element of a foreach, duration — and the run's
+ * output.
  */
 export function formatRun(run: Run | undefined): string {
   if (!run) return 'The answer has no run.'
@@ -191,20 +199,22 @@ export function formatRun(run: Run | undefined): string {
 
   const steps = run.steps ?? []
   if (steps.length > 0) {
-    const header = ['STEP', 'KIND', 'STATUS', 'ATTEMPT', 'PASS', 'DURATION']
+    const header = ['STEP', 'KIND', 'STATUS', 'ATTEMPT', 'PASS', 'ITEM', 'DURATION']
     const rows = steps.map((s) => [
       s.stepId ?? '',
       s.kind ?? '',
       `${s.status ?? ''}${s.decision ? ` (${s.decision})` : ''}`,
       String(s.attempt ?? ''),
       String(s.pass ?? ''),
+      itemOf(s),
       s.durationMs === undefined || s.durationMs === null ? '—' : `${s.durationMs} ms`,
     ])
     const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)))
     const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd()
     lines.push('', line(header), ...rows.map(line))
     for (const s of steps.filter((x) => x.error)) {
-      lines.push(`  ${s.stepId} attempt ${s.attempt ?? '?'}: ${[s.error?.code, s.error?.message].filter(Boolean).join(' — ')}`)
+      const step = [s.stepId, itemOf(s)].filter(Boolean).join(' ')
+      lines.push(`  ${step} attempt ${s.attempt ?? '?'}: ${[s.error?.code, s.error?.message].filter(Boolean).join(' — ')}`)
     }
   }
 
