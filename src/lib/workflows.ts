@@ -216,6 +216,33 @@ export function formatRun(run: Run | undefined): string {
 }
 
 /**
+ * The inbox for the terminal: one row per wait of a run — run, workflow, step,
+ * kind, key, assignees, until — and the next-page cursor.
+ */
+export function formatWaitingRuns(res: unknown): string {
+  const list = ((res ?? {}) as {list?: {items?: Run[]; hasMore?: boolean; startingAfter?: string}}).list ?? {}
+  const rows = (Array.isArray(list.items) ? list.items : []).flatMap((run) =>
+    (run.waitingOn?.length ? run.waitingOn : [{}]).map((w: NonNullable<Run['waitingOn']>[number]) => [
+      run.runId ?? '',
+      run.workflowId ?? '',
+      w.stepId ?? '—',
+      w.kind ?? run.status ?? '—',
+      w.key ?? '—',
+      w.assignees?.length ? w.assignees.join(', ') : '—',
+      w.until ?? '—',
+    ]),
+  )
+  if (rows.length === 0) return 'No runs match.'
+
+  const header = ['RUN', 'WORKFLOW', 'STEP', 'KIND', 'KEY', 'ASSIGNEES', 'UNTIL']
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i].length)))
+  const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd()
+  const lines = [line(header), ...rows.map(line), '', `${rows.length} waiting. Read one: norbix code workflows run <run>`]
+  if (list.hasMore && list.startingAfter) lines.push(`More: add --after ${list.startingAfter}`)
+  return lines.join('\n')
+}
+
+/**
  * A JSON object flag (`--payload`): inline, `@file` or `-`; or `--payload-file`.
  * Both cannot be given; the value must be an object.
  */
