@@ -6,7 +6,7 @@ import {formatRun} from '../../../lib/workflows.js'
 export default class CodeWorkflowsRetry extends BaseCommand {
   static description = `Beta: retry the failed step of a failed run
 
-A new attempt of the step runs from its stored input; the run goes back to running and continues along the step's edges. The run must be failed, and the step the one its error names (the default). The run's budget still applies. Prints the run.`
+A new attempt of the step runs from its stored input; the run goes back to running and continues along the step's edges. The run must be failed, and the step the one its error names (the default). A retry of a foreach, or of its body, runs only the elements that did not succeed. The run's budget still applies. Prints the run.`
 
   static examples = [
     '<%= config.bin %> code workflows retry wfr_5nB2xQ7wLk9RmT3vYc1HdP --yes',

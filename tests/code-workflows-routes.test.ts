@@ -454,7 +454,7 @@ describe('norbix code workflows — runs', () => {
     await wf('run', RUN)
 
     expect(calls[0]).toMatchObject({method: 'GET', path: `${W}/runs/${RUN}`})
-    expect(out()).toMatch(/STEP\s+KIND\s+STATUS\s+ATTEMPT\s+PASS\s+DURATION/)
+    expect(out()).toMatch(/STEP\s+KIND\s+STATUS\s+ATTEMPT\s+PASS\s+ITEM\s+DURATION/)
     expect(out()).toMatch(/notify\s+email\.send\s+succeeded\s+2\s+1\s+100 ms/)
 
     const {result} = await wf('run', RUN, '--json')
@@ -588,5 +588,25 @@ describe('workflows helpers', () => {
 
     const failed = formatRun({...RUN_DTO, status: 'failed', output: undefined, error: {code: 'CM-ERRORS-WORKFLOWS-020', stepId: 'notify', message: 'SMTP refused'}})
     expect(failed).toContain('error: CM-ERRORS-WORKFLOWS-020 · step notify — SMTP refused')
+  })
+
+  it('formatRun tells two elements of one foreach body apart, from #0, and leaves a plain step empty', () => {
+    const text = formatRun({
+      ...RUN_DTO,
+      steps: [
+        {stepId: 'load', kind: 'database.find', status: 'succeeded', attempt: 1, pass: 1, durationMs: 12},
+        {stepId: 'eachOrder', kind: 'foreach', status: 'failed', attempt: 1, pass: 1, durationMs: 90},
+        {stepId: 'thank', kind: 'email.send', status: 'succeeded', attempt: 1, pass: 1, foreachStepId: 'eachOrder', itemIndex: 0, durationMs: 40},
+        {stepId: 'thank', kind: 'email.send', status: 'failed', attempt: 1, pass: 2, foreachStepId: 'eachOrder', itemIndex: 1, durationMs: 41, error: {code: 'CM-ERRORS-WORKFLOWS-038', message: 'refused'}},
+        {stepId: 'thank', kind: 'email.send', status: 'failed', attempt: 1, pass: 3, foreachStepId: 'eachOrder', itemIndex: 2, durationMs: 42, error: {code: 'CM-ERRORS-WORKFLOWS-038', message: 'refused'}},
+      ],
+    })
+
+    expect(text).toMatch(/STEP\s+KIND\s+STATUS\s+ATTEMPT\s+PASS\s+ITEM\s+DURATION/)
+    expect(text).toMatch(/thank\s+email\.send\s+succeeded\s+1\s+1\s+#0\s+40 ms/)
+    expect(text).toMatch(/thank\s+email\.send\s+failed\s+1\s+2\s+#1\s+41 ms/)
+    expect(text).toMatch(/load\s+database\.find\s+succeeded\s+1\s+1\s+12 ms/)
+    expect(text).toContain('  thank #1 attempt 1: CM-ERRORS-WORKFLOWS-038 — refused')
+    expect(text).toContain('  thank #2 attempt 1: CM-ERRORS-WORKFLOWS-038 — refused')
   })
 })
