@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {parse as parseYaml} from 'yaml'
 
-import {BETA_NOTE, formatIssue, formatOf, formatRun, formatValidation} from '../src/lib/workflows.js'
+import {BETA_NOTE, formatIssue, formatOf, formatRun, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
 import {envListAnswer} from './_env.js'
 
 /**
@@ -558,6 +558,28 @@ describe('workflows helpers', () => {
     expect(formatIssue({code: 'C', message: 'm'})).toBe('C  m')
     expect(formatIssue({code: 'C', message: 'm', line: 3})).toBe('C  m (line 3)')
     expect(formatValidation({isValid: true, errors: [], warnings: [{code: 'W', message: 'w'}]})).toBe('Valid — 1 warning.\n\nWarnings:\n  W  w')
+  })
+
+  it('formatWaitingRuns prints one row per wait, the next-page cursor, and says when nothing waits', () => {
+    const table = formatWaitingRuns({
+      list: {
+        items: [
+          {runId: RUN, workflowId: WF, status: 'waiting', waitingOn: [{stepId: 'approve', kind: 'approval', key: 'order-o1', assignees: ['usr_1', 'usr_2']}]},
+          {runId: 'wfr_2', workflowId: WF, status: 'waiting', waitingOn: [{stepId: 'cool', kind: 'delay', until: '2026-11-02T10:00:00Z'}]},
+        ],
+        hasMore: true,
+        startingAfter: 'wfr_2',
+      },
+    })
+    expect(table.split('\n')).toEqual([
+      'RUN                         WORKFLOW                   STEP     KIND      KEY       ASSIGNEES     UNTIL',
+      `${RUN}  ${WF}  approve  approval  order-o1  usr_1, usr_2  —`,
+      `wfr_2                       ${WF}  cool     delay     —         —             2026-11-02T10:00:00Z`,
+      '',
+      '2 waiting. Read one: norbix code workflows run <run>',
+      'More: add --after wfr_2',
+    ])
+    expect(formatWaitingRuns({list: {items: []}})).toBe('No runs match.')
   })
 
   it('formatRun shows what a waiting run waits on and the error of a failed one', () => {

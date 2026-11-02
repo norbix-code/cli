@@ -1,7 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
-import {RUN_STATUSES, WAITING_KINDS} from '../../../lib/workflows.js'
+import {formatWaitingRuns, RUN_STATUSES, WAITING_KINDS} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsWaiting extends BaseCommand {
   static description = `Beta: the inbox — runs waiting on a person, an event or a delay
@@ -47,7 +47,7 @@ Across every workflow you may read: one row per run with what it waits on (step,
       ? await client.api.code.getCodeWorkflowWaitingRuns(request)
       : await client.hub.code.getCodeWorkflowWaitingRuns(request)
 
-    this.print(res)
+    this.print(formatWaitingRuns(res))
     return res
   }
 }
