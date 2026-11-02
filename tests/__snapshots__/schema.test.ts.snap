@@ -684,6 +684,20 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "listing",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "ref:string",
+      "name:string",
+      "identity:string",
+    ],
+    "id": "code marketplace install-workflow",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
       "[id]",
     ],
     "destructive": false,
@@ -693,6 +707,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "category:option",
       "transport:option",
       "official:boolean",
+      "kind:option",
       "page-size:string",
       "after:string",
     ],

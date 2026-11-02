@@ -82,6 +82,97 @@ const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '-
 const M = '/v3/code/marketplace'
 const C = `${M}/integrations`
 
+describe('norbix code marketplace install-workflow', () => {
+  const SEED = 'ml_workflow_order_thanks_v1'
+  const REFS = ['--ref', 'orders=orders', '--ref', 'thanks=tmpl_1', '--ref', 'emailIntegration=int_1']
+
+  it('→ POST /listings/{id}/install-workflow, one call, and says nothing ran', async () => {
+    answer = {workflow: {workflowId: 'wf_1', version: 0, hasDraft: true, isEnabled: true, definition: {name: 'Thanks'}}}
+    const {error} = await runCommand(['code', 'marketplace', 'install-workflow', SEED, ...REFS, '--name', 'Thanks', '--identity', 'usr_1', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`POST ${M}/listings/${SEED}/install-workflow`])
+    expect(calls[0]?.body).toMatchObject({
+      name: 'Thanks',
+      executionIdentityId: 'usr_1',
+      references: {orders: 'orders', thanks: 'tmpl_1', emailIntegration: 'int_1'},
+    })
+    expect(out()).toContain('Workflow wf_1 (Thanks) installed as a draft.')
+    expect(out()).toContain('version: none published  draft: yes')
+    expect(out()).toContain('Nothing ran. When it is ready: norbix code workflows publish wf_1')
+  })
+
+  it('the value keeps every = after the first', async () => {
+    answer = {workflow: {workflowId: 'wf_1'}}
+    await runCommand(['code', 'marketplace', 'install-workflow', SEED, '--ref', 'orders=a=b', ...globalArgs])
+
+    expect(calls[0]?.body?.references).toEqual({orders: 'a=b'})
+  })
+
+  for (const [what, args, says] of [
+    ['no =', ['--ref', 'orders'], 'must look like key=value'],
+    ['no key', ['--ref', '=orders'], 'must look like key=value'],
+    ['no value', ['--ref', 'orders='], 'must look like key=value'],
+    ['a key given twice', ['--ref', 'orders=a', '--ref', 'orders=b'], 'given twice'],
+  ] as const) {
+    it(`refuses a --ref with ${what} before anything is sent`, async () => {
+      const {error} = await runCommand(['code', 'marketplace', 'install-workflow', SEED, ...args, ...globalArgs])
+
+      expect(error?.message).toContain(says)
+      expect(calls).toHaveLength(0)
+    })
+  }
+
+  it('--dry-run sends nothing', async () => {
+    const {error} = await runCommand(['code', 'marketplace', 'install-workflow', SEED, ...REFS, '--dry-run', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+  })
+
+  const refuse = (code: string, message: string, status = 400) => {
+    const listing = {listing: {workflow: {references: [
+      {key: 'orders', kind: 'collection', label: 'Orders collection'},
+      {key: 'emailIntegration', kind: 'integration', label: 'Email integration'},
+    ]}}}
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const envList = envListAnswer(input, init)
+      if (envList) return envList
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      calls.push({method: init?.method ?? 'GET', path: url.pathname, query: url.searchParams})
+      const body = init?.method === 'POST'
+        ? {responseStatus: {errorCode: code, message, errors: [{errorCode: code, message}]}}
+        : listing
+      return new Response(JSON.stringify(body), {
+        status: init?.method === 'POST' ? status : 200,
+        headers: {'Content-Type': 'application/json'},
+      })
+    }) as typeof globalThis.fetch
+  }
+
+  it('a refused reference: the listing is read once and the hint names what it wants', async () => {
+    refuse('CM-ERRORS-MARKETPLACE-036', "Listing 'x': reference 'orders' is not filled.")
+    const {error} = await runCommand(['code', 'marketplace', 'install-workflow', SEED, ...globalArgs])
+
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      `POST ${M}/listings/${SEED}/install-workflow`,
+      `GET ${M}/listings/${SEED}`,
+    ])
+    expect(error?.message).toContain("reference 'orders' is not filled")
+    const hint = (error as unknown as {hint?: string}).hint
+    expect(hint).toContain('--ref orders=<collection>  Orders collection')
+    expect(hint).toContain('--ref emailIntegration=<integration>  Email integration')
+  })
+
+  it('any other refusal reads nothing more', async () => {
+    refuse('CM-ERRORS-MARKETPLACE-035', "Listing 'x' is a connector listing.")
+    const {error} = await runCommand(['code', 'marketplace', 'install-workflow', LISTING, ...globalArgs])
+
+    expect(calls).toHaveLength(1)
+    expect(error?.message).toContain('connector listing')
+  })
+})
+
 describe('norbix code marketplace listings', () => {
   it('→ GET /code/marketplace/listings with search, every tag, category and transport in the query', async () => {
     const {error} = await runCommand([
@@ -107,6 +198,21 @@ describe('norbix code marketplace listings', () => {
     expect(error).toBeUndefined()
     expect(calls[0]?.method).toBe('GET')
     expect(calls[0]?.path).toBe(`${M}/listings/${LISTING}`)
+  })
+
+  it('--kind Workflow → kind in the query; without it nothing is sent', async () => {
+    await runCommand(['code', 'marketplace', 'listings', '--kind', 'Workflow', ...globalArgs])
+    expect(calls[0]?.query.get('kind')).toBe('Workflow')
+
+    await runCommand(['code', 'marketplace', 'listings', ...globalArgs])
+    expect(calls[1]?.query.has('kind')).toBe(false)
+  })
+
+  it('refuses an unknown kind', async () => {
+    const {error} = await runCommand(['code', 'marketplace', 'listings', '--kind', 'Plugin', ...globalArgs])
+
+    expect(error?.message).toContain('Plugin')
+    expect(calls).toHaveLength(0)
   })
 
   it('refuses an unknown category', async () => {
