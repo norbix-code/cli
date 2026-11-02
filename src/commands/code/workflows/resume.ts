@@ -7,7 +7,7 @@ import {DECISIONS, formatRun, readObjectFlag} from '../../../lib/workflows.js'
 export default class CodeWorkflowsResume extends BaseCommand {
   static description = `Beta: resume a waiting run — answer an approval, deliver an event
 
-Address the run by its id, or — when you only know the wait's key (an outside system) — by --workflow and --key: exactly one of the two. --step names the waiting step when several wait (parallel branches). An approval needs --decision approved or rejected; when it names assignees you must be one of them. --payload is checked against the wait's inputs. --app-user calls the Api host's twin of the run-id route, for an app user's login (not with --key: that route is Hub-only). Prints the run.`
+Address the run by its id, or — when you only know the wait's key (an outside system) — by --workflow and --key: exactly one of the two. --step names the waiting step when several wait (parallel branches). An approval needs --decision approved or rejected; when it names assignees you must be one of them. --payload is checked against the wait's inputs. A wait on a child run cannot be resumed by hand (the gateway answers CM-ERRORS-WORKFLOWS-016): only the child's end or the wait's deadline settles it. --app-user calls the Api host's twin of the run-id route, for an app user's login (not with --key: that route is Hub-only). Prints the run.`
 
   static examples = [
     '<%= config.bin %> code workflows resume wfr_5nB2xQ7wLk9RmT3vYc1HdP --decision approved --yes',

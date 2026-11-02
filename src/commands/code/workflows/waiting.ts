@@ -4,9 +4,9 @@ import {BaseCommand} from '../../../base.js'
 import {formatWaitingRuns, RUN_STATUSES, WAITING_KINDS} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsWaiting extends BaseCommand {
-  static description = `Beta: the inbox — runs waiting on a person, an event or a delay
+  static description = `Beta: the inbox — runs waiting on a person, an event, a delay or a child run
 
-Across every workflow you may read: one row per run with what it waits on (step, kind, until, key, assignees). --mine: only approvals assigned to you. --app-user calls the Api host's twin of this route, for an app user's login (a project user, not a team member): it lists only that user's own approvals.`
+Across every workflow you may read: one row per wait with what it waits on (step, kind, key, assignees, until, child run). --mine: only approvals assigned to you. --app-user calls the Api host's twin of this route, for an app user's login (a project user, not a team member): it lists only that user's own approvals.`
 
   static examples = [
     '<%= config.bin %> code workflows waiting --mine',

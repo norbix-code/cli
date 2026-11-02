@@ -572,14 +572,37 @@ describe('workflows helpers', () => {
       },
     })
     expect(table.split('\n')).toEqual([
-      'RUN                         WORKFLOW                   STEP     KIND      KEY       ASSIGNEES     UNTIL',
-      `${RUN}  ${WF}  approve  approval  order-o1  usr_1, usr_2  —`,
-      `wfr_2                       ${WF}  cool     delay     —         —             2026-11-02T10:00:00Z`,
+      'RUN                         WORKFLOW                   STEP     KIND      KEY       ASSIGNEES     UNTIL                 CHILD',
+      `${RUN}  ${WF}  approve  approval  order-o1  usr_1, usr_2  —                     —`,
+      `wfr_2                       ${WF}  cool     delay     —         —             2026-11-02T10:00:00Z  —`,
       '',
       '2 waiting. Read one: norbix code workflows run <run>',
       'More: add --after wfr_2',
     ])
     expect(formatWaitingRuns({list: {items: []}})).toBe('No runs match.')
+  })
+
+  it('a wait on a child run shows the child, in the run and in the inbox', () => {
+    const wait = {stepId: 'fulfil', kind: 'child', until: '2026-11-02T10:00:00Z', childRunId: 'wfr_child1'}
+
+    expect(formatRun({...RUN_DTO, status: 'waiting', waitingOn: [wait], steps: []})).toContain(
+      'waiting on: step fulfil (child) — child run wfr_child1, until 2026-11-02T10:00:00Z',
+    )
+    expect(formatWaitingRuns({list: {items: [{runId: RUN, workflowId: WF, status: 'waiting', waitingOn: [wait]}]}}).split('\n')[1]).toBe(
+      `${RUN}  ${WF}  fulfil  child  —    —          2026-11-02T10:00:00Z  wfr_child1`,
+    )
+  })
+
+  it('waiting --kind child → the filter goes to the Hub', async () => {
+    await wf('waiting', '--kind', 'child')
+
+    expect(calls[0]?.query.get('waitingKind')).toBe('child')
+  })
+
+  it('resume says a wait on a child run cannot be resumed by hand', async () => {
+    const {default: resume} = await import('../src/commands/code/workflows/resume.js')
+
+    expect(resume.description).toContain('A wait on a child run cannot be resumed by hand (the gateway answers CM-ERRORS-WORKFLOWS-016)')
   })
 
   it('formatRun shows what a waiting run waits on and the error of a failed one', () => {

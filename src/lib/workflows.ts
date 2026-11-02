@@ -19,7 +19,7 @@ export const BETA_NOTE = 'Workflows are in beta; bugs may occur.'
 export const RUN_STATUSES = ['running', 'waiting', 'succeeded', 'failed', 'cancelled']
 
 /** What a wait parks on (`waiting --kind`). */
-export const WAITING_KINDS = ['approval', 'event', 'delay']
+export const WAITING_KINDS = ['approval', 'event', 'delay', 'child']
 
 /** The answers to an approval wait (`resume --decision`). */
 export const DECISIONS = ['approved', 'rejected']
@@ -161,7 +161,7 @@ interface Run {
   startedAt?: string
   finishedAt?: string
   durationMs?: number
-  waitingOn?: Array<{stepId?: string; kind?: string; until?: string; key?: string; assignees?: string[]}>
+  waitingOn?: Array<{stepId?: string; kind?: string; until?: string; key?: string; assignees?: string[]; childRunId?: string}>
   error?: {code?: string; stepId?: string; reason?: string; message?: string}
   output?: unknown
   steps?: RunStep[]
@@ -186,7 +186,7 @@ export function formatRun(run: Run | undefined): string {
     `  version: ${version}  source: ${run.source ?? '—'}  started: ${run.startedAt ?? '—'}${run.finishedAt ? `  finished: ${run.finishedAt}` : ''}${run.durationMs === undefined || run.durationMs === null ? '' : `  duration: ${run.durationMs} ms`}`,
   ]
   for (const w of run.waitingOn ?? []) {
-    const extra = [w.until ? `until ${w.until}` : '', w.key ? `key ${w.key}` : '', w.assignees?.length ? `assignees ${w.assignees.join(', ')}` : '']
+    const extra = [w.childRunId ? `child run ${w.childRunId}` : '', w.until ? `until ${w.until}` : '', w.key ? `key ${w.key}` : '', w.assignees?.length ? `assignees ${w.assignees.join(', ')}` : '']
       .filter(Boolean)
       .join(', ')
     lines.push(`  waiting on: step ${w.stepId ?? '?'} (${w.kind ?? '?'})${extra ? ` — ${extra}` : ''}`)
@@ -227,7 +227,7 @@ export function formatRun(run: Run | undefined): string {
 
 /**
  * The inbox for the terminal: one row per wait of a run — run, workflow, step,
- * kind, key, assignees, until — and the next-page cursor.
+ * kind, key, assignees, until, the child run — and the next-page cursor.
  */
 export function formatWaitingRuns(res: unknown): string {
   const list = ((res ?? {}) as {list?: {items?: Run[]; hasMore?: boolean; startingAfter?: string}}).list ?? {}
@@ -240,11 +240,12 @@ export function formatWaitingRuns(res: unknown): string {
       w.key ?? '—',
       w.assignees?.length ? w.assignees.join(', ') : '—',
       w.until ?? '—',
+      w.childRunId ?? '—',
     ]),
   )
   if (rows.length === 0) return 'No runs match.'
 
-  const header = ['RUN', 'WORKFLOW', 'STEP', 'KIND', 'KEY', 'ASSIGNEES', 'UNTIL']
+  const header = ['RUN', 'WORKFLOW', 'STEP', 'KIND', 'KEY', 'ASSIGNEES', 'UNTIL', 'CHILD']
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i].length)))
   const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd()
   const lines = [line(header), ...rows.map(line), '', `${rows.length} waiting. Read one: norbix code workflows run <run>`]
