@@ -58,8 +58,9 @@ All paths below are under `/{version}/code/marketplace`.
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix code marketplace listings [--search <text>] [--tags <tag>]… [--category <Category>]… [--transport <Rest\|Mcp\|Code\|Internal\|Sdk>]… [--official]` | the catalog this host shows | `GET /listings` |
+| `norbix code marketplace listings [--search <text>] [--tags <tag>]… [--category <Category>]… [--transport <Rest\|Mcp\|Code\|Internal\|Sdk>]… [--official] [--kind Connector\|Workflow]` | the catalog this host shows; `--kind Workflow` lists the curated workflows (beta) | `GET /listings` |
 | `norbix code marketplace listings <ml_…>` | one listing in full: install form (config and secret fields), validation steps, functions with key, form kind, parameters and inputs | `GET /listings/{id}` |
+| `norbix code marketplace install-workflow <ml_…> [--ref <key=value>]… [--name <text>] [--identity <usr_…>]` | beta: fills a workflow listing's references and saves a new workflow's draft in the current environment; nothing runs and nothing is published. A malformed `--ref` is refused locally. After `CM-ERRORS-MARKETPLACE-036` the listing is read once and the hint names what it wants | `POST /listings/{id}/install-workflow` |
 | `norbix code marketplace connections list` | the project's connections in the current environment | `GET /integrations` |
 | `norbix code marketplace connections get <int_…>` | one connection: listing, config, on/off, `lastValidationSteps` (never secrets) | `GET /integrations/{id}` |
 | `norbix code marketplace connections enable --listing <ml_…> [--name <text>] [--config k=v]… [--secret k=v]… [--id <int_…>]` | enables the listing as a new connection and prints the minted id; `--id` saves an existing one again (no `--secret` keeps the stored secrets) | `POST /integrations` |

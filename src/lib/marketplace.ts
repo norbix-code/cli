@@ -11,6 +11,10 @@ export const MARKETPLACE_CATEGORIES = [
 
 /** The gateway's `MarketplaceTransport` members (the `--transport` options). */
 export const MARKETPLACE_TRANSPORTS = ['Mcp', 'Rest', 'Code', 'Internal', 'Sdk']
+export const MARKETPLACE_KINDS = ['Connector', 'Workflow']
+
+/** The gateway's refusal of a reference that is missing or that the listing does not declare. */
+export const REFERENCE_REFUSED = 'CM-ERRORS-MARKETPLACE-036'
 
 /** The value types a declared input may have (`MarketplaceFunctionParameterDto.type`). */
 export const INPUT_TYPES = ['string', 'number', 'boolean', 'object', 'array']
@@ -32,6 +36,36 @@ export function parseKeyValues(values: string[] | undefined, flagName: string): 
   }
 
   return bag
+}
+
+/**
+ * Repeated `--ref key=value` → `{key: value}`, the first `=` splits. Stricter
+ * than parseKeyValues: a reference with no value, or given twice, is a mistake
+ * here, and it is refused before anything is sent.
+ */
+export function parseReferences(values: string[] | undefined): Record<string, string> {
+  const example = 'e.g. --ref orders=orders --ref thanks=tmpl_3TKDGIwDEpWXROwKr2PBut'
+  const references: Record<string, string> = {}
+  for (const pair of values ?? []) {
+    const at = pair.indexOf('=')
+    const value = pair.slice(at + 1)
+    if (at < 1 || value === '') throw usageError(`--ref must look like key=value, got "${pair}".`, example)
+
+    const key = pair.slice(0, at)
+    if (Object.hasOwn(references, key)) throw usageError(`--ref ${key} is given twice.`, 'A reference takes one value.')
+    references[key] = value
+  }
+
+  return references
+}
+
+/** What a workflow listing wants, one reference a line, for the hint of a refusal. Undefined when it declares none. */
+export function wantedReferences(listing: unknown): string | undefined {
+  const declared = (listing as {workflow?: {references?: Array<{key?: string; kind?: string; label?: string}>}} | undefined)?.workflow?.references
+  if (!declared?.length) return undefined
+
+  const lines = declared.map((r) => `  --ref ${r.key}=<${r.kind}>${r.label ? `  ${r.label}` : ''}`)
+  return ['This listing wants:', ...lines].join('\n')
 }
 
 /**
