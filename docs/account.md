@@ -11,7 +11,7 @@ query string, body); `tests/account.test.ts` checks the SDK method and fields.
 |---|---|---|
 | `norbix account profile` | show the organisation's profile | `GET /profile` |
 | `norbix account status` | show the account status | `GET /status` |
-| `norbix account usage` | show the account usage and billing | `GET /usage-billing` |
+| `norbix account usage` | show the account usage and billing, then a table of workflow months (period, runs, step runs): counted, not billed | `GET /usage-billing` |
 | `norbix account projects` | list the projects | `GET /projects` |
 | `norbix account regions` | list the regions the account may use — needs no login and no project | `GET /regions` |
 | `norbix account billing-portal` | get the billing portal link | `POST /stripe/get-portal-url` |

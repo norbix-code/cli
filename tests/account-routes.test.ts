@@ -1,5 +1,5 @@
 import {runCommand} from '@oclif/test'
-import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {envListAnswer} from './_env.js'
 
 /**
@@ -18,10 +18,12 @@ interface Call {
 }
 
 let calls: Call[]
+let answer: unknown
 let realFetch: typeof globalThis.fetch
 
 beforeEach(() => {
   calls = []
+  answer = {}
   realFetch = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const envList = envListAnswer(input, init)
@@ -34,7 +36,7 @@ beforeEach(() => {
       headers: new Headers(init?.headers),
       body: typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : undefined,
     })
-    return new Response('{}', {status: 200, headers: {'Content-Type': 'application/json'}})
+    return new Response(JSON.stringify(answer), {status: 200, headers: {'Content-Type': 'application/json'}})
   }) as typeof globalThis.fetch
 })
 
@@ -157,4 +159,67 @@ describe('account projects / status — no project needed', () => {
       expect(calls[0]?.headers.get('Authorization')).toBe('Bearer nbsu_k')
     })
   }
+})
+
+describe('account usage — workflow months are counts', () => {
+  let printed: string[]
+  const out = () => printed.join('\n')
+
+  beforeEach(() => {
+    printed = []
+    vi.spyOn(console, 'log').mockImplementation((...parts: unknown[]) => {
+      printed.push(parts.join(' '))
+    })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const usage = {
+    item: {
+      accountId: 'acc_1',
+      atlas: {},
+      ingestionFailures: [],
+      workflows: {
+        '2026-10': {period: '2026-10', runs: 12, stepRuns: 340, perProject: [{projectId: 'pr_1', env: 'PROD', runs: 12, stepRuns: 340}]},
+        '2026-11': {period: '2026-11', runs: 3, stepRuns: 9, perProject: []},
+      },
+    },
+  }
+
+  it('prints the answer, then the months newest first and the line that they are not billed', async () => {
+    answer = usage
+    const {error} = await runCommand(['account', 'usage', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.path).toBe('/v3/account/usage-billing')
+    expect(out()).toContain('"accountId": "acc_1"')
+    expect(out().slice(out().indexOf('Workflows\n')).trim().split('\n')).toEqual([
+      'Workflows',
+      'PERIOD   RUNS  STEP RUNS',
+      '2026-11  3     9',
+      '2026-10  12    340',
+      '',
+      'Workflow runs and step runs are counted, not billed.',
+    ])
+  })
+
+  it('--json answers the raw document and no table', async () => {
+    answer = usage
+    const {result} = await runCommand(['account', 'usage', '--json', ...globalArgs])
+
+    expect(result).toEqual(usage)
+    expect(out()).not.toContain('STEP RUNS')
+    expect(out()).not.toContain('not billed')
+  })
+
+  it('no workflow month prints no table and no line', async () => {
+    answer = {item: {accountId: 'acc_1', atlas: {}, ingestionFailures: [], workflows: {}}}
+    await runCommand(['account', 'usage', ...globalArgs])
+
+    expect(out()).toContain('"accountId": "acc_1"')
+    expect(out()).not.toContain('STEP RUNS')
+    expect(out()).not.toContain('not billed')
+  })
 })

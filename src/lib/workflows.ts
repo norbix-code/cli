@@ -304,6 +304,30 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf8')
 }
 
+interface WorkflowUsageMonth {
+  period?: string
+  runs?: number
+  stepRuns?: number
+}
+
+/**
+ * The account's workflow months for the terminal, newest first, and the line
+ * that says what they are. Counts only (Code.Workflows.md §8.5): no price and
+ * no charge belongs here. Empty when the answer has no month.
+ */
+export function formatWorkflowUsage(res: unknown): string {
+  const months = ((res ?? {}) as {item?: {workflows?: Record<string, WorkflowUsageMonth>}}).item?.workflows ?? {}
+  const rows = Object.entries(months)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([key, month]) => [month.period ?? key, String(month.runs ?? 0), String(month.stepRuns ?? 0)])
+  if (rows.length === 0) return ''
+
+  const header = ['PERIOD', 'RUNS', 'STEP RUNS']
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i].length)))
+  const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd()
+  return ['Workflows', line(header), ...rows.map(line), '', 'Workflow runs and step runs are counted, not billed.'].join('\n')
+}
+
 function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`
 }
