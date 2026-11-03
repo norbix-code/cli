@@ -155,6 +155,16 @@ describe('norbix integrations keyless-setup', () => {
     expect(lines).not.toContain('Script:')
   })
 
+  it('serves every module the gateway serves: logs on aws / azure, push and payments on google, database on atlas', async () => {
+    for (const [module, cloud] of [['logs', 'aws'], ['logs', 'azure'], ['push', 'google'], ['payments', 'google'], ['database', 'atlas']]) {
+      calls = []
+      const {error} = await runCommand(['integrations', 'keyless-setup', module!, cloud!, ...globalArgs])
+      expect(error).toBeUndefined()
+      expect(calls[0]?.path).toBe('/v3/integrations/keyless/setup')
+      expect(calls[0]?.query).toMatchObject({module, cloud})
+    }
+  })
+
   it('refuses an unknown module before sending anything', async () => {
     const {error} = await runCommand(['integrations', 'keyless-setup', 'sms', 'aws', ...globalArgs])
 
