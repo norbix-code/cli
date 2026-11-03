@@ -91,6 +91,10 @@ const routes: Array<[() => string[], string, string]> = [
   [() => ['integration', 'disable', ID, '--yes'], 'PUT', `${P}/integrations/${ID}/disable`],
   [() => ['integration', 'delete', ID, '--yes'], 'DELETE', `${P}/integrations/${ID}`],
   [() => ['integration', 'confirm-delivery', ID], 'POST', `${P}/integrations/confirm-human-delivery`],
+  // Quick connect (one-click OAuth) — bodies in tests/integrations-connect.test.ts.
+  [() => ['integration', 'connect', 'start', '--provider', 'woocommerce', '--name', 'Shop'], 'POST', `${P}/integrations/connect/start`],
+  [() => ['integration', 'connect', 'complete', 'qc_1', '--target', 'shop_42'], 'POST', `${P}/integrations/connect/qc_1/complete`],
+  [() => ['integration', 'connect', 'disconnect', ID, '--yes'], 'POST', `${P}/integrations/${ID}/connect/disconnect`],
 
   // Triggers
   [() => ['triggers'], 'GET', `${P}/triggers`],
@@ -120,11 +124,14 @@ describe('every payments command reaches its route', () => {
   }
 })
 
-it('covers all 23 payments routes a person calls', () => {
+it('covers all 26 payments routes a person calls', () => {
   // The manifests (sdks/typegen/coverage/endpoints.{hub,api}.json) list 19 Hub
   // and 4 Api Payments entries (the two webhook-runs routes since gateway
-  // 86f24ecd2); the inbound provider webhook is called by the provider.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(23)
+  // 86f24ecd2); the three quick-connect routes are in the gateway's `[Route]`
+  // list but not in the manifest (Hub.Payments/Integrations/Connect/QuickConnect.cs,
+  // emitter bug: one route per service class). The inbound provider webhook is
+  // called by the provider.
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(26)
 })
 
 /** Run a command and return the one request it sent. */
