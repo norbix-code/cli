@@ -2,8 +2,10 @@ import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 
-const MODULES = ['code', 'email', 'files']
-const CLOUDS = ['aws', 'azure', 'google']
+/** The modules the gateway serves keyless setup for (Hub.Files/Integrations/KeylessSetup.cs). */
+const MODULES = ['code', 'database', 'email', 'files', 'logs', 'payments', 'push']
+/** azure, aws, google — and atlas (MongoDB Atlas M10+, module database only). */
+const CLOUDS = ['atlas', 'aws', 'azure', 'google']
 const TEMPLATE_KINDS = ['bicep', 'cloudformation', 'terraform']
 
 /** One ready infrastructure file for the integration (gateway feat/keyless-templates). */
@@ -41,6 +43,11 @@ The answer also lists ready infrastructure files for the integration —
 CloudFormation (AWS), Bicep (Azure) and Terraform (every cloud). --template
 <kind> prints only that file's content, for piping into a file.
 
+Which module works on which cloud: files, email and code on aws, azure and
+google; logs on aws and azure; push and payments on google; database on atlas
+(MongoDB Atlas M10+). The gateway answers available: false, with the reason,
+for a pair it does not serve.
+
 Without --integration-id the gateway makes a new id for the integration you
 are about to save.`
 
@@ -48,6 +55,8 @@ are about to save.`
     '<%= config.bin %> integrations keyless-setup files aws',
     '<%= config.bin %> integrations keyless-setup email azure --integration-id 55555555-5555-5555-5555-555555555555',
     '<%= config.bin %> integrations keyless-setup code aws --json',
+    '<%= config.bin %> integrations keyless-setup logs azure',
+    '<%= config.bin %> integrations keyless-setup database atlas',
     '<%= config.bin %> integrations keyless-setup files aws --template terraform > norbix-files.tf',
   ]
 
