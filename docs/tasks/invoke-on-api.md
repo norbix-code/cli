@@ -23,7 +23,9 @@ the api route there; an api-side `workflows.waitForRun` helper; moving the MCP w
    `@norbix.ai/ts` ^4.51.0, request fields regenerated (sdk 4.51.0, 833 methods); tsc clean, `npm test` 1312 passed.
    Not run against the stack: the route test proves the host, and the other run commands already use api the same way.
 5. [done] MCP: checked, no change (see Rejected).
-6. [todo] typegen coverage rebuilt after the merges.
+6. [done] typegen coverage rebuilt after the merges: manifests re-emitted from gateway refactoringV2 67d75f71e
+   (identical), matrix scanned each SDK's origin/main; JS/TS api invoke now `yes`; route drift 327, unchanged.
+   typegen main 89eb6da. Gateway task file finding marked done: refactoringV2 1389075c9. CLI 1.61.0 on npm.
 
 ## Changes
 
@@ -41,6 +43,8 @@ the api route there; an api-side `workflows.waitForRun` helper; moving the MCP w
 
 - `generate-endpoints` in sdk-ts also re-adds `clearContactBounce` and reorders and reformats unrelated files.
   Left out, as in the earlier rounds. Someone should decide whether `clearContactBounce` belongs on the api client.
+- sdk-ts docs counts in `docs/api/_index.md` and `docs/README.md` were set by hand (193 api, 634 hub, membership
+  55) after dropping the generator's unrelated additions; everything else is the generator's output.
 - `invoke --follow` still polls with `client.hub.code.workflows.waitForRun` (the Hub). The Hub still serves
   `GET /code/workflows/runs/{RunId}`, so it works. An api-side helper is a hand-written addition to a generated
   file, typed to the Hub DTOs: its own change.
