@@ -25,16 +25,19 @@ out of reach.
 | database/schemas | 2/18 | read-only list/get. Schema editing is portal work |
 | database/taxonomies | 2/15 | read-only list/get |
 | database/aggregates | 1/5 | list only |
-| files/* | 9/23 | upload, download, list, info, sign, delete. Missing: bulk delete, triggers, integration config |
-| logs/* | 10/16 | list, trail, get, settings, settings set, clean, write (Api host), module toggle — each command is run through the real transport in `tests/logs.test.ts`. Missing: integration config (save / test / enable / disable / delete — `norbix hub logs …` reaches them) |
+| files/* | 17/23 | upload, download, list, info, sign, delete; the 8 integration routes (list, get, save, test, enable, disable, default, delete) — `docs/integrations.md`, each run through the real transport in `tests/files-integration-routes.test.ts`. Missing: bulk delete, triggers |
+| logs/* | 16/16 | list, trail, get, settings, settings set, clean, write (Api host), module toggle — each command is run through the real transport in `tests/logs.test.ts`; the 7 integration routes (list, get, save, test, enable, disable, delete) — `docs/integrations.md`, `tests/logs-integration-routes.test.ts` |
 | membership/users | 6/35 | list, get, invite, block, unblock, delete. Missing: contacts, create-user variants, preferences |
 | membership/roles + policies | 2/10 | read-only lists |
+| membership/integrations (sign-in providers) | 7/7 | list, get, save, enable, disable, default, delete — `docs/integrations.md`, `tests/membership-integration-routes.test.ts` |
+| code/integrations | 8/8 | list, get, save, test, confirm-delivery, enable, disable, delete — `docs/integrations.md`, `tests/code-integration-routes.test.ts` |
 | notifications/email | 48/51 | every endpoint except the three recipient / provider callbacks — see `docs/email.md`; each command is run through the real transport in `tests/email-routes.test.ts` |
 | notifications/push | 37/37 | every endpoint — see `docs/push.md`; each command is run through the real transport in `tests/push-routes.test.ts` |
 | notifications/sms | 34/34 | every endpoint — see `docs/sms.md`; each command is run through the real transport in `tests/sms-routes.test.ts` |
 | scheduler | 8/8 | every endpoint, `save` included (email-campaign task built from flags) — see `docs/scheduler.md`; each command is run through the real transport in `tests/scheduler-routes.test.ts`, with the exact `save` body |
 | webhooks | 6/9 | show, secret, rotate, enable/disable/remove destination |
-| payments | 19/19 | every endpoint a person calls (the inbound provider webhook is called by the provider) — see `docs/payments.md`; each command is run through the real transport in `tests/payments-routes.test.ts` |
+| payments | 26/26 | every endpoint a person calls (the inbound provider webhook is called by the provider), the three quick-connect routes included (they are in the gateway's `[Route]` list but not in the manifest) — see `docs/payments.md`; each command is run through the real transport in `tests/payments-routes.test.ts`, the quick-connect bodies in `tests/integrations-connect.test.ts` |
+| integrations/connect (shared quick-connect routes) | 2/4 | providers, targets — `docs/integrations.md`, `tests/integrations-connect.test.ts`. Not commands: the provider callback and the dev-fake authorize page |
 | account/* | 12/64 | profile, status, usage, projects, team (paging + project / owner filters), regions, billing-portal, api keys, me, me set-phone — see `docs/account.md`; team / me / set-phone run through the real transport in `tests/account-routes.test.ts`. Missing: team roles/policies management |
 | account/projects (settings, CORS, admin portal, legal, AI chat) | 30/30 | every project route in `@norbix.ai/ts` 4.4.0 a developer calls (28 hub + the 2 public API-host reads) — see `docs/project.md`; each command is run through the real transport in `tests/project-routes.test.ts`. Not counted: create project, environments, notification groups/tags, AI plans/knowledge/credits (internal), expose brand/auth (next wave) |
 | ai/integrations (LLM, MCP) | 15/20 | every LLM and MCP route — see `docs/ai.md`, same route test. Missing: the 5 embedding-integration routes (not asked for; `norbix hub ai …` reaches them) |
@@ -45,7 +48,9 @@ out of reach.
 Cross-cutting commands: `norbix integrations <module>` lists integrations for
 9 modules; `norbix module enable|disable <name>` toggles 10 modules.
 `norbix integrations keyless-setup <module> <cloud>` covers
-`GET /integrations/keyless/setup`, `--template <kind>` included (tests/integrations-keyless-setup.test.ts).
+`GET /integrations/keyless/setup` for every module the gateway serves (files, email,
+code, logs, push, payments, database), `--template <kind>` included
+(tests/integrations-keyless-setup.test.ts).
 
 ## Deliberately skipped (and why)
 
@@ -60,10 +65,11 @@ Cross-cutting commands: `norbix integrations <module>` lists integrations for
   — signup/onboarding flows that happen in the portal or email links.
 - **webhooks/module receive-webhook** — inbound endpoint called by external
   services, not by a person.
-- **save/config of integrations** (database, email, files, logging,
-  code, membership, AI) — large nested JSON configs; the portal validates
-  them much better. Readable via `norbix integrations <module>`; writable via
-  `norbix api` if ever needed.
+- **save/config of database integrations** — large nested JSON configs; the
+  portal validates them much better. Readable via `norbix db integrations`;
+  writable via `norbix hub database …` if ever needed. (Email, push, SMS,
+  payments, AI, files, code, logging and membership integrations have `save`
+  commands: the provider fields travel in `--config`.)
 - **code/marketplace token mappings, function catalog, secret reveal, token
   lists (5 of 23)** — the other 18 marketplace routes have commands under
   `norbix code marketplace` (`docs/code.md`); these five are reached with

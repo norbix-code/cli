@@ -143,6 +143,9 @@
                 "description": "Beta: the Workflows beta switch of the environment (on by default)"
               }
             }
+          },
+          "integration": {
+            "description": "One code integration: show, save (keyless or key), test, confirm delivery, turn on/off, delete"
           }
         }
       },
@@ -178,18 +181,41 @@
         "description": "Upload, download and manage files",
         "subtopics": {
           "integrations": {
-            "description": "Check the storage behind a files integration"
+            "description": "List the files integrations; check the storage behind one"
+          },
+          "integration": {
+            "description": "One files integration: show, save (keyless or key), test, turn on/off, default, delete"
           }
         }
       },
       "logs": {
-        "description": "Read and write project logs, log settings"
+        "description": "Read and write project logs, log settings",
+        "subtopics": {
+          "integration": {
+            "description": "One logging integration: show, save, test, turn on/off, delete"
+          }
+        }
       },
       "membership": {
-        "description": "Membership tools (test the password-reset e-mail)"
+        "description": "Membership tools: the sign-in integrations, the password-reset e-mail test",
+        "subtopics": {
+          "integration": {
+            "description": "One sign-in integration: show, save, turn on/off, default, delete"
+          }
+        }
       },
       "payments": {
-        "description": "Payment integrations and triggers"
+        "description": "Payment integrations and triggers",
+        "subtopics": {
+          "integration": {
+            "description": "One payments integration: show, save, test, confirm delivery, turn on/off, delete, quick connect",
+            "subtopics": {
+              "connect": {
+                "description": "Quick connect (one-click OAuth): start, finish with the picked account, disconnect"
+              }
+            }
+          }
+        }
       },
       "project": {
         "description": "Project settings: name, languages, regions, CORS, admin portal, legal documents, AI chat",
@@ -233,6 +259,14 @@
       },
       "webhooks": {
         "description": "Inspect the webhook integration and its destinations"
+      },
+      "integrations": {
+        "description": "Cross-module integration tools: list any module, keyless cloud setup, quick connect providers and targets",
+        "subtopics": {
+          "connect": {
+            "description": "Quick connect: which providers can, the accounts a connect offers"
+          }
+        }
       }
     },
     "hooks": {

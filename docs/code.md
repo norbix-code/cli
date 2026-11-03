@@ -4,8 +4,10 @@ The cloud-function half of the Code module from the terminal: the functions a
 [Code integration](https://docs.norbix.ai/cloud/code/integrations) may call,
 their aliases and versions, a call by hand, a sample envelope for a local run,
 and the last runs of a trigger or a scheduled task. The integration itself
-(credentials for AWS Lambda, Azure Functions or Google Cloud Functions) is
-managed with `norbix integrations code` and `norbix hub code …`.
+(AWS Lambda, Azure Functions, Google Cloud Functions, Sandbox, …) is managed
+with `norbix code integrations` / `norbix code integration
+<id|save|test|confirm-delivery|enable|disable|delete>` — see
+[docs/integrations.md](integrations.md#code-integrations).
 
 Every command is covered by `tests/code-routes.test.ts`, which runs it through
 the real SDK with `fetch` replaced and checks the verb, path, query and — for
