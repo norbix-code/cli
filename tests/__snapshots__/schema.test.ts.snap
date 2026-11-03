@@ -3245,6 +3245,24 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "audience:option",
+      "user:string",
+      "role:string",
+      "tag:string",
+      "schema:string",
+      "field:string",
+      "field-type:option",
+      "device:string",
+      "database-integration:string",
+    ],
+    "id": "push campaign audience-count",
+    "supportsDryRun": true,
+  },
+  {
     "args": [
       "id",
       "batchId",

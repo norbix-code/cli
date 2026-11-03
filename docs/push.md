@@ -124,6 +124,7 @@ norbix push template render --code "Hi @Model.Name" --token Name=Ada
 | `norbix push campaign <id>` | show a campaign | `GET /campaigns/{id}` |
 | `norbix push campaign <id> --stats` | show its delivery statistics instead | `GET /campaigns/{id}/stats` |
 | `norbix push campaign create --template <id> --integration <id> --audience <a> …` | create (and send or schedule) a campaign | `POST /campaigns` |
+| `norbix push campaign audience-count --audience <a> …` | count the devices an audience would reach — same audience flags as `create`, no template or provider, nothing is sent | `POST /campaigns/audience-count` |
 | `norbix push campaign delete <id> [--yes]` | delete a campaign | `DELETE /campaigns/{Id}` |
 | `norbix push stop <id> [--yes]` | stop a running campaign | `POST /campaigns/{Id}/stop` |
 | `norbix push campaign batches <id>` | list its send batches | `GET /campaigns/{id}/batches` |

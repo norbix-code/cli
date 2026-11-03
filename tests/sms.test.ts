@@ -285,9 +285,11 @@ describe('sms campaign create --audience account-users', () => {
   })
 })
 
-it('every push command has an sms twin, except the device commands (SMS has no devices)', async () => {
+it('every push command has an sms twin, except the device commands (SMS has no devices) and audience-count (push only)', async () => {
   const config = await Config.load(fileURLToPath(new URL('..', import.meta.url)))
-  const push = config.commandIDs.filter((id) => id.startsWith('push:') && !id.startsWith('push:device'))
+  // The gateway serves `campaigns/audience-count` for push alone (Hub.Push.Campaigns/AudienceCount.cs);
+  // the SMS and Email surfaces have no such route.
+  const push = config.commandIDs.filter((id) => id.startsWith('push:') && !id.startsWith('push:device') && id !== 'push:campaign:audience-count')
   const missing = push.map((id) => id.replace(/^push:/, 'sms:')).filter((id) => !config.findCommand(id))
   expect(push.length).toBeGreaterThan(20)
   expect(missing).toEqual([])
