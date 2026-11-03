@@ -43,12 +43,12 @@ Sends the payload (checked against the definition's inputs when it has one) and 
     const payload = await readObjectFlag(flags.payload, flags['payload-file'])
     const client = this.client(flags)
 
-    const res = await client.hub.code.invokeCodeWorkflow({
+    const res = await client.api.code.invokeCodeWorkflow({
       id: args.id,
       ...(payload ? {payload} : {}),
       ...(flags.wait === undefined ? {} : {waitSeconds: flags.wait}),
       ...(flags.version === undefined ? {} : {runVersion: flags.version}),
-    } as Parameters<typeof client.hub.code.invokeCodeWorkflow>[0])
+    } as Parameters<typeof client.api.code.invokeCodeWorkflow>[0])
 
     if (!flags.follow || !res.runId || SETTLED.has(res.status ?? '')) {
       this.print(res)
