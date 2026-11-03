@@ -386,13 +386,14 @@ describe('norbix code workflows — definitions', () => {
 })
 
 describe('norbix code workflows — runs', () => {
-  it('invoke → POST /code/workflows/{id}/invoke with payload, waitSeconds and runVersion', async () => {
+  it('invoke → POST /code/workflows/{id}/invoke on api with payload, waitSeconds and runVersion', async () => {
     answer = {runId: RUN, status: 'succeeded', output: {sent: true}, durationMs: 40}
     const {error} = await wf('invoke', WF, '--payload', '{"orderId":"6ac54a59212c29912eaddd81"}', '--wait', '30', '--version', 'draft')
 
     expect(error).toBeUndefined()
     expect(calls).toHaveLength(1)
     expect(calls[0]).toMatchObject({method: 'POST', path: `${W}/${WF}/invoke`})
+    expect(calls[0]?.host).toMatch(/\.api\./)
     expect(calls[0]?.body).toEqual({payload: {orderId: '6ac54a59212c29912eaddd81'}, waitSeconds: 30, runVersion: 'draft'})
   })
 
