@@ -95,6 +95,14 @@ of `--json` as well.
 | `norbix payments integration enable <id>` | turn it on | `PUT /integrations/{Id}/enable` |
 | `norbix payments integration disable <id> [--yes]` | turn it off | `PUT /integrations/{Id}/disable` |
 | `norbix payments integration delete <id> [--yes]` | delete it | `DELETE /integrations/{Id}` |
+| `norbix payments integration connect start --provider <p> --name <n> [--mode <m>] [--input k=v]... [--integration <id>]` | quick connect (one-click OAuth): prints the provider's page to open and the connect id | `POST /integrations/connect/start` |
+| `norbix payments integration connect complete <connectId> --target <id> [--disabled]` | finish the quick connect with the picked account | `POST /integrations/connect/{ConnectId}/complete` |
+| `norbix payments integration connect disconnect <id> [--yes]` | end the quick connection: webhooks removed, key forgotten, integration off | `POST /integrations/{Id}/connect/disconnect` |
+
+Quick connect end to end — which providers can, the accounts offered after the
+approval (`norbix integrations connect providers/targets`) — is in
+[docs/integrations.md](integrations.md#quick-connect-one-click-oauth--payments);
+the bodies are checked in `tests/integrations-connect.test.ts`.
 
 `--provider` is one of `Stripe`, `AppleInApp`, `GoogleInApp` (fully
 supported), or `PayPal`, `Adyen`, `Paddle`, `LemonSqueezy`, `Mollie`,
