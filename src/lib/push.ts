@@ -91,3 +91,66 @@ export const templateFlags = {
     exclusive: ['title', 'body'],
   }),
 }
+
+/** `--audience` value → the `source` discriminator the server routes the campaign body by. */
+export const AUDIENCES: Record<string, string> = {
+  'all-users': 'allUsers',
+  users: 'specifiedUsers',
+  'account-users': 'accountUsers',
+  collection: 'collection',
+  devices: 'devices',
+}
+
+/** Flags that describe who a push campaign goes to; shared by `campaign create` and `campaign audience-count`. */
+export const audienceFlags = {
+  audience: Flags.string({required: true, description: 'Who receives it', options: Object.keys(AUDIENCES)}),
+  user: Flags.string({description: 'User ID (users / account-users; repeat for several)', multiple: true}),
+  role: Flags.string({description: 'Role name (all-users / collection; repeat for several)', multiple: true}),
+  tag: Flags.string({description: 'User tag (all-users; repeat for several)', multiple: true}),
+  schema: Flags.string({description: 'Collection name (collection)'}),
+  field: Flags.string({description: 'Field that holds the recipient (collection; repeat for several)', multiple: true}),
+  'field-type': Flags.string({description: 'What --field holds (collection)', options: ['User', 'Email']}),
+  device: Flags.string({description: 'Device as <token>:<family> (devices; repeat for several)', multiple: true}),
+}
+
+export interface AudienceFlags {
+  audience: string
+  user?: string[]
+  role?: string[]
+  tag?: string[]
+  schema?: string
+  field?: string[]
+  'field-type'?: string
+  device?: string[]
+}
+
+/**
+ * The audience part of a campaign body: `source` plus that audience's own
+ * fields, as the server reads them (note `rolesNames` on allUsers but
+ * `roleNames` on collection). Throws when a required flag is missing, so
+ * nothing is sent.
+ */
+export function audienceFields(flags: AudienceFlags): Record<string, unknown> {
+  const source = AUDIENCES[flags.audience]
+  switch (flags.audience) {
+    case 'all-users':
+      return {source, rolesNames: flags.role, userTags: flags.tag}
+    case 'users':
+    case 'account-users':
+      if (!flags.user?.length) throw new Error(`--audience ${flags.audience} needs at least one --user`)
+      return {source, userRecipients: flags.user}
+    case 'collection':
+      if (!flags.schema || !flags.field?.length) throw new Error('--audience collection needs --schema and --field')
+      return {source, schemaName: flags.schema, fields: flags.field, fieldType: flags['field-type'], roleNames: flags.role}
+    default:
+      if (!flags.device?.length) throw new Error('--audience devices needs at least one --device <token>:<family>')
+      return {source, devices: flags.device.map(parseDevice)}
+  }
+}
+
+/** `<token>:<family>` → the device object a `devices` audience lists. */
+export function parseDevice(value: string): {token: string; deliveryFamily: string} {
+  const at = value.lastIndexOf(':')
+  if (at < 1) throw new Error(`--device must look like <token>:<family>, got "${value}"`)
+  return {token: value.slice(0, at), deliveryFamily: value.slice(at + 1)}
+}

@@ -102,6 +102,7 @@ const routes: Array<[string[], string, string]> = [
   [['preview', '8f2a91c4'], 'GET', `${P}/preview`],
   [['stop', ID, '--yes'], 'POST', `${P}/campaigns/${ID}/stop`],
   [['campaign', 'create', '--template', ID, '--integration', INT, '--audience', 'all-users'], 'POST', `${P}/campaigns`],
+  [['campaign', 'audience-count', '--audience', 'all-users'], 'POST', `${P}/campaigns/audience-count`],
   [['campaign', 'delete', ID, '--yes'], 'DELETE', `${P}/campaigns/${ID}`],
   [['campaign', 'batches', ID], 'GET', `${P}/campaigns/${ID}/batches`],
   [['campaign', 'batch', ID, BATCH], 'GET', `${P}/campaigns/${ID}/batches/${BATCH}`],
@@ -126,15 +127,16 @@ describe('every push command reaches its route', () => {
 })
 
 
-it('covers all 37 push routes', () => {
+it('covers all 38 push routes', () => {
   // One row per route the SDK exposes (lane D counted 37; the devices read
   // side added the list and the get; the managed-app app-request route was
   // removed with its gateway stub; the campaign message route was removed in
-  // the Emails campaign — `campaign message` now reads the batch route). The
+  // the Emails campaign — `campaign message` now reads the batch route; the
+  // coverage re-audit of 2026-11-03 added `campaign audience-count`). The
   // campaign `--stats` row, the batch rows, `campaign message` and the second
   // `devices` row share a route with another row, so count
   // distinct verb + path pairs.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(37)
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(38)
 })
 
 /** Run a command and return the one request body it sent. */
@@ -292,6 +294,27 @@ describe('push campaign create — the five audiences', () => {
       expect(calls).toHaveLength(0)
     })
   }
+})
+
+describe('push campaign audience-count', () => {
+  // Same audience body as `campaign create`, no template and no provider: the
+  // server only reads the audience (gateway Hub.Push.Campaigns/AudienceCount.cs)
+  // and sends nothing.
+  it('posts the audience under `campaign` and nothing else', async () => {
+    const body = await bodyOf(['campaign', 'audience-count', '--audience', 'all-users', '--tag', 'beta', '--role', 'Admin'])
+    expect(body).toEqual({campaign: {source: 'allUsers', userTags: ['beta'], rolesNames: ['Admin']}})
+  })
+
+  it('takes every audience the create command takes, plus --database-integration', async () => {
+    const body = await bodyOf(['campaign', 'audience-count', '--audience', 'devices', '--device', 'dGVzdA==:Ios', '--database-integration', 'db_1'])
+    expect(body).toEqual({campaign: {source: 'devices', devices: [{token: 'dGVzdA==', deliveryFamily: 'Ios'}]}, databaseIntegrationId: 'db_1'})
+  })
+
+  it('refuses an incomplete audience before sending, like create does', async () => {
+    const {error} = await runCommand(['push', 'campaign', 'audience-count', '--audience', 'users', ...globalArgs])
+    expect(error?.message).toMatch(/needs at least one --user/)
+    expect(calls).toHaveLength(0)
+  })
 })
 
 describe('push campaign reads', () => {

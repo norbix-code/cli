@@ -1,16 +1,7 @@
 import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../base.js'
-import {parseTokens, readJsonObject} from '../../../lib/push.js'
-
-/** --audience value → the `source` discriminator the server routes the body by. */
-const AUDIENCES: Record<string, string> = {
-  'all-users': 'allUsers',
-  users: 'specifiedUsers',
-  'account-users': 'accountUsers',
-  collection: 'collection',
-  devices: 'devices',
-}
+import {audienceFields, audienceFlags, parseTokens, readJsonObject} from '../../../lib/push.js'
 
 export default class PushCampaignCreate extends BaseCommand {
   static description = `Create a push campaign
@@ -30,7 +21,9 @@ every project language, or the server refuses the campaign. --initiator sends on
 behalf of another project user (default: you).
 
 Without --at the campaign is sent right away. Anything the flags do not cover
-goes in --config as a JSON object and is merged into the campaign.`
+goes in --config as a JSON object and is merged into the campaign. To see how
+many devices an audience reaches before sending, run
+\`norbix push campaign audience-count\` with the same audience flags.`
 
   static examples = [
     '<%= config.bin %> push campaign create --template 66b2f0a1c3d4e5f6a7b8c9d0 --integration 66c1a2b3c4d5e6f7a8b9c0d1 --audience all-users --tag beta',
@@ -42,14 +35,7 @@ goes in --config as a JSON object and is merged into the campaign.`
   static flags = {
     ...BaseCommand.dryRunFlags,
     template: Flags.string({required: true, description: 'Template ID'}),
-    audience: Flags.string({required: true, description: 'Who receives it', options: Object.keys(AUDIENCES)}),
-    user: Flags.string({description: 'User ID (users / account-users; repeat for several)', multiple: true}),
-    role: Flags.string({description: 'Role name (all-users / collection; repeat for several)', multiple: true}),
-    tag: Flags.string({description: 'User tag (all-users; repeat for several)', multiple: true}),
-    schema: Flags.string({description: 'Collection name (collection)'}),
-    field: Flags.string({description: 'Field that holds the recipient (collection; repeat for several)', multiple: true}),
-    'field-type': Flags.string({description: 'What --field holds (collection)', options: ['User', 'Email']}),
-    device: Flags.string({description: 'Device as <token>:<family> (devices; repeat for several)', multiple: true}),
+    ...audienceFlags,
     integration: Flags.string({
       required: true,
       description: 'Push integration ID the campaign sends through; list them with `norbix push integrations`',
@@ -74,7 +60,7 @@ goes in --config as a JSON object and is merged into the campaign.`
     const extra = flags.config ? await readJsonObject(flags.config, 'config') : {}
     const campaign: Record<string, unknown> = {
       ...extra,
-      source: AUDIENCES[flags.audience],
+      ...this.audience(flags),
       templateId: flags.template,
       integrationId: flags.integration,
       language: flags.language,
@@ -82,7 +68,6 @@ goes in --config as a JSON object and is merged into the campaign.`
       notes: flags.notes,
       campaignTime: flags.at ? toUnixSeconds(flags.at) : undefined,
       mappedTokens: parseTokens(flags.token),
-      ...this.audienceFields(flags),
     }
 
     const res = await client.api.notifications.createPushCampaign({
@@ -94,36 +79,12 @@ goes in --config as a JSON object and is merged into the campaign.`
     return res
   }
 
-  private audienceFields(flags: {
-    audience: string
-    user?: string[]
-    role?: string[]
-    tag?: string[]
-    schema?: string
-    field?: string[]
-    'field-type'?: string
-    device?: string[]
-  }): Record<string, unknown> {
-    switch (flags.audience) {
-      case 'all-users':
-        return {rolesNames: flags.role, userTags: flags.tag}
-      case 'users':
-      case 'account-users':
-        if (!flags.user?.length) this.error(`--audience ${flags.audience} needs at least one --user`)
-        return {userRecipients: flags.user}
-      case 'collection':
-        if (!flags.schema || !flags.field?.length) this.error('--audience collection needs --schema and --field')
-        return {schemaName: flags.schema, fields: flags.field, fieldType: flags['field-type'], roleNames: flags.role}
-      default:
-        if (!flags.device?.length) this.error('--audience devices needs at least one --device <token>:<family>')
-        return {devices: flags.device.map((d) => this.device(d))}
+  private audience(flags: Parameters<typeof audienceFields>[0]): Record<string, unknown> {
+    try {
+      return audienceFields(flags)
+    } catch (error) {
+      return this.error((error as Error).message)
     }
-  }
-
-  private device(value: string): {token: string; deliveryFamily: string} {
-    const at = value.lastIndexOf(':')
-    if (at < 1) this.error(`--device must look like <token>:<family>, got "${value}"`)
-    return {token: value.slice(0, at), deliveryFamily: value.slice(at + 1)}
   }
 }
 
