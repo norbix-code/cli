@@ -1,5 +1,7 @@
 import {Flags} from '@oclif/core'
 
+import {usageError} from './cli-error.js'
+
 /** Who a trigger runs as: the flag every trigger and task save shares. */
 export const EXECUTION_IDENTITY_HELP =
   'Who it runs as: a service user id (usr_…) from `norbix identities list`, or `default` for the project default'
@@ -10,6 +12,163 @@ export const executionIdentityFlag = Flags.string({description: EXECUTION_IDENTI
 export const TRIGGER_TYPES = ['Membership', 'Schema', 'Files', 'Payments', 'Ai']
 
 export const TRIGGER_RUN_STATUSES = ['queued', 'running', 'succeeded', 'failed', 'skipped']
+
+/** The trigger type the server dispatches a files trigger body by, and its events. */
+export const FILES_TRIGGER = 'Files'
+export const FILES_TRIGGER_TYPES = ['OnFileUploaded', 'OnFileDeleted']
+
+/** The trigger type of a membership (end-user) trigger, and its events. */
+export const MEMBERSHIP_TRIGGER = 'Membership'
+export const MEMBERSHIP_TRIGGER_TYPES = [
+  'OnRegistered',
+  'OnInvited',
+  'OnVerified',
+  'OnUpdated',
+  'OnDeleted',
+  'OnBlocked',
+  'OnReactivated',
+  'OnUserCreated',
+]
+
+/** The trigger type of a trigger on an AI project event, and its events. */
+export const AI_TRIGGER = 'Ai'
+export const AI_TRIGGER_TYPES = ['OnCreditsWarning', 'OnCreditsExhausted', 'OnQuotaWarning', 'OnQuotaExhausted']
+
+/** The part of every host trigger `save` help that is the same for files, membership and AI. */
+export const TRIGGER_SAVE_HELP = `The file holds the trigger: name, "when" (what fires it), the action ({type, ...})
+and optionally description, preExecuteCode, order and breakOnError — the same
+shape \`trigger definition <id> --type <type>\` prints. A file that holds the
+whole request ({"trigger": {...}}) or a \`trigger <id> --json\` answer works too.
+"type" is filled in when the file leaves it out; --when overrides the file.
+
+The action: {"type": "Email" | "Sms" | "Push" | "WebhookCall" | "SseCall" |
+"Code" | "Marketplace" | "Workflow", ...}. A Code action names the function:
+{"type": "Code", "functionRef": {"integrationId": "int_…", "functionId": "my-fn"}}.
+A Workflow action starts a workflow: {"type": "Workflow", "workflowRef": "wf_…"}.
+
+--id sets triggerId (update instead of create), --order and --break-on-error
+set the trigger's place in the queue of the same event, --execution-identity
+says who the trigger runs as (leave it out for the project default).`
+
+/** The flags every host trigger `save` shares: the file, --id, --when, who it runs as, the queue place. */
+export function triggerSaveFlags(whenTypes: string[], whenHelp: string) {
+  return {
+    file: Flags.string({required: true, description: 'Trigger JSON file (or `-` for stdin)'}),
+    id: Flags.string({description: 'Trigger ID — set it to update instead of create'}),
+    when: Flags.string({description: `What fires the trigger (overrides "when" in the file): ${whenHelp}`, options: whenTypes}),
+    'execution-identity': executionIdentityFlag,
+    order: Flags.integer({
+      min: 0,
+      description: 'Place in the queue of the event: lower runs first, 0 or more (overrides "order" in the file)',
+    }),
+    'break-on-error': Flags.boolean({
+      allowNo: true,
+      description: 'Stop the later triggers of the same event when this one fails (overrides "breakOnError" in the file)',
+    }),
+  }
+}
+
+export interface TriggerSaveFlags {
+  id?: string
+  when?: string
+  'execution-identity'?: string
+  order?: number
+  'break-on-error'?: boolean
+}
+
+/**
+ * The body of a host trigger save: the file's trigger with `type` filled in and
+ * the flags on top. `when` has no default on these hosts (unlike a payment
+ * trigger): a file without it and no --when is a usage error, with the values
+ * listed, before anything is sent.
+ */
+export function buildHostTrigger(
+  fromFile: Record<string, unknown>,
+  flags: TriggerSaveFlags,
+  type: string,
+  whenTypes: string[],
+): Record<string, unknown> {
+  const trigger: Record<string, unknown> = {type, ...fromFile}
+  if (flags.id) trigger.triggerId = flags.id
+  if (flags.when) trigger.when = flags.when
+  if (flags['execution-identity']) trigger.executionIdentityId = flags['execution-identity']
+  if (flags.order !== undefined) trigger.order = flags.order
+  if (flags['break-on-error'] !== undefined) trigger.breakOnError = flags['break-on-error']
+
+  if (typeof trigger.when !== 'string' || trigger.when === '') {
+    throw usageError(
+      'The trigger does not say what fires it: put "when" in the file or pass --when.',
+      `--when is one of ${whenTypes.join(', ')}.`,
+    )
+  }
+
+  return trigger
+}
+
+interface AttentionRow {
+  triggerId?: string
+  triggerType?: string
+  reason?: string
+  atUtc?: string
+}
+
+/** `trigger attention` for the terminal: one line per trigger that stopped before it acted. */
+export function formatTriggerAttention(res: unknown): string {
+  const items = ((res ?? {}) as {items?: AttentionRow[]}).items
+  const rows = Array.isArray(items) ? items : []
+  if (rows.length === 0) return 'No trigger needs attention.'
+
+  const header = ['TRIGGER', 'TYPE', 'SINCE', 'REASON']
+  const cells = rows.map((r) => [r.triggerId ?? '', r.triggerType ?? '', r.atUtc ?? '', r.reason ?? ''])
+  const widths = header.map((h, i) => Math.max(h.length, ...cells.map((row) => row[i]!.length)))
+  const line = (c: string[]) => c.map((v, i) => (i === c.length - 1 ? v : v.padEnd(widths[i]!))).join('  ')
+  return [line(header), ...cells.map(line), '', `${rows.length} trigger${rows.length === 1 ? '' : 's'}. Read the runs: norbix trigger runs <type> <trigger>`].join('\n')
+}
+
+interface PreExecuteProblem {
+  code?: string
+  message?: string
+  line?: number
+  column?: number
+}
+
+/** `trigger pre-execute-test` for the terminal: would the trigger run, and what is wrong with the code. */
+export function formatPreExecuteTest(res: unknown): string {
+  const r = (res ?? {}) as {outcome?: string; triggerRuns?: boolean; problems?: PreExecuteProblem[]}
+  const lines = [`Outcome:        ${r.outcome ?? '?'}`, `Trigger runs:   ${r.triggerRuns ? 'yes' : 'no'}`]
+  const problems = Array.isArray(r.problems) ? r.problems : []
+  if (problems.length > 0) {
+    lines.push('Problems:')
+    for (const p of problems) {
+      const where = p.line === undefined ? '' : ` (line ${p.line}${p.column === undefined ? '' : `, column ${p.column}`})`
+      lines.push(`  ${p.code ?? '?'}${where}: ${p.message ?? ''}`)
+    }
+  }
+
+  return lines.join('\n')
+}
+
+interface IdentityCheck {
+  executionIdentityId?: string
+  isDefault?: boolean
+  canAssign?: boolean
+  missingPermissions?: string[]
+  callerMissingPermissions?: string[]
+  refusals?: Array<{errorCode?: string; message?: string}>
+}
+
+/** `trigger identity-check` for the terminal: may the identity be used, and what it lacks for the action. */
+export function formatIdentityCheck(res: unknown): string {
+  const r = (res ?? {}) as IdentityCheck
+  const lines = [
+    `Identity:       ${r.executionIdentityId ?? '(project default)'}${r.isDefault ? ' (default)' : ''}`,
+    `Can assign:     ${r.canAssign ? 'yes' : 'no'}`,
+    `Missing:        ${r.missingPermissions?.length ? r.missingPermissions.join(', ') : 'nothing — the action can run'}`,
+  ]
+  if (r.callerMissingPermissions?.length) lines.push(`You lack:       ${r.callerMissingPermissions.join(', ')}`)
+  for (const refusal of r.refusals ?? []) lines.push(`Refused:        ${refusal.errorCode ?? '?'} ${refusal.message ?? ''}`.trimEnd())
+  return lines.join('\n')
+}
 
 /**
  * The trigger of a `--file` for `db trigger create` / `payments trigger save`.

@@ -87,7 +87,7 @@
         }
       },
       "ai": {
-        "description": "LLM and MCP server integrations, AI service users, coding-agent setup (ai init) and the agent project context (ai context)",
+        "description": "LLM and MCP server integrations, AI service users, AI triggers (credits and quota events), coding-agent setup (ai init) and the agent project context (ai context)",
         "subtopics": {
           "llm": {
             "description": "Create, test, turn on/off and delete an LLM integration"
@@ -97,6 +97,9 @@
           },
           "service-user": {
             "description": "Create and delete AI service users, rotate and revoke their keys"
+          },
+          "trigger": {
+            "description": "One AI trigger (credits or quota warning / exhausted): show, save, turn on/off, delete"
           }
         }
       },
@@ -178,13 +181,16 @@
         }
       },
       "files": {
-        "description": "Upload, download and manage files",
+        "description": "Upload, download and manage files; the storage integrations; the files triggers",
         "subtopics": {
           "integrations": {
             "description": "List the files integrations; check the storage behind one"
           },
           "integration": {
             "description": "One files integration: show, save (keyless or key), test, turn on/off, default, delete"
+          },
+          "trigger": {
+            "description": "One files trigger (a file was stored or removed): show, save, turn on/off, delete"
           }
         }
       },
@@ -197,10 +203,13 @@
         }
       },
       "membership": {
-        "description": "Membership tools: the sign-in integrations, the password-reset e-mail test",
+        "description": "Membership tools: the sign-in integrations, the membership (end-user) triggers, the password-reset e-mail test",
         "subtopics": {
           "integration": {
             "description": "One sign-in integration: show, save, turn on/off, default, delete"
+          },
+          "trigger": {
+            "description": "One membership trigger (a user registered, was invited, verified, updated, deleted, blocked, reactivated or created): show, save, turn on/off, delete"
           }
         }
       },
@@ -214,6 +223,9 @@
                 "description": "Quick connect (one-click OAuth): start, finish with the picked account, disconnect"
               }
             }
+          },
+          "trigger": {
+            "description": "One payment trigger: show, save, turn on/off, delete"
           }
         }
       },
@@ -249,7 +261,7 @@
         "description": "Manage scheduler tasks"
       },
       "trigger": {
-        "description": "Read a trigger's runs, whatever its module: what fired, the result, who it ran as, what it produced"
+        "description": "A trigger's runs, the triggers that need attention, a trigger's definition, a pre-action code test and an execution-identity check — whatever its module"
       },
       "sms": {
         "description": "SMS module, integrations, templates and campaigns"
