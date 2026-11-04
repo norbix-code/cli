@@ -271,11 +271,12 @@ describe('payments trigger save', () => {
 })
 
 describe('payments trigger enable / disable / delete', () => {
-  for (const [sub, verb] of [['enable', 'PATCH'], ['disable', 'PATCH'], ['delete', 'DELETE']] as const) {
-    it(`${sub} puts the trigger id in the path and nothing else`, async () => {
+  for (const [sub, verb, suffix] of [['enable', 'PATCH', '/enable'], ['disable', 'PATCH', '/disable'], ['delete', 'DELETE', '']] as const) {
+    it(`${sub} puts the trigger id in the path and sends no body`, async () => {
       const call = await callOf(['trigger', sub, ID, ...(sub === 'enable' ? [] : ['--yes'])])
       expect(call.method).toBe(verb)
-      expect(call.path).toContain(`/triggers/${ID}`)
+      expect(call.path).toBe(`${P}/triggers/${ID}${suffix}`)
+      expect(call.body).toBeUndefined()
     })
   }
 })

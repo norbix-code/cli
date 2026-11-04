@@ -344,6 +344,72 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "ai trigger",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai trigger delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai trigger disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "ai trigger enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file:string",
+      "id:string",
+      "when:option",
+      "execution-identity:string",
+      "order:string",
+      "break-on-error:boolean",
+    ],
+    "id": "ai trigger save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "ai triggers",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": true,
     "flags": [
@@ -2553,6 +2619,73 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "files trigger",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "files trigger delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "files trigger disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "files trigger enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file:string",
+      "id:string",
+      "when:option",
+      "execution-identity:string",
+      "order:string",
+      "break-on-error:boolean",
+      "folder:string",
+    ],
+    "id": "files trigger save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "files triggers",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
       "remote",
     ],
     "destructive": false,
@@ -2916,6 +3049,72 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "membership password reset request",
     "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "membership trigger",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "membership trigger delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "membership trigger disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "membership trigger enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "file:string",
+      "id:string",
+      "when:option",
+      "execution-identity:string",
+      "order:string",
+      "break-on-error:boolean",
+    ],
+    "id": "membership trigger save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "membership triggers",
+    "supportsDryRun": false,
   },
   {
     "args": [
@@ -4634,6 +4833,53 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "sms unarchive",
     "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "triggerType",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "trigger attention",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "type:option",
+      "schema:string",
+    ],
+    "id": "trigger definition",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "type:option",
+      "action:string",
+      "execution-identity:string",
+    ],
+    "id": "trigger identity-check",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "type:option",
+      "code:string",
+      "file:string",
+      "new:string",
+      "old:string",
+      "event-kind:option",
+      "event-name:string",
+    ],
+    "id": "trigger pre-execute-test",
+    "supportsDryRun": false,
   },
   {
     "args": [
