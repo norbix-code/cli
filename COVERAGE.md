@@ -3,9 +3,10 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**287 endpoints have a dedicated CLI command (the sum of the table below;
-the line said 117 until the Project campaign, 2026-10-03, and had not kept
-up with the push / SMS / Email rows). Every SDK method (~180 hub +
+**325 endpoints have a dedicated CLI command (the sum of the table below;
+the line said 117 until the Project campaign, 2026-10-03, and 287 until the
+integrations campaign, 2026-11-03, which added the files / code / logs /
+membership integration commands and quick connect). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
 
 ```sh
