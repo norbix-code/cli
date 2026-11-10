@@ -360,30 +360,14 @@ describe('db trigger', () => {
     })
   })
 
-  // The queue of one record event: order (lower runs first) and breakOnError
-  // (stop the later triggers when this one fails) — gateway trigger-order-break.
-  it('create sends --order and --break-on-error, and they win over the file', async () => {
-    const ordered = join(dir, 'ordered-trigger.json')
-    writeFileSync(ordered, JSON.stringify({...trigger, order: 5, breakOnError: false}))
-    expect(await bodyOf(['trigger', 'create', '--file', ordered, '--order', '0', '--break-on-error'])).toEqual({
-      trigger: {type: 'Schema', ...trigger, order: 0, breakOnError: true},
-    })
-  })
-
-  it('create keeps order and breakOnError from the file when no flag is given', async () => {
-    const ordered = join(dir, 'ordered-trigger-2.json')
-    writeFileSync(ordered, JSON.stringify({...trigger, order: 2, breakOnError: true}))
-    expect(await bodyOf(['trigger', 'create', '--file', ordered])).toEqual({
-      trigger: {type: 'Schema', ...trigger, order: 2, breakOnError: true},
-    })
-  })
-
-  it('create --no-break-on-error turns the file\'s breakOnError off', async () => {
-    const ordered = join(dir, 'ordered-trigger-3.json')
-    writeFileSync(ordered, JSON.stringify({...trigger, order: 2, breakOnError: true}))
-    expect(await bodyOf(['trigger', 'create', '--file', ordered, '--no-break-on-error'])).toEqual({
-      trigger: {type: 'Schema', ...trigger, order: 2, breakOnError: false},
-    })
+  // Trigger order and breakOnError are gone (owner round 2026-11-05 item 58):
+  // every trigger of an event runs; ordered steps are a workflow.
+  it('create has no --order / --break-on-error any more: refused, nothing sent', async () => {
+    for (const flag of [['--order', '1'], ['--break-on-error']]) {
+      const {error} = await runCommand(['db', 'trigger', 'create', '--file', TRIGGER_FILE, ...flag, ...globalArgs])
+      expect(error?.message).toMatch(/Nonexistent flag/)
+    }
+    expect(calls).toHaveLength(0)
   })
 
   it('create takes a `db trigger <id> --json` answer: item unwrapped, thenAction saved as action', async () => {
@@ -393,12 +377,6 @@ describe('db trigger', () => {
     expect(await bodyOf(['trigger', 'create', '--file', read])).toEqual({
       trigger: {type: 'Schema', ...rest, action},
     })
-  })
-
-  it('create refuses a negative --order and sends nothing', async () => {
-    const {error} = await runCommand(['db', 'trigger', 'create', '--file', TRIGGER_FILE, '--order', '-1', ...globalArgs])
-    expect(error?.message).toMatch(/order/)
-    expect(calls).toHaveLength(0)
   })
 
   it('create reports a file that is not JSON and sends nothing', async () => {

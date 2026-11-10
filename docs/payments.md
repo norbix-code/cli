@@ -171,7 +171,7 @@ norbix payments order ord_2ToI…
 |---|---|---|
 | `norbix payments triggers` | list the payment triggers | `GET /triggers` |
 | `norbix payments trigger <id>` | show one trigger | `GET /triggers/{id}` |
-| `norbix payments trigger save --file <json> [--when <type>] [--id <id>] [--event <name>]... [--integration <id>]... [--order <n>] [--[no-]break-on-error]` | create or update a trigger | `POST /triggers` |
+| `norbix payments trigger save --file <json> [--when <type>] [--id <id>] [--event <name>]... [--integration <id>]...` | create or update a trigger | `POST /triggers` |
 | `norbix payments trigger enable <id>` | turn it on | `PATCH /triggers/{triggerId}/enable` |
 | `norbix payments trigger disable <id> [--yes]` | turn it off | `PATCH /triggers/{triggerId}/disable` |
 | `norbix payments trigger delete <id> [--yes]` | delete it | `DELETE /triggers/{triggerId}` |
@@ -196,8 +196,6 @@ shows. `type` (`Payments`) is filled in, and `when` defaults to
   trigger page builds them).
 
 `--event` and `--integration` (repeat for several) replace the file's lists.
-`--order` and `--break-on-error` set the trigger's place in the queue of the
-same event, as for `db trigger create`.
 
 ```json
 {"name": "Payment received", "events": ["payment_intent.succeeded"], "action": {"type": "WebhookCall"}}

@@ -120,14 +120,12 @@ describe('ai trigger save', () => {
 
   it('lets the flags override the file', async () => {
     const {body} = await callOf([
-      'trigger', 'save', '--file', triggerFile({order: 5}), '--id', ID, '--when', 'OnQuotaExhausted',
-      '--order', '1', '--break-on-error', '--execution-identity', 'default',
+      'trigger', 'save', '--file', triggerFile(), '--id', ID, '--when', 'OnQuotaExhausted',
+      '--execution-identity', 'default',
     ])
     expect(body?.trigger).toMatchObject({
       triggerId: ID,
       when: 'OnQuotaExhausted',
-      order: 1,
-      breakOnError: true,
       executionIdentityId: 'default',
     })
   })

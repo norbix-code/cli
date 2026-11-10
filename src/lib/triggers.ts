@@ -36,7 +36,7 @@ export const AI_TRIGGER_TYPES = ['OnCreditsWarning', 'OnCreditsExhausted', 'OnQu
 
 /** The part of every host trigger `save` help that is the same for files, membership and AI. */
 export const TRIGGER_SAVE_HELP = `The file holds the trigger: name, "when" (what fires it), the action ({type, ...})
-and optionally description, preExecuteCode, order and breakOnError — the same
+and optionally description and preExecuteCode — the same
 shape \`trigger definition <id> --type <type>\` prints. A file that holds the
 whole request ({"trigger": {...}}) or a \`trigger <id> --json\` answer works too.
 "type" is filled in when the file leaves it out; --when overrides the file.
@@ -46,25 +46,17 @@ The action: {"type": "Email" | "Sms" | "Push" | "WebhookCall" | "SseCall" |
 {"type": "Code", "functionRef": {"integrationId": "int_…", "functionId": "my-fn"}}.
 A Workflow action starts a workflow: {"type": "Workflow", "workflowRef": "wf_…"}.
 
---id sets triggerId (update instead of create), --order and --break-on-error
-set the trigger's place in the queue of the same event, --execution-identity
-says who the trigger runs as (leave it out for the project default).`
+--id sets triggerId (update instead of create), --execution-identity says who
+the trigger runs as (leave it out for the project default). Every trigger of an
+event runs; steps that must run in order are a workflow.`
 
-/** The flags every host trigger `save` shares: the file, --id, --when, who it runs as, the queue place. */
+/** The flags every host trigger `save` shares: the file, --id, --when, who it runs as. */
 export function triggerSaveFlags(whenTypes: string[], whenHelp: string) {
   return {
     file: Flags.string({required: true, description: 'Trigger JSON file (or `-` for stdin)'}),
     id: Flags.string({description: 'Trigger ID — set it to update instead of create'}),
     when: Flags.string({description: `What fires the trigger (overrides "when" in the file): ${whenHelp}`, options: whenTypes}),
     'execution-identity': executionIdentityFlag,
-    order: Flags.integer({
-      min: 0,
-      description: 'Place in the queue of the event: lower runs first, 0 or more (overrides "order" in the file)',
-    }),
-    'break-on-error': Flags.boolean({
-      allowNo: true,
-      description: 'Stop the later triggers of the same event when this one fails (overrides "breakOnError" in the file)',
-    }),
   }
 }
 
@@ -72,8 +64,6 @@ export interface TriggerSaveFlags {
   id?: string
   when?: string
   'execution-identity'?: string
-  order?: number
-  'break-on-error'?: boolean
 }
 
 /**
@@ -92,8 +82,6 @@ export function buildHostTrigger(
   if (flags.id) trigger.triggerId = flags.id
   if (flags.when) trigger.when = flags.when
   if (flags['execution-identity']) trigger.executionIdentityId = flags['execution-identity']
-  if (flags.order !== undefined) trigger.order = flags.order
-  if (flags['break-on-error'] !== undefined) trigger.breakOnError = flags['break-on-error']
 
   if (typeof trigger.when !== 'string' || trigger.when === '') {
     throw usageError(

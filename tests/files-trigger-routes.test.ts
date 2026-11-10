@@ -120,14 +120,12 @@ describe('files trigger save', () => {
 
   it('lets the flags override the file', async () => {
     const {body} = await callOf([
-      'trigger', 'save', '--file', triggerFile({order: 5}), '--id', ID, '--when', 'OnFileDeleted',
-      '--order', '1', '--break-on-error', '--execution-identity', 'default', '--folder', 'invoices',
+      'trigger', 'save', '--file', triggerFile(), '--id', ID, '--when', 'OnFileDeleted',
+      '--execution-identity', 'default', '--folder', 'invoices',
     ])
     expect(body?.trigger).toMatchObject({
       triggerId: ID,
       when: 'OnFileDeleted',
-      order: 1,
-      breakOnError: true,
       executionIdentityId: 'default', folder: 'invoices',
     })
   })

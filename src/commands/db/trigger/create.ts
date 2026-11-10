@@ -12,10 +12,8 @@ and an action ({type, ...}) — the same shape \`db trigger <id> --json\` shows.
 "type" is set to "Schema" when the file leaves it out. --schema sets schemaId,
 --id sets triggerId (update instead of create).
 
-When several triggers fire for the same record event they run as a queue:
---order sets the trigger's place (lower runs first; no order = after the
-numbered ones) and --break-on-error stops the later triggers when this one's
-action fails (--no-break-on-error turns it off). Both override the file.
+Every trigger of a record event runs; steps that must run in order are a
+workflow.
 
 --execution-identity says who the trigger runs as; leave it out for the
 project default. The Trigger subject audience works on membership triggers
@@ -27,7 +25,7 @@ only: a schema trigger refuses it.`
     'cat trigger.json | <%= config.bin %> db trigger create --file -',
     '<%= config.bin %> db trigger create --file trigger.json --dry-run',
     '<%= config.bin %> db trigger create --file trigger.json --execution-identity usr_66b2f0a1',
-    '<%= config.bin %> db trigger create --file trigger.json --id 66b2f0a1c3d4e5f6a7b8c9d0 --order 1 --break-on-error',
+    '<%= config.bin %> db trigger create --file trigger.json --id 66b2f0a1c3d4e5f6a7b8c9d0',
   ]
 
   static flags = {
@@ -36,14 +34,6 @@ only: a schema trigger refuses it.`
     schema: Flags.string({description: 'Schema ID (overrides schemaId in the file)'}),
     id: Flags.string({description: 'Trigger ID — set it to update instead of create'}),
     'execution-identity': executionIdentityFlag,
-    order: Flags.integer({
-      min: 0,
-      description: 'Place in the queue of the event: lower runs first, 0 or more (overrides "order" in the file)',
-    }),
-    'break-on-error': Flags.boolean({
-      allowNo: true,
-      description: 'Stop the later triggers of the same event when this one fails (overrides "breakOnError" in the file)',
-    }),
   }
 
   async run(): Promise<unknown> {
@@ -59,8 +49,6 @@ only: a schema trigger refuses it.`
     if (flags.schema) trigger.schemaId = flags.schema
     if (flags.id) trigger.triggerId = flags.id
     if (flags['execution-identity']) trigger.executionIdentityId = flags['execution-identity']
-    if (flags.order !== undefined) trigger.order = flags.order
-    if (flags['break-on-error'] !== undefined) trigger.breakOnError = flags['break-on-error']
 
     // The schema-trigger fields are not on the generated base type, so the
     // body is cast: the server picks the shape from `type`.
