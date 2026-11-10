@@ -4,7 +4,7 @@ import {join} from 'node:path'
 
 import {beforeEach, describe, expect, it} from 'vitest'
 
-import {claudeSkill, recipeBlock} from '../src/lib/agent-files.js'
+import {AGENT_FILES_VERSION, claudeSkill, recipeBlock} from '../src/lib/agent-files.js'
 import {seedDefaultHost} from '../test/seed.js'
 import {cli, makeHome, parseSingleJson} from './_cli.js'
 
@@ -126,7 +126,15 @@ describe('norbix ai init', () => {
     expect(skill).toContain('Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.')
     expect(skill).toContain('`norbix <command> ... --dry-run --json` prints the exact request and sends nothing — show it to the user.')
     expect(skill).not.toMatch(/--api-key|nbk_/)
-    expect(skill.split('\n').length).toBeLessThanOrEqual(75)
+    // Owner round 2026-11-05 (items 73 + 78): the skill carries the build checklist and two tiny
+    // examples (~30 lines), so its budget grew from 75; the short block only points at it.
+    expect(skill.split('\n').length).toBeLessThanOrEqual(105)
+    expect(skill).toContain('## Build checklist')
+    expect(skill).toContain('`@Model.Cmf.RenderProjectLogo("logo")`')
+    expect(skill).toContain('{"source":"user","displayField":"displayName","multiple":false}')
+    expect(skill).toContain('"meta":{"translateOptions":{"translatable":true}}')
+    expect(skill).toContain('Never build your own users, sessions or auth tables')
+    expect(bullets[2]).toContain('Follow its **Build checklist**')
 
     expect(readFileSync(join(project, '.cursor/rules/norbix.mdc'), 'utf8')).toContain(bullets[4])
   })
@@ -143,7 +151,7 @@ describe('norbix ai init', () => {
 
   it('--update rewrites an old block and skill in place, then has nothing to do', async () => {
     await cli(home, ['ai', 'init', '--dir', project])
-    const old = readFileSync(join(project, 'CLAUDE.md'), 'utf8').replace('<!-- norbix-cli:version 2 -->\n', '').replace('## Build on Norbix', '## Old text')
+    const old = readFileSync(join(project, 'CLAUDE.md'), 'utf8').replace(`<!-- norbix-cli:version ${AGENT_FILES_VERSION} -->\n`, '').replace('## Build on Norbix', '## Old text')
     writeFileSync(join(project, 'CLAUDE.md'), `# Mine\n\n${old}`)
     writeFileSync(join(project, '.claude/skills/norbix/SKILL.md'), 'stale')
 
