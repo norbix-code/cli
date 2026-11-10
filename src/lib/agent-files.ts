@@ -10,7 +10,7 @@ export const MARKER_START = '<!-- norbix-cli:start -->'
 export const MARKER_END = '<!-- norbix-cli:end -->'
 
 /** Raise it when the text below changes: `norbix ai init --update` compares it. */
-export const AGENT_FILES_VERSION = 2
+export const AGENT_FILES_VERSION = 3
 const VERSION_LINE = `<!-- norbix-cli:version ${AGENT_FILES_VERSION} -->`
 
 /** The version a file was written with; 0 when it has no version line (older CLI). */
@@ -52,6 +52,48 @@ function buildContract(): string[] {
   ]
 }
 
+/**
+ * The build checklist (owner feedback 2026-11-05, items 73 and 78): what agents got wrong when they built
+ * on Norbix. The Hub puts the same list into `norbix ai context` and the MCP instructions (gateway
+ * NorbixBuildContract.Checklist); change both together. Here each line also names the CLI command.
+ * The Claude Code skill carries it whole; the short block (CLAUDE.md, AGENTS.md, Cursor rule) points at
+ * the copy in `.norbix-ai/context.md`, so the block stays within its line budget.
+ */
+export function buildChecklist(): string[] {
+  return [
+    '## Build checklist',
+    '',
+    '- [ ] Brand first: save the project logo and main / accent colours before you write any email template (`norbix project set-logo --file-resource @logo.json`, `norbix project set-colors --main "#003E6B" --accent "#F7C948"`).',
+    '- [ ] Email templates use the Cmf helpers, not bare MJML: `@Model.Cmf.RenderProjectLogo("logo")`, `@Model.Cmf.BrandMainColorOrDefault("#003E6B")` / `BrandAccentColorOrDefault`, `@Model.Cmf.WriteSalutation("Hi", <name>)`, `@Model.Cmf.RenderSignature("<signature id>")`, `@Model.Cmf.RenderFooter("<footer id>")`.',
+    '- [ ] Read a marketplace / system template of the same kind before you write a new one, and start from it (`norbix email system-templates`, `norbix email system-template <id>`).',
+    '- [ ] Email copy lives in the template: bind data with template tokens and trigger event tokens (`@Model.User.FirstName`, `@Model.Record.New.<field>`; `norbix email template tokens <id>`); never store email text in records.',
+    '- [ ] A person is a Membership user picker field (`{"source":"user","displayField":"displayName","multiple":false}`), an email is a string with `"format":"email"` — never a plain string (`norbix db schema rules`).',
+    '- [ ] Text in several languages is one translatable field (`"meta":{"translateOptions":{"translatable":true}}`, values `{"en":"…","lt":"…"}`), never a separate language field or one record per language.',
+    '- [ ] Never build your own users, sessions or auth tables: Membership has native cookie sessions, password reset and email verification.',
+    '- [ ] Recurring or delayed work is a Scheduler task or a Workflow (`norbix scheduler save`, `norbix code workflows list`), never a polling job or a loop that checks the database.',
+    '',
+    '```html',
+    "<mj-section background-color='@Model.Cmf.BrandMainColorOrDefault(\"#003E6B\")'>",
+    '  <mj-column>@Model.Cmf.RenderProjectLogo("logo")</mj-column>',
+    '</mj-section>',
+    '<mj-section><mj-column>',
+    '  <mj-text>Your order @Model.Record.New.number is @Model.Record.New.status.</mj-text>',
+    '  @Model.Cmf.RenderSignature("<signature id>")',
+    '  @Model.Cmf.RenderFooter("<footer id>")',
+    '</mj-column></mj-section>',
+    '```',
+    '',
+    '```json',
+    '{"type":"object","properties":{',
+    '  "assignee":{"source":"user","displayField":"displayName","multiple":false},',
+    '  "contactEmail":{"type":"string","format":"email"},',
+    '  "title":{"type":"string","meta":{"translateOptions":{"translatable":true}}}',
+    '}}',
+    '```',
+    '',
+  ]
+}
+
 /** The recipe every target shares (Markdown, ~10 lines). */
 export function recipeBlock(): string {
   return [
@@ -64,7 +106,7 @@ export function recipeBlock(): string {
     '',
     '- Start with `norbix whoami --json`. `"auth": "none"` there (or exit code 4 from any other command) means not signed in. Sign in yourself in two steps: run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode` (they open it, check the code and pick the roles you get — an AI service user, removable under Account → AI service users), then run `norbix login --wait --json` until it exits 0. Exit 4 with `AUTHORIZATION_PENDING` means not approved yet: run `--wait` again; `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over. Their Norbix is not norbix.ai? Add `--host <their dashboard address>` to both steps.',
     '- Pass `--json` to every command whose output you read: stdout is then exactly one JSON document (a result, or `{"error": {code, message, exit, fieldErrors, hint, docs}}`).',
-    '- Project context (your projects, environments, regions, modules, integrations, CORS, languages — never secrets): read `.norbix-ai/context.md` when it is there; run `norbix ai context --write` at the start of a task and again after your context was compressed or summarized (`norbix login` refreshes it too).',
+    '- Project context (your projects, environments, regions, modules, integrations, CORS, languages — never secrets): read `.norbix-ai/context.md` when it is there; run `norbix ai context --write` at the start of a task and again after your context was compressed or summarized (`norbix login` refreshes it too). Follow its **Build checklist** before you write templates or schemas: brand first, Cmf helpers in email templates, start from a system template, tokens instead of stored copy, user picker / email / translatable fields, Membership sessions, Scheduler or Workflows instead of polling.',
     '- Discover, do not guess: `norbix schema --json` (every command, `destructive`, `supportsDryRun`), then `norbix <command> --help`. No named command? `norbix hub <module> --json` lists the SDK methods and their fields.',
     '- Before any change, run it with `--dry-run --json` (sends nothing) and show the user the request. Then re-run without `--dry-run`, adding `--yes` only for a destructive command (without it the command exits 3 and sends nothing).',
     '- Designing a database schema? Run `norbix db schema rules` first: emails and links need a format (`email` / `uri`), language / currency / country and every list people pick from are taxonomy pickers (enum only for developer flags), user ids are user references, no createdBy / owner fields. Fix every `warnings` entry a schema save returns.',
@@ -88,6 +130,7 @@ export function claudeSkill(): string {
     VERSION_LINE,
     '',
     ...buildContract(),
+    ...buildChecklist(),
     '# Norbix via the CLI',
     '',
     'Use the `norbix` command for everything on the Norbix backend. It is built for agents: one JSON document per call with `--json`, documented exit codes, `--dry-run` on every change, nothing destructive without `--yes`.',
