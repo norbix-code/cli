@@ -22,8 +22,7 @@ shows. "type" is set to "Payments" and "when" to "OnWebhookCallReceived" when
 the file leaves them out; --when overrides the file.
 
 --event and --integration (repeat for several) replace the file's lists, --id
-sets triggerId (update instead of create), --order and --break-on-error set the
-trigger's place in the queue of the same event.
+sets triggerId (update instead of create).
 
 --execution-identity says who the trigger runs as; leave it out for the
 project default. The Trigger subject audience works on membership triggers
@@ -49,14 +48,6 @@ only: a payment trigger refuses it.`
       description: 'Payments integration ID to listen to (repeat for several; overrides "integrations")',
     }),
     'execution-identity': executionIdentityFlag,
-    order: Flags.integer({
-      min: 0,
-      description: 'Place in the queue of the event: lower runs first, 0 or more (overrides "order" in the file)',
-    }),
-    'break-on-error': Flags.boolean({
-      allowNo: true,
-      description: 'Stop the later triggers of the same event when this one fails (overrides "breakOnError" in the file)',
-    }),
   }
 
   async run(): Promise<unknown> {
@@ -74,8 +65,6 @@ only: a payment trigger refuses it.`
     if (flags.event) trigger.events = flags.event
     if (flags.integration) trigger.integrations = flags.integration
     if (flags['execution-identity']) trigger.executionIdentityId = flags['execution-identity']
-    if (flags.order !== undefined) trigger.order = flags.order
-    if (flags['break-on-error'] !== undefined) trigger.breakOnError = flags['break-on-error']
 
     // The payment-trigger fields are not on the generated base type, so the
     // body is cast: the server picks the shape from `type`.

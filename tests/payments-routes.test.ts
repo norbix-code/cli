@@ -256,16 +256,13 @@ describe('payments trigger save', () => {
 
   it('lets the flags override the file', async () => {
     const {body} = await callOf([
-      'trigger', 'save', '--file', triggerFile({order: 5}), '--id', ID,
+      'trigger', 'save', '--file', triggerFile(), '--id', ID,
       '--event', 'charge.refunded', '--event', 'invoice.paid', '--integration', 'int_1',
-      '--order', '1', '--break-on-error',
     ])
     expect(body?.trigger).toMatchObject({
       triggerId: ID,
       events: ['charge.refunded', 'invoice.paid'],
       integrations: ['int_1'],
-      order: 1,
-      breakOnError: true,
     })
   })
 })

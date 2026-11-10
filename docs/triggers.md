@@ -16,8 +16,6 @@ commands at the end work on a trigger of any host.
   "when": "OnFileUploaded",
   "folder": "invoices",
   "action": {"type": "Email", "integrationId": "int_mail", "templateId": "tpl_invoice"},
-  "order": 0,
-  "breakOnError": false,
   "preExecuteCode": "return New.size < 10000000;"
 }
 ```
@@ -46,8 +44,7 @@ commands at the end work on a trigger of any host.
   <id> --json` answer or a `norbix trigger definition … --json` answer works
   too: read → edit → save with `--id`.
 - `--id` updates instead of creating (an update replaces the whole trigger),
-  `--order` and `--break-on-error` set the place in the queue of the same
-  event, `--execution-identity` says who the action runs as (`norbix
+  `--execution-identity` says who the action runs as (`norbix
   identities list`; leave it out for the project default). Check an identity
   first with `norbix trigger identity-check`.
 
@@ -57,7 +54,7 @@ commands at the end work on a trigger of any host.
 |---|---|---|
 | `norbix files triggers` | list the files triggers | `GET /files/triggers` |
 | `norbix files trigger <id>` | show one trigger | `GET /files/triggers/{id}` |
-| `norbix files trigger save --file <json> [--when <event>] [--folder <path>] [--id <id>] [--order <n>] [--[no-]break-on-error] [--execution-identity <usr>]` | create or update a trigger | `POST /files/triggers` |
+| `norbix files trigger save --file <json> [--when <event>] [--folder <path>] [--id <id>] [--execution-identity <usr>]` | create or update a trigger | `POST /files/triggers` |
 | `norbix files trigger enable <id>` | turn it on | `PATCH /files/triggers/{triggerId}/enable` |
 | `norbix files trigger disable <id> [--yes]` | turn it off | `PATCH /files/triggers/{triggerId}/disable` |
 | `norbix files trigger delete <id> [--yes]` | delete it | `DELETE /files/triggers/{triggerId}` |
@@ -79,7 +76,7 @@ norbix files trigger disable trg_123 --yes
 |---|---|---|
 | `norbix membership triggers` | list the membership triggers | `GET /membership/triggers` |
 | `norbix membership trigger <id>` | show one trigger | `GET /membership/triggers/{id}` |
-| `norbix membership trigger save --file <json> [--when <event>] [--id <id>] [--order <n>] [--[no-]break-on-error] [--execution-identity <usr>]` | create or update a trigger | `POST /membership/triggers` |
+| `norbix membership trigger save --file <json> [--when <event>] [--id <id>] [--execution-identity <usr>]` | create or update a trigger | `POST /membership/triggers` |
 | `norbix membership trigger enable <id>` | turn it on | `PATCH /membership/triggers/{triggerId}/enable` |
 | `norbix membership trigger disable <id> [--yes]` | turn it off | `PATCH /membership/triggers/{triggerId}/disable` |
 | `norbix membership trigger delete <id> [--yes]` | delete it | `DELETE /membership/triggers/{triggerId}` |
@@ -105,7 +102,7 @@ AI triggers have no portal screen: the CLI and the SDKs set them up.
 |---|---|---|
 | `norbix ai triggers` | list the AI triggers | `GET /ai/triggers` |
 | `norbix ai trigger <id>` | show one trigger | `GET /ai/triggers/{id}` |
-| `norbix ai trigger save --file <json> [--when <event>] [--id <id>] [--order <n>] [--[no-]break-on-error] [--execution-identity <usr>]` | create or update a trigger | `POST /ai/triggers` |
+| `norbix ai trigger save --file <json> [--when <event>] [--id <id>] [--execution-identity <usr>]` | create or update a trigger | `POST /ai/triggers` |
 | `norbix ai trigger enable <id>` | turn it on | `PATCH /ai/triggers/{triggerId}/enable` |
 | `norbix ai trigger disable <id> [--yes]` | turn it off | `PATCH /ai/triggers/{triggerId}/disable` |
 | `norbix ai trigger delete <id> [--yes]` | delete it | `DELETE /ai/triggers/{triggerId}` |

@@ -120,14 +120,12 @@ describe('membership trigger save', () => {
 
   it('lets the flags override the file', async () => {
     const {body} = await callOf([
-      'trigger', 'save', '--file', triggerFile({order: 5}), '--id', ID, '--when', 'OnUserCreated',
-      '--order', '1', '--break-on-error', '--execution-identity', 'default',
+      'trigger', 'save', '--file', triggerFile(), '--id', ID, '--when', 'OnUserCreated',
+      '--execution-identity', 'default',
     ])
     expect(body?.trigger).toMatchObject({
       triggerId: ID,
       when: 'OnUserCreated',
-      order: 1,
-      breakOnError: true,
       executionIdentityId: 'default',
     })
   })
