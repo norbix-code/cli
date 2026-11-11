@@ -1,5 +1,9 @@
 import {describe, expect, it} from 'vitest'
 
+import AccountBundles from '../src/commands/account/bundles.js'
+import AccountChangeBundle from '../src/commands/account/change-bundle.js'
+import AccountClusters from '../src/commands/account/clusters.js'
+import AccountClustersUpgrade from '../src/commands/account/clusters/upgrade.js'
 import AccountMe from '../src/commands/account/me.js'
 import AccountMeSetPhone from '../src/commands/account/me/set-phone.js'
 import AccountTeam from '../src/commands/account/team.js'
@@ -57,5 +61,46 @@ describe('account me set-phone', () => {
 
   it('refuses no phone and no --clear', async () => {
     await expect(run(AccountMeSetPhone, [])).rejects.toThrow(/Pass a phone number/)
+  })
+})
+
+describe('account bundles / change-bundle', () => {
+  it('bundles reads the list with no field', async () => {
+    const {calls} = await run(AccountBundles, [])
+    expect(calls).toEqual([{method: 'getManagedServiceBundles', request: {}}])
+  })
+
+  it('change-bundle maps the two flags to the gateway enums and says what the account is on', async () => {
+    const {calls, output} = await run(AccountChangeBundle, ['--bundle', 'scale', '--period', 'monthly', '--yes'])
+    expect(calls).toEqual([{method: 'changeManagedServiceBundle', request: {bundle: 'Scale', billingPeriod: 'Monthly'}}])
+    expect(output).toEqual(['The account is now on the Scale bundle, billed monthly.'])
+  })
+
+  it('change-bundle without --yes calls nothing', async () => {
+    const calls: RecordedCall[] = []
+    await expect(
+      runCommand(AccountChangeBundle, ['--bundle', 'scale', '--period', 'monthly'], {account: recordingNotifications(calls)}),
+    ).rejects.toThrow(/Confirmation required: Move the account to the Scale bundle, billed monthly\?/)
+    expect(calls).toEqual([])
+  })
+})
+
+describe('account clusters / clusters upgrade', () => {
+  it('clusters reads the list with no field', async () => {
+    const {calls} = await run(AccountClusters, [])
+    expect(calls).toEqual([{method: 'getFlexClusters', request: {}}])
+  })
+
+  it('clusters upgrade sends the cluster id and tierCode M10', async () => {
+    const {calls} = await run(AccountClustersUpgrade, ['fxc_1', '--yes'])
+    expect(calls).toEqual([{method: 'upgradeFlexCluster', request: {flexClusterId: 'fxc_1', tierCode: 'M10'}}])
+  })
+
+  it('clusters upgrade without --yes calls nothing', async () => {
+    const calls: RecordedCall[] = []
+    await expect(runCommand(AccountClustersUpgrade, ['fxc_1'], {account: recordingNotifications(calls)})).rejects.toThrow(
+      /Confirmation required: Move cluster fxc_1 to M10\?/,
+    )
+    expect(calls).toEqual([])
   })
 })
