@@ -135,6 +135,17 @@ describe('--dry-run', () => {
     expect(gateway.hits).toEqual([])
   })
 
+  it('users invite shows the roles it would send', async () => {
+    const r = await cli(home, ['users', 'invite', 'alice@example.com', '--role', 'Editor', '--role', 'Viewer,role_1', '--profile', 'x', '--dry-run', '--json'])
+    expect(r.code).toBe(0)
+    const doc = parseSingleJson(r.stdout) as {method: string; request: unknown; http: {method: string; url: string; body: unknown}}
+    expect(doc.method).toBe('api.membership.inviteUser')
+    expect(doc.request).toEqual({email: 'alice@example.com', roles: ['Editor', 'Viewer', 'role_1']})
+    expect(doc.http.method).toBe('POST')
+    expect(doc.http.url).toMatch(/\/v3\/membership\/auth\/invite$/)
+    expect(gateway.hits).toEqual([])
+  })
+
   it('scheduler save shows the whole task body it would send', async () => {
     const r = await cli(home, [
       'scheduler', 'save', '--name', 'Weekly', '--cron', '0 9 * * 1', '--initiator', 'usr_1',
