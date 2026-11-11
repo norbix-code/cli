@@ -2,7 +2,8 @@ import {Norbix} from '@norbix.ai/ts'
 
 import {BaseCommand, type DryRunValidation, type GlobalFlags} from '../base.js'
 import {usageError} from './cli-error.js'
-import {MODULE_ALIASES, camelSplit, isDestructive, matchMethods, parseArgv, typeFields} from './dispatch.js'
+import {MODULE_ALIASES, camelSplit, matchMethods, parseArgv, typeFields} from './dispatch.js'
+import {confirmMarker, confirmQuestion, confirmReason} from './guards.js'
 import {readJsonInput} from './json.js'
 import {describeFields, fieldKinds, methodInfo, type FieldKind} from './request-fields.js'
 import {printTemplateWarnings} from './campaigns.js'
@@ -102,10 +103,13 @@ export abstract class NamespaceCommand extends BaseCommand {
   /** What `--json` returns for one method: word form, route and request fields. */
   protected describeMethod(moduleName: string, method: string, hide: Set<string>): Record<string, unknown> {
     const info = methodInfo(this.target, moduleName, method)
+    // `destructive` = asks first; `confirm` says why (billing, delete, destructive).
+    const reason = confirmReason(this.target, moduleName, method)
     return {
       method,
       words: this.wordForm(method, moduleName, hide),
-      destructive: isDestructive(method),
+      destructive: reason !== undefined,
+      ...(reason ? {confirm: reason.kind} : {}),
       http: info?.http,
       path: info?.path,
       fields: info?.fields ?? [],
@@ -133,7 +137,7 @@ export abstract class NamespaceCommand extends BaseCommand {
     const rows = list
       .map((m) => {
         const form = this.wordForm(m, moduleName, hide)
-        const marker = isDestructive(m) ? '  (asks confirmation)' : ''
+        const marker = confirmMarker(confirmReason(this.target, moduleName, m))
         const fields = describeFields(methodInfo(this.target, moduleName, m))
         return `  norbix ${this.target} ${moduleWord} ${form}${marker}${fields ? `\n      fields: ${fields}` : ''}`
       })
@@ -238,8 +242,11 @@ export abstract class NamespaceCommand extends BaseCommand {
     // Context (auth, region, project) is resolved before any confirmation or
     // dry run, so a dry run that would fail for real fails here too.
     const client = this.client(flags)
-    if (isDestructive(method)) {
-      await this.confirmOrFail(`Run ${method}(${JSON.stringify(request)})?`, flags)
+    // Billing calls, deletes (HTTP DELETE or listed) and the destructive verbs
+    // ask first — see lib/guards.ts. Only here: named commands ask on their own.
+    const reason = confirmReason(this.target, moduleName, method)
+    if (reason) {
+      await this.confirmOrFail(confirmQuestion(reason, method, request), flags)
     }
 
     if (flags['dry-run'] && this.target === 'hub' && method === 'applyDatabaseSchemaBundle') {

@@ -286,7 +286,10 @@ export abstract class BaseCommand extends Command {
     }),
   }
 
-  /** Flags of a destructive command (delete, stop, regenerate, block, disable): confirmation + dry run. */
+  /**
+   * Flags of a command that asks first — a destructive one (delete, stop, regenerate, block, disable),
+   * or `hub` / `api` / `raw`, which ask before a billing call and every delete: confirmation + dry run.
+   */
   static mutatingFlags = {
     yes: Flags.boolean({
       char: 'y',

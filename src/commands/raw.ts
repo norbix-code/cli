@@ -1,6 +1,7 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../base.js'
+import {rawConfirmQuestion, rawConfirmReason} from '../lib/guards.js'
 import {parseBody, responseError} from '../lib/http-response.js'
 import {readJsonInput} from '../lib/json.js'
 
@@ -15,12 +16,22 @@ export default class Raw extends BaseCommand {
 Prefer \`norbix hub ...\` / \`norbix api ...\` — they take plain words.
 Use this only for endpoints the SDK does not know yet. Sends your auth token
 plus project/account/env/region (and --language as Accept-Language) headers automatically. Use {version} in the
-path and it becomes v3.`
+path and it becomes v3.
+
+Two kinds of call ask first, as \`norbix hub\` / \`norbix api\` do: every
+--method DELETE, and the calls that change what the account pays or delete
+with another verb (the Stripe bundle change and checkout, the Flex cluster
+upgrade, the AI credit checkout, logs clean, a passkey revoke). In a terminal
+you answer y/N; without one (a script, CI, --json) the command exits 3 and
+sends nothing unless you pass --yes. Check with --dry-run first: it prints
+the request and sends nothing, and never asks.`
 
   static examples = [
     '<%= config.bin %> raw /v3/logs/settings',
     `<%= config.bin %> raw '/{version}/database/collections/orders/count' --api --query filter='{"status":"paid"}'`,
     `<%= config.bin %> raw /v3/scheduler/tasks --method POST --body '{"name":"nightly","cronExpression":"0 2 * * *"}' --dry-run`,
+    '<%= config.bin %> raw /v3/scheduler/tasks/66b2f0a1c3d4e5f6a7b8c9d0 --method DELETE --dry-run   # preview: sends nothing',
+    '<%= config.bin %> raw /v3/scheduler/tasks/66b2f0a1c3d4e5f6a7b8c9d0 --method DELETE --yes       # then apply',
   ]
 
   static args = {
@@ -28,7 +39,7 @@ path and it becomes v3.`
   }
 
   static flags = {
-    ...BaseCommand.dryRunFlags,
+    ...BaseCommand.mutatingFlags,
     api: Flags.boolean({description: 'Call the data-plane API service instead of the hub (hub is the default)', default: false}),
     method: Flags.string({char: 'X', description: 'HTTP method', default: 'GET', options: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']}),
     body: Flags.string({char: 'b', description: 'JSON request body (inline, @file or `-` for stdin)'}),
@@ -80,6 +91,11 @@ path and it becomes v3.`
         http: {method: flags.method, url: url.toString(), headers: {...headers, Authorization: 'Bearer ***'}, body: body === undefined ? undefined : (JSON.parse(body) as unknown)},
       })
     }
+
+    // A delete or a billing call asks first (lib/guards.ts); the path is judged
+    // as typed, the query string is not part of it.
+    const reason = rawConfirmReason(flags.method, path)
+    if (reason) await this.confirmOrFail(rawConfirmQuestion(reason, flags.method, path), flags)
 
     const res = await fetch(url, {method: flags.method, headers, body})
     if (!res.ok) throw responseError(res.status, parseBody(await res.text()), url.toString(), res.headers.get('retry-after') ?? undefined)
