@@ -1904,6 +1904,28 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "on:boolean",
+      "off:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "email click-tracking",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "file",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "email clicks import",
+    "supportsDryRun": true,
+  },
+  {
     "args": [
       "id",
     ],

@@ -1,3 +1,7 @@
+import {mkdtempSync, writeFileSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+
 import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 import {envListAnswer} from './_env.js'
@@ -55,10 +59,16 @@ const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '-
 
 const P = '/v3/notifications/email'
 
+/** A one-row clicks file for `clicks import` (no spaces in the path: runCommand splits argv on them). */
+const CLICKS_FILE = join(mkdtempSync(join(tmpdir(), 'norbix-clicks-')), 'clicks.csv')
+writeFileSync(CLICKS_FILE, 'nblid\nntf_1.0.1.m\n')
+
 /** [argv, verb, path] — argv without the leading `email`. */
 const routes: Array<[string[], string, string]> = [
   // Module
   [['settings'], 'GET', `${P}/settings`],
+  [['click-tracking', '--on'], 'PATCH', `${P}/settings/click-tracking`],
+  [['clicks', 'import', CLICKS_FILE], 'POST', `${P}/clicks`],
   [['enable'], 'PUT', `${P}/enable`],
   [['disable', '--yes'], 'PUT', `${P}/disable`],
   [['disable-dependencies'], 'GET', `${P}/disable-dependencies`],
@@ -133,16 +143,17 @@ describe('every email command reaches its route', () => {
   }
 })
 
-it('covers 48 of the 51 Email routes', () => {
-  // The gateway's Hub.Emails project has 51 [Route] attributes; the manifest
-  // (sdks/typegen/coverage/endpoints.hub.json) lists 49 of them (it leaves out
-  // the one-click unsubscribe and the Mailgun webhook). Three have no command
-  // on purpose — see "No command on purpose" in docs/email.md:
-  // GET /{version}/email/preferences, POST /{version}/email/one-click-unsubscribe,
-  // POST /{version}/email/webhooks/mailgun/{projectId}/{integrationId}.
+it('covers 50 of the 57 Email routes in this table', () => {
+  // The gateway's Hub.Emails projects have 57 [Route] attributes (recounted
+  // for the click-id round, 2026-11-11). This table runs 50 of them. One more
+  // has a command that is not an SDK call: `retry-failed`
+  // (tests/notifications-retry.test.ts). Six have no command on purpose — see
+  // "No command on purpose" in docs/email.md: GET /{version}/email/preferences,
+  // POST /{version}/email/one-click-unsubscribe and the four provider
+  // webhooks POST /{version}/email/webhooks/{mailgun|ses-sns|sendgrid|azure-eventgrid}/….
   // The two `preview` rows (hash and --notification) share one route, so count
-  // distinct verb + path pairs: 49 rows, 48 routes.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(48)
+  // distinct verb + path pairs: 51 rows, 50 routes.
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(50)
 })
 
 /** Run a command and return the one request body it sent. */

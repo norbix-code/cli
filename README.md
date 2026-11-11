@@ -59,7 +59,7 @@ norbix scheduler list
 | `norbix scheduler list/get/save/enable/disable/delete` | Scheduler tasks — a cron that sends an email campaign; every scheduler endpoint, see [docs/scheduler.md](docs/scheduler.md) |
 | `norbix apikeys list/create/regenerate/revoke` | Service-user API keys for scripts, CI, SDKs and agents |
 | `norbix webhooks show/secret/enable/disable/remove` | Inspect the webhook integration |
-| `norbix email ...` | Email module, integrations, validation, footers, signatures, templates, campaigns, preview — every Email endpoint a developer calls, see [docs/email.md](docs/email.md) |
+| `norbix email ...` | Email module, integrations, validation, footers, signatures, templates, campaigns, preview, click ids (`click-tracking`, `clicks import`) — every Email endpoint a developer calls, see [docs/email.md](docs/email.md) |
 | `norbix push ...` | Push module, integrations, devices, templates, campaigns — every push endpoint, see [docs/push.md](docs/push.md) |
 | `norbix sms ...` | SMS module, integrations, templates, campaigns — every SMS endpoint, see [docs/sms.md](docs/sms.md) |
 | `norbix account profile/status/usage/projects/team/regions/billing-portal/me` | Account-level info; `account team` pages and filters, `account me set-phone` saves the phone "Account users" SMS campaigns use — see [docs/account.md](docs/account.md) |

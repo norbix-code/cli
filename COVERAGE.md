@@ -3,13 +3,16 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**353 endpoints have a dedicated CLI command (the sum of the table below;
+**356 endpoints have a dedicated CLI command (the sum of the table below;
 the line said 117 until the Project campaign, 2026-10-03, 287 until the
 integrations campaign, 2026-11-03, which added the files / code / logs /
 membership integration commands and quick connect, and 325 until the triggers
 campaign, 2026-11-04, which added the files / membership / AI trigger commands
 and the shared trigger routes, and 349 until the bundles and Flex clusters
-round, 2026-11-11, which added four account commands). Every SDK method (~180 hub +
+round, 2026-11-11, which added four account commands, and 353 until the email
+click-id round, 2026-11-11, which added the two click-id routes and recounted
+the email row against the gateway: `retry-failed` and three provider webhooks
+were missing from it). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
 
 ```sh
@@ -36,7 +39,7 @@ out of reach.
 | membership/integrations (sign-in providers) | 7/7 | list, get, save, enable, disable, default, delete — `docs/integrations.md`, `tests/membership-integration-routes.test.ts` |
 | membership/triggers | 6/6 | list, get, save, enable, disable, delete — `docs/triggers.md`, each run through the real transport in `tests/membership-trigger-routes.test.ts` |
 | code/integrations | 8/8 | list, get, save, test, confirm-delivery, enable, disable, delete — `docs/integrations.md`, `tests/code-integration-routes.test.ts` |
-| notifications/email | 48/51 | every endpoint except the three recipient / provider callbacks — see `docs/email.md`; each command is run through the real transport in `tests/email-routes.test.ts` |
+| notifications/email | 51/57 | every endpoint except the six recipient / provider callbacks (preferences page, one-click unsubscribe, four provider webhooks) — see `docs/email.md`; each command is run through the real transport in `tests/email-routes.test.ts` (`retry-failed` in `tests/notifications-retry.test.ts`), the click-id commands also in `tests/email-clicks.test.ts` |
 | notifications/push | 37/37 | every endpoint — see `docs/push.md`; each command is run through the real transport in `tests/push-routes.test.ts` |
 | notifications/sms | 34/34 | every endpoint — see `docs/sms.md`; each command is run through the real transport in `tests/sms-routes.test.ts` |
 | scheduler | 8/8 | every endpoint, `save` included (email-campaign task built from flags) — see `docs/scheduler.md`; each command is run through the real transport in `tests/scheduler-routes.test.ts`, with the exact `save` body |
