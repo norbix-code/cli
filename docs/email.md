@@ -217,6 +217,43 @@ still need `--region`). `email preview --notification <id>` is the signed-in
 way for your own project and needs a login with `email:read`. A `401` means the
 link is invalid or expired, or you may not read that e-mail.
 
+## Click ids (`nblid`)
+
+When the project's switch is on, every web link of a **marketing** e-mail gets
+`?nblid=<click id>` (transactional and system mail, unsubscribe / preference
+links and links marked `data-nblid="off"` are never changed). Norbix does not
+see the click itself: **clicks come back only from sites you own** — your pages,
+server logs or analytics read the `nblid` from the opened link and send it back.
+Only e-mails sent while the switch is on carry click ids.
+
+| command | what it does | endpoint |
+|---|---|---|
+| `norbix email click-tracking` | show the current value (the project's `emailClickTracking`, read with `GET /account/projects/{projectId}`; off by default) and the warning above | — |
+| `norbix email click-tracking --on\|--off [--dry-run]` | switch click ids on or off | `PATCH /settings/click-tracking` |
+| `norbix email clicks import <file> [--dry-run]` | send clicks back: a JSON array (`[{"nblid", "url", "clickedAt", "userAgent"}]`, or the request body `{"clicks": [...]}`) or a CSV whose header names the columns `nblid, url, clickedAt, userAgent` (any order and case; only `nblid` is required; quoted fields may hold commas). Sent in batches of at most 500. Prints recorded / duplicates / flagged / rejected and every rejected row (numbered from 1, the CSV header not counted) with its reason; `--json` adds the gateway's answer per batch (`answers`, with each click's campaign, notification, link index and `to[]`) | `POST /clicks` |
+
+```bash
+norbix email click-tracking --on
+norbix email clicks import clicks.csv
+norbix email clicks import clicks.json --json
+```
+
+- Every row is checked before anything is sent: an empty file, a CSV with no
+  `nblid` column or an unknown column, a row with no `nblid`, a `clickedAt` that
+  is not a time — nothing is sent, exit 2.
+- Reasons for a rejected row: `not-valid` (the click id was not made for this
+  project and environment — check `--project` and `--env`), `not-found` (no such
+  e-mail), `in-future` (`clickedAt` more than 5 minutes ahead). A recorded click
+  that looks like a mail scanner is kept but `flagged` (`suspected-scanner`,
+  with `flagReason` user-agent / too-soon / burst). Rejected rows do not change
+  the exit code (0).
+- Running the same file again is safe: the same `nblid`, `url` and `clickedAt`
+  answers `duplicate`. A row with no `clickedAt` is stamped "now" by the gateway,
+  so it is recorded again on a second run; the command prints a note counting
+  such rows.
+- If a later batch fails, the error's hint says how many clicks were already
+  sent (`context.sent` / `context.total` in `--json`); re-run the whole file.
+
 ## No command on purpose
 
 These Email routes exist in the gateway, but nobody runs them from a terminal:
@@ -226,6 +263,7 @@ These Email routes exist in the gateway, but nobody runs them from a terminal:
 | `GET /{version}/email/preferences?token=…` | The recipient's own preferences page. The token comes from the Preferences / Unsubscribe link inside one received e-mail and the page is opened by that person in a browser, not by a developer of the project. The SDKs have `getEmailPreferencesByLink` for a custom page. |
 | `POST /{version}/email/one-click-unsubscribe` | The RFC 8058 one-click unsubscribe: the recipient's mail client (Gmail, Outlook) posts the encrypted token from the `List-Unsubscribe` header. A command would only unsubscribe a real recipient by hand. |
 | `POST /{version}/email/webhooks/mailgun/{projectId}/{integrationId}` | Mailgun calls it with delivery events, signed with the integration's webhook signing key. A person never calls it; the SDKs have no method for it. |
+| `POST /{version}/email/webhooks/{ses-sns\|sendgrid\|azure-eventgrid}/{projectId}/{integrationId}` | The provider calls it with delivery reports (see `--delivery-events` on `integration save`); signatures are verified. A person never calls it. |
 
 ## Not offered on purpose
 
