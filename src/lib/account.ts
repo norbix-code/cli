@@ -1,5 +1,4 @@
-import {CliError} from './cli-error.js'
-import {EXIT} from './exit-codes.js'
+import {CliError, toEnvelope} from './cli-error.js'
 
 /**
  * Tables and wording of the account billing commands: the Managed Service
@@ -38,6 +37,9 @@ export const BUNDLES = {starter: 'Starter', growth: 'Growth', scale: 'Scale'} as
 
 /** Flag value → the gateway's `SubscriptionBillingPeriod`. */
 export const BILLING_PERIODS = {monthly: 'Monthly', annual: 'Annual'} as const
+
+/** Flag value → the word in a sentence: "billed monthly", "billed annually". */
+export const BILLED = {monthly: 'monthly', annual: 'annually'} as const
 
 /** The only tier a cluster can be moved to. */
 export const UPGRADE_TIER = 'M10'
@@ -102,20 +104,16 @@ export function formatClusters(res: unknown): string {
 }
 
 /**
- * The gateway's refusal of a bundle that is too small, as a CLI error: its
- * own message (it says how many projects to disable) and what to run next.
- * Any other error comes back unchanged.
+ * The gateway's refusal of a bundle that is too small, as a CLI error: the
+ * same envelope (its message says how many projects to disable; the numbers
+ * are in the context) with a hint that names what to run next. Any other
+ * error comes back unchanged.
  */
-export function explainBundleRefusal(error: unknown): unknown {
-  const err = error as {code?: string; message?: string; status?: number; fieldErrors?: Array<{errorCode?: string; meta?: Record<string, unknown>}>}
-  const item = err?.fieldErrors?.find((i) => i.errorCode === BUNDLE_TOO_SMALL_CODE)
-  if (err?.code !== BUNDLE_TOO_SMALL_CODE && !item) return error
+export function explainBundleRefusal(error: unknown, command: string): unknown {
+  const envelope = toEnvelope(error, {command})
+  if (envelope.code !== BUNDLE_TOO_SMALL_CODE) return error
   return new CliError({
-    exit: EXIT.VALIDATION,
-    code: BUNDLE_TOO_SMALL_CODE,
-    message: err.message ?? 'The bundle allows fewer enabled projects than the account has.',
-    status: err.status,
-    context: item?.meta,
+    ...envelope,
     hint: 'Turn projects off with `norbix project disable --project <id> --yes` (list them: `norbix account projects`), then run the command again.',
   })
 }

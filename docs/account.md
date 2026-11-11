@@ -65,7 +65,9 @@ Scale    30        399.00 USD  3990.00 USD
 period. It changes what the account pays, so it asks first: `--yes` skips the
 question, a shell with no terminal and no `--yes` exits 3 and sends nothing,
 `--dry-run` prints the request and sends nothing. Both `--bundle` and
-`--period` are needed, also when only one of them changes.
+`--period` are needed, also when only one of them changes. The change is sent
+to Stripe and the account follows when Stripe has confirmed it, so
+`account status` can show the old bundle for a short time.
 
 A bundle that allows fewer enabled projects than the account has now is
 refused with `CM-ERRORS-ACCOUNT-023` (exit 6). The CLI prints the server's
@@ -89,9 +91,9 @@ norbix account change-bundle --bundle growth --period annual --yes
 cluster can hold the databases of several projects and environments.
 
 ```
-ID         NAME    REGION         TIER  STATUS  DATABASES  NEAR LIMIT
-fxc_1a2b   Shared  nb-eu-germany  FLEX  Active  3          Storage
-fxc_3c4d   Shop    nb-eu-germany  M10   Active  1          -
+ID        NAME    REGION         TIER  STATUS  DATABASES  NEAR LIMIT
+fxc_1a2b  Shared  nb-eu-germany  FLEX  Active  3          Storage
+fxc_3c4d  Shop    nb-eu-germany  M10   Active  1          -
 ```
 
 - TIER is `FLEX` or `M10`; STATUS is `Empty`, `Provisioning`, `Active` or `Failed`.
@@ -115,7 +117,12 @@ norbix account clusters upgrade fxc_2ToIiRM03X63TZaJ2dJdv2 --dry-run
 norbix account clusters upgrade fxc_2ToIiRM03X63TZaJ2dJdv2 --yes
 ```
 
-There is no command that creates a Norbix-managed database, so the CLI has no
-`--flex-cluster-id` / `--cluster-name` flags: choosing a cluster for a new
-database is done in the dashboard (see "No command on purpose" in
-[database.md](database.md)).
+There is no named command that saves a Norbix-managed database integration,
+creates a project or creates an environment, so the CLI has no
+`--flex-cluster-id` / `--cluster-name` flags. A new database is placed on a
+cluster in the dashboard (see "No command on purpose" in
+[database.md](database.md)). The generic call sends the body as written, so
+the two fields `flexClusterId` (reuse that cluster) and `clusterDisplayName`
+(name of a new cluster) can go in the `integration` object of
+`norbix hub database integration save --body '<json>'`; send one of them, not
+both.

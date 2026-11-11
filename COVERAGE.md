@@ -3,12 +3,13 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**349 endpoints have a dedicated CLI command (the sum of the table below;
+**353 endpoints have a dedicated CLI command (the sum of the table below;
 the line said 117 until the Project campaign, 2026-10-03, 287 until the
 integrations campaign, 2026-11-03, which added the files / code / logs /
 membership integration commands and quick connect, and 325 until the triggers
 campaign, 2026-11-04, which added the files / membership / AI trigger commands
-and the shared trigger routes). Every SDK method (~180 hub +
+and the shared trigger routes, and 349 until the bundles and Flex clusters
+round, 2026-11-11, which added four account commands). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
 
 ```sh
@@ -42,7 +43,7 @@ out of reach.
 | webhooks | 6/9 | show, secret, rotate, enable/disable/remove destination |
 | payments | 26/26 | every endpoint a person calls (the inbound provider webhook is called by the provider), the three quick-connect routes included (they are in the gateway's `[Route]` list but not in the manifest) — see `docs/payments.md`; each command is run through the real transport in `tests/payments-routes.test.ts`, the quick-connect bodies in `tests/integrations-connect.test.ts` |
 | integrations/connect (shared quick-connect routes) | 2/4 | providers, targets — `docs/integrations.md`, `tests/integrations-connect.test.ts`. Not commands: the provider callback and the dev-fake authorize page |
-| account/* | 16/68 | profile, status, usage, projects, team (paging + project / owner filters), regions, billing-portal, api keys, me, me set-phone, bundles, change-bundle, clusters, clusters upgrade — see `docs/account.md`; team / me / set-phone / bundles / change-bundle / clusters / clusters upgrade run through the real transport in `tests/account-routes.test.ts`. Missing: team roles/policies management |
+| account/* | 16/68 (the four bundle and cluster routes of 2026-11-11 are added to both numbers; they are newer than the docs count) | profile, status, usage, projects, team (paging + project / owner filters), regions, billing-portal, api keys, me, me set-phone, bundles, change-bundle, clusters, clusters upgrade — see `docs/account.md`; team / me / set-phone / bundles / change-bundle / clusters / clusters upgrade run through the real transport in `tests/account-routes.test.ts`. Missing: team roles/policies management |
 | account/projects (settings, CORS, admin portal, legal, AI chat) | 30/30 | every project route in `@norbix.ai/ts` 4.4.0 a developer calls (28 hub + the 2 public API-host reads) — see `docs/project.md`; each command is run through the real transport in `tests/project-routes.test.ts`. Not counted: create project, environments, notification groups/tags, AI plans/knowledge/credits (internal), expose brand/auth (next wave) |
 | ai/integrations (LLM, MCP) | 15/20 | every LLM and MCP route — see `docs/ai.md`, same route test. Missing: the 5 embedding-integration routes (not asked for; `norbix hub ai …` reaches them) |
 | account/ai/service-users | 5/5 | list, create, delete, rotate-key, revoke-key — see `docs/ai.md`, same route test |
