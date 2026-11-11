@@ -79,10 +79,13 @@
     ],
     "topics": {
       "account": {
-        "description": "Account profile, projects, team, usage, billing",
+        "description": "Account profile, projects, team, usage, billing, Managed Service bundles, Norbix-managed Atlas clusters",
         "subtopics": {
           "me": {
             "description": "Your own team-member record and phone number"
+          },
+          "clusters": {
+            "description": "The account's Norbix-managed Atlas clusters: list, upgrade one to M10"
           }
         }
       },
