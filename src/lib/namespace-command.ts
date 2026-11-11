@@ -103,7 +103,7 @@ export abstract class NamespaceCommand extends BaseCommand {
   /** What `--json` returns for one method: word form, route and request fields. */
   protected describeMethod(moduleName: string, method: string, hide: Set<string>): Record<string, unknown> {
     const info = methodInfo(this.target, moduleName, method)
-    // `destructive` = asks first; `confirm` says why (billing, delete, destructive).
+    // `destructive` = asks first; `confirm` says why (billing, delete, destructive, unknown).
     const reason = confirmReason(this.target, moduleName, method)
     return {
       method,

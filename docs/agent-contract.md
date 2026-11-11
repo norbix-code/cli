@@ -164,6 +164,11 @@ command that makes several calls (`files upload`) shows the first.
     `revokeAccountPasskey` (hub) and `revokePasskey` (api).
   - `destructive` — the first word of the method name is `delete`, `remove`,
     `clean`, `stop`, `disable`, `block`, `regenerate` or `rotate`.
+  - `unknown` — the CLI does not know what kind of request the method sends
+    (it is not in the generated request map), so it asks. Today: six
+    hand-written SDK helpers (`api auth signIn`, `browserSignIn`,
+    `sessionSignInBody`, `signOut`, `api logs write`,
+    `hub code getMarketplaceFunctionRunDetails`).
 
   `norbix raw` has a path and no method, so it judges the request: every
   `--method DELETE` asks, and so does a `POST` to one of these routes (after
