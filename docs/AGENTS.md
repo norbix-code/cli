@@ -166,6 +166,22 @@ Show the dry run to the user before the real call. A **destructive**
 command (`destructive: true` in the schema) additionally needs `--yes`; without it, and without a terminal, it exits 3 and sends
 nothing. Never add `--yes` to a first attempt — dry-run first.
 
+The generic commands follow the same rule. `norbix hub` / `norbix api` ask
+before a call that changes what the account pays, before every delete (any
+endpoint sent with the HTTP verb `DELETE`, whatever its name, plus logs
+clean and a passkey revoke) and before a method whose first word is delete,
+remove, clean, stop, disable, block, regenerate or rotate:
+`norbix hub <module> --json` has `destructive: true` and
+`confirm: billing | delete | destructive` on each of them. `norbix raw` asks
+before every `--method DELETE` and before the billing routes. Preview, then
+apply:
+
+```sh
+norbix hub database schema draft discard 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run --json
+# show the request to the user; after they agreed:
+norbix hub database schema draft discard 66b2f0a1c3d4e5f6a7b8c9d0 --yes --json
+```
+
 ## 5. Branch on the exit code
 
 | exit | meaning | next step |

@@ -146,14 +146,57 @@ command that makes several calls (`files upload`) shows the first.
 
 - **Destructive** (`destructive: true` in the schema; take `--yes` and
   `--dry-run`): `delete`, `stop`, `regenerate`, `rotate`, `block`,
-  `disable`, `remove`, `db update --many`, `db delete`, and any `hub` /
-  `api` method whose verb is one of those.
+  `disable`, `remove`, `db update --many`, `db delete`, and the generic
+  commands below.
+- **`hub`, `api` and `raw` ask before a billing call and before every
+  delete.** `norbix hub <module> --json` marks each method that asks with
+  `destructive: true` and says why in `confirm`:
+  - `billing` — it changes what the account pays:
+    `changeManagedServiceBundle`, `upgradeFlexCluster`,
+    `createStripeCheckoutSession`, `createAiCreditPackCheckout` (all on the
+    hub). The reads next to them (`getManagedServiceBundles`,
+    `getAccountStatus`, `getFlexClusters`, `getStripeBillingPortalUrl`) do
+    not ask.
+  - `delete` — the endpoint's HTTP verb is `DELETE`, whatever the method is
+    called (`discardDatabaseSchemaDraft`, `cancelTeamInvitation`,
+    `revokeAiServiceUserKey`, `forgetChatMemory`, `clearRegime`, …), or it
+    is one of three deletes sent with `POST`: `cleanLogs`,
+    `revokeAccountPasskey` (hub) and `revokePasskey` (api).
+  - `destructive` — the first word of the method name is `delete`, `remove`,
+    `clean`, `stop`, `disable`, `block`, `regenerate` or `rotate`.
+
+  `norbix raw` has a path and no method, so it judges the request: every
+  `--method DELETE` asks, and so does a `POST` to one of these routes (after
+  the `/v3` prefix; a trailing slash and the query string do not matter, and
+  `{…}` is one path segment): `/account/stripe/change-bundle`,
+  `/account/flex-clusters/{id}/upgrade`,
+  `/account/stripe/create-checkout-session`,
+  `/account/projects/{projectId}/ai/credits/checkout`, `/logs/clean`,
+  `/account/userauth/passkeys/{id}/revoke`,
+  `/membership/userauth/passkeys/{id}/revoke`. Any other `raw` call runs
+  with no question.
+
+  Preview, then apply — the dry run never asks and sends nothing:
+
+  ```sh
+  norbix hub account changeManagedServiceBundle --bundle Growth --billingPeriod Annual --dry-run --json
+  # show "http" and "request" to the user; after they agreed:
+  norbix hub account changeManagedServiceBundle --bundle Growth --billingPeriod Annual --yes --json
+  ```
+
+  Without `--yes` and without a terminal the second command exits 3 with
+  `Confirmation required: changeManagedServiceBundle changes what the account
+  pays. …` and the hint `Re-run with --yes. Preview first with --dry-run.`
+  Prefer the named commands where there is one (`account change-bundle`,
+  `account clusters upgrade`, `db schema discard`, `logs clean`): their
+  question says what will change.
 - **Mutating** (`supportsDryRun: true`, no confirmation): `create`,
   `insert`, `update --id`, `replace`, `archive`, `unarchive`, `clone`,
   `enable`, `invite`, `unblock`, `upload`, `publish`, `unpublish`,
   `retry-failed` (`email|sms|push`; `--key` makes a repeat a no-op, so it
   needs no confirmation — `--include-ambiguous` prints a duplicate warning on
-  stderr), `config set / unset`, `env use`, `logout`, `raw`. `identities create` is one
+  stderr), `config set / unset`, `env use`, `logout`, and a `raw` call
+  that is neither a delete nor a billing route. `identities create` is one
   of these.
 - **Preview by default** (`env promote`, `env rollback`, `env built-ins repair`):
   without `--yes` they ask the Hub for the plan and change nothing — here

@@ -76,7 +76,7 @@ norbix scheduler list
 | `norbix module enable/disable <name>` | Turn a whole project module on or off |
 | `norbix hub <module> <words...>` | Call ANY hub endpoint with plain words (see below) |
 | `norbix api <module> <words...>` | Same for the data-plane API |
-| `norbix raw <path>` | Low-level HTTP escape hatch (hub by default, `--api` for API) |
+| `norbix raw <path>` | Low-level HTTP escape hatch (hub by default, `--api` for API); a `DELETE` and a billing route ask first (`--yes`, `--dry-run`) |
 | `norbix schema [command]` | Describe every command as data (`--json`) — for scripts and agents |
 | `norbix ai init` | Set up a project for Claude Code / Cursor / AGENTS.md agents |
 | `norbix ai context` | Print what an agent needs: what to build on, your projects, modules, integrations |
@@ -105,10 +105,35 @@ The first positional value becomes `id`; `--field value` flags become request
 fields, typed from the SDK's request type (`norbix hub <module> --help` lists
 every method with its fields; `--json` returns them as data). Force a type
 with `--field:str`, `--field:num`, `--field:bool` or `--field:json`, or pass
-the whole request with `--body '<json>'`. Destructive verbs (delete, remove,
-stop, disable, block, regenerate, rotate) ask for confirmation unless
-`--yes` — and exit 3 without a terminal. Add `--dry-run` to preview the exact
-HTTP request.
+the whole request with `--body '<json>'`.
+
+Three kinds of call ask for confirmation unless `--yes` — and exit 3 without
+a terminal, sending nothing:
+
+- a call that changes what the account pays: `changeManagedServiceBundle`,
+  `upgradeFlexCluster`, `createStripeCheckoutSession`,
+  `createAiCreditPackCheckout`;
+- every delete: any endpoint sent with the HTTP verb `DELETE`, whatever its
+  name (discard, cancel, revoke, forget, clear), plus `cleanLogs` and the
+  passkey revokes (`revokeAccountPasskey`, `revokePasskey`), which delete
+  with `POST`;
+- a method whose first word is delete, remove, clean, stop, disable, block,
+  regenerate or rotate.
+
+`norbix raw` follows the same rule on the HTTP request: every
+`--method DELETE` asks, and so do the routes of the calls named above.
+`norbix hub <module> --help` marks each method that asks, and `--json` has it
+as `destructive: true` with `confirm: billing | delete | destructive`.
+
+Preview, then apply — `--dry-run` prints the exact HTTP request, sends
+nothing and never asks; `--yes` runs it:
+
+```sh
+norbix hub database schema draft discard 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run   # the request, nothing sent
+norbix hub database schema draft discard 66b2f0a1c3d4e5f6a7b8c9d0 --yes       # run it
+norbix raw /v3/account/stripe/change-bundle --method POST --body '{"bundle":"Growth","billingPeriod":"Annual"}' --dry-run
+norbix raw /v3/account/stripe/change-bundle --method POST --body '{"bundle":"Growth","billingPeriod":"Annual"}' --yes
+```
 
 Words without a verb that fit several methods (`membership role` fits
 createRole, deleteRole and getRole) read: with an id the get of one item,
@@ -384,7 +409,7 @@ The exit code tells a script or an agent what went wrong, with or without
 | 0 | success |
 | 1 | unexpected / internal error |
 | 2 | usage: bad flags or arguments, invalid JSON input, unknown command, missing config |
-| 3 | confirmation required — a destructive command ran without a terminal and without `--yes` |
+| 3 | confirmation required — a destructive command, a billing call or a delete ran without a terminal and without `--yes` |
 | 4 | not authenticated / auth rejected (401, 403, no key) |
 | 5 | not found (404) |
 | 6 | validation rejected by the server (400 / 422) |
@@ -393,7 +418,9 @@ The exit code tells a script or an agent what went wrong, with or without
 | 9 | cancelled by you at a prompt |
 
 Destructive commands (`delete`, `stop`, `regenerate`, `block`, `disable`,
-`--many` updates) ask for confirmation in a terminal. In a script, in CI or
+`--many` updates) ask for confirmation in a terminal, and so do the billing
+calls and every delete sent through `norbix hub`, `norbix api` or
+`norbix raw` (see above). In a script, in CI or
 under a coding agent there is nobody to ask, so they **exit 3 and send
 nothing** unless you pass `--yes`. Preview any of them with `--dry-run`:
 the request is built with your real auth, region and project, printed, and

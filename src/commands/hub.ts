@@ -10,11 +10,18 @@ export default class Hub extends NamespaceCommand {
 
 Grammar: norbix hub <module> <words...> [id] [--field value | --body '<json>']
 The method is resolved from the words — plural means "list", singular (or a
-positional id) means one item. Destructive verbs (delete, remove, stop,
-disable, block, regenerate, rotate) ask for confirmation; without a terminal
-they exit 3 unless --yes. Add --dry-run to see the exact request first:
-it resolves auth, region and project but sends nothing, so the server does
-not check the values. One exception: \`database schema bundle apply
+positional id) means one item.
+
+Three kinds of call ask first: a call that changes what the account pays
+(bundle change, cluster upgrade, Stripe checkout, AI credit checkout); every
+delete (any endpoint sent with the HTTP verb DELETE, whatever its name:
+discard, cancel, revoke, forget, clear; plus logs clean and a passkey
+revoke); and a method whose first word is delete, remove, clean, stop,
+disable, block, regenerate or rotate. In a terminal you answer y/N; without
+one (a script, CI, --json) the command exits 3 and sends nothing unless you
+pass --yes. Check first, then apply: --dry-run shows the exact request (it
+resolves auth, region and project but sends nothing, so the server does
+not check the values, and it never asks), then run it again with --yes. One exception: \`database schema bundle apply
 --dry-run\` also sends the bundleJson to the Hub's read-only schema check
 (account.validateSchema) and prints its issues; an invalid bundle exits 6.
 Field values are typed from the SDK's request type; force one with
@@ -39,6 +46,8 @@ Field values are typed from the SDK's request type; force one with
     '<%= config.bin %> hub logs get --level Error',
     '<%= config.bin %> hub scheduler task delete 66b2f0a1c3d4e5f6a7b8c9d0 --dry-run',
     '<%= config.bin %> hub scheduler task delete 66b2f0a1c3d4e5f6a7b8c9d0 --yes --json',
+    '<%= config.bin %> hub account changeManagedServiceBundle --bundle Growth --billingPeriod Annual --dry-run   # billing: preview',
+    '<%= config.bin %> hub account changeManagedServiceBundle --bundle Growth --billingPeriod Annual --yes       # then apply',
     `<%= config.bin %> hub scheduler task save --body '{"name":"nightly","cronExpression":"0 2 * * *"}'`,
     '<%= config.bin %> hub membership user get --userId:str 0042',
     '<%= config.bin %> hub membership role 66b2f0a1c3d4e5f6a7b8c9d0      # no verb: get one; without an id, the list',

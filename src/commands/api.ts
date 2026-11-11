@@ -10,7 +10,13 @@ export default class ApiNs extends NamespaceCommand {
 
 Grammar: norbix api <module> <words...> [id] [--field value | --body '<json>']
 Same engine as \`norbix hub\` — see \`norbix hub --help\`. For raw HTTP paths
-use \`norbix raw\`.`
+use \`norbix raw\`.
+
+Every delete asks first (any endpoint sent with the HTTP verb DELETE, plus a
+passkey revoke), and so does a method whose first word is delete, remove,
+clean, stop, disable, block, regenerate or rotate. Without a terminal the
+command exits 3 and sends nothing unless you pass --yes. Check with
+--dry-run first (it sends nothing and never asks), then run it with --yes.`
 
   static strict = false
 
