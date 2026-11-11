@@ -118,7 +118,10 @@ a terminal, sending nothing:
   passkey revokes (`revokeAccountPasskey`, `revokePasskey`), which delete
   with `POST`;
 - a method whose first word is delete, remove, clean, stop, disable, block,
-  regenerate or rotate.
+  regenerate or rotate;
+- a method the CLI cannot classify (it does not know what kind of request
+  the method sends). Today these are six sign-in, sign-out and log-write
+  helpers of the SDK.
 
 `norbix raw` follows the same rule on the HTTP request: every
 `--method DELETE` asks, and so do the routes of the calls named above.

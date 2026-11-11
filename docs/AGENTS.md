@@ -170,9 +170,10 @@ The generic commands follow the same rule. `norbix hub` / `norbix api` ask
 before a call that changes what the account pays, before every delete (any
 endpoint sent with the HTTP verb `DELETE`, whatever its name, plus logs
 clean and a passkey revoke) and before a method whose first word is delete,
-remove, clean, stop, disable, block, regenerate or rotate:
+remove, clean, stop, disable, block, regenerate or rotate, and before a
+method the CLI cannot classify:
 `norbix hub <module> --json` has `destructive: true` and
-`confirm: billing | delete | destructive` on each of them. `norbix raw` asks
+`confirm: billing | delete | destructive | unknown` on each of them. `norbix raw` asks
 before every `--method DELETE` and before the billing routes. Preview, then
 apply:
 

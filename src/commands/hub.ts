@@ -12,12 +12,13 @@ Grammar: norbix hub <module> <words...> [id] [--field value | --body '<json>']
 The method is resolved from the words — plural means "list", singular (or a
 positional id) means one item.
 
-Three kinds of call ask first: a call that changes what the account pays
+Four kinds of call ask first: a call that changes what the account pays
 (bundle change, cluster upgrade, Stripe checkout, AI credit checkout); every
 delete (any endpoint sent with the HTTP verb DELETE, whatever its name:
 discard, cancel, revoke, forget, clear; plus logs clean and a passkey
-revoke); and a method whose first word is delete, remove, clean, stop,
-disable, block, regenerate or rotate. In a terminal you answer y/N; without
+revoke); a method whose first word is delete, remove, clean, stop,
+disable, block, regenerate or rotate; and a method the CLI cannot classify
+(it does not know what kind of request the method sends). In a terminal you answer y/N; without
 one (a script, CI, --json) the command exits 3 and sends nothing unless you
 pass --yes. Check first, then apply: --dry-run shows the exact request (it
 resolves auth, region and project but sends nothing, so the server does

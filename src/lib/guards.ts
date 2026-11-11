@@ -67,8 +67,13 @@ export const DELETES_WITH_ANOTHER_VERB: readonly GuardedCall[] = [
  *   delete       its HTTP verb is DELETE, or it is in DELETES_WITH_ANOTHER_VERB
  *   destructive  the first word of its name is delete, remove, clean,
  *                regenerate, rotate, stop, disable or block
+ *   unknown      the generated request-field map has no entry for it, so the
+ *                CLI cannot tell what kind of request it sends (owner,
+ *                2026-11-11: "when it cannot tell, it asks"). These are the
+ *                SDK's hand-written helpers; one of them, auth.signOut, sends
+ *                whatever verb and path its fields name.
  */
-export type ConfirmKind = 'billing' | 'delete' | 'destructive'
+export type ConfirmKind = 'billing' | 'delete' | 'destructive' | 'unknown'
 
 export interface ConfirmReason {
   kind: ConfirmKind
@@ -98,7 +103,8 @@ export function isDelete(surface: Surface, method: string, info: Pick<MethodInfo
 /**
  * Whether a resolved SDK method needs a confirmation, and why. Undefined when
  * it runs with no question. Billing is checked first, then the delete rule,
- * then the first word of the name.
+ * then the first word of the name; a method the generated map does not know
+ * asks last, as `unknown`.
  */
 export function confirmReason(surface: Surface, moduleName: string, method: string): ConfirmReason | undefined {
   const info = methodInfo(surface, moduleName, method)
@@ -106,6 +112,7 @@ export function confirmReason(surface: Surface, moduleName: string, method: stri
   if (isBillingCall(surface, method)) return {kind: 'billing', ...route}
   if (isDelete(surface, method, info)) return {kind: 'delete', ...route}
   if (isDestructive(method)) return {kind: 'destructive', ...route}
+  if (!info) return {kind: 'unknown'}
   return undefined
 }
 
@@ -117,6 +124,8 @@ export function confirmQuestion(reason: ConfirmReason, method: string, request: 
       return `${method} changes what the account pays. Run ${call}?`
     case 'delete':
       return `${method} deletes something for good${reason.http && reason.path ? ` (${reason.http} ${reason.path})` : ''}. Run ${call}?`
+    case 'unknown':
+      return `The CLI cannot tell what kind of request ${method} sends. Run ${call}?`
     default:
       return `Run ${call}?`
   }
@@ -127,6 +136,7 @@ export function confirmMarker(reason: ConfirmReason | undefined): string {
   if (!reason) return ''
   if (reason.kind === 'billing') return '  (asks confirmation: changes what the account pays)'
   if (reason.kind === 'delete') return '  (asks confirmation: deletes for good)'
+  if (reason.kind === 'unknown') return '  (asks confirmation: kind of request not known)'
   return '  (asks confirmation)'
 }
 

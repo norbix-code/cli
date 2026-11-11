@@ -14,7 +14,8 @@ use \`norbix raw\`.
 
 Every delete asks first (any endpoint sent with the HTTP verb DELETE, plus a
 passkey revoke), and so does a method whose first word is delete, remove,
-clean, stop, disable, block, regenerate or rotate. Without a terminal the
+clean, stop, disable, block, regenerate or rotate, and a method the CLI
+cannot classify (sign-in, sign-out and log-write helpers). Without a terminal the
 command exits 3 and sends nothing unless you pass --yes. Check with
 --dry-run first (it sends nothing and never asks), then run it with --yes.`
 

@@ -5,6 +5,7 @@ import {isDestructive} from '../src/lib/dispatch.js'
 import {
   BILLING_CALLS,
   DELETES_WITH_ANOTHER_VERB,
+  confirmMarker,
   confirmQuestion,
   confirmReason,
   guardedRoutes,
@@ -78,9 +79,9 @@ describe('the rule for a resolved SDK method', () => {
     // The verb decides the delete rule, so a method with no generated entry
     // cannot be judged by it. These six are hand-written helpers of the SDK
     // (positional arguments, no request object); none sends DELETE on its
-    // own. Known gap: auth.signOut spreads its first argument over the send
-    // call, so `--method DELETE --path …` typed as fields changes what it
-    // sends, unasked. A new name here means: decide what it does before it ships.
+    // own, but auth.signOut spreads its first argument over the send call, so
+    // `--method DELETE --path …` typed as fields changes what it sends. So a
+    // method with no generated entry asks, as `unknown` (next test).
     const missing: string[] = []
     for (const surface of ['hub', 'api'] as const) {
       for (const [moduleName, method] of sdkMethods(surface)) {
@@ -96,6 +97,26 @@ describe('the rule for a resolved SDK method', () => {
       'api.logs.write',
       'hub.code.getMarketplaceFunctionRunDetails',
     ])
+  })
+
+  it('a method with no generated entry asks, because the CLI cannot tell what it sends', () => {
+    for (const [surface, moduleName, method] of [
+      ['api', 'auth', 'signOut'],
+      ['api', 'auth', 'signIn'],
+      ['api', 'auth', 'browserSignIn'],
+      ['api', 'auth', 'sessionSignInBody'],
+      ['api', 'logs', 'write'],
+      ['hub', 'code', 'getMarketplaceFunctionRunDetails'],
+    ] as const) {
+      expect(confirmReason(surface, moduleName, method), `${surface}.${moduleName}.${method}`).toEqual({kind: 'unknown'})
+    }
+
+    expect(confirmQuestion({kind: 'unknown'}, 'signOut', {method: 'DELETE', path: '/v3/x'})).toBe(
+      'The CLI cannot tell what kind of request signOut sends. Run signOut({"method":"DELETE","path":"/v3/x"})?',
+    )
+    expect(confirmMarker({kind: 'unknown'})).toBe('  (asks confirmation: kind of request not known)')
+    // A method the map knows and no rule matches still runs with no question.
+    expect(confirmReason('hub', 'account', 'getManagedServiceBundles')).toBeUndefined()
   })
 
   it('every method sent with DELETE asks, whatever its name; nothing the old verb rule caught is lost', () => {
@@ -138,8 +159,9 @@ describe('the rule for a resolved SDK method', () => {
     expect(confirmReason('hub', 'logs', 'cleanLogs')).toMatchObject({kind: 'delete', http: 'POST'})
     expect(confirmReason('hub', 'account', 'revokeAccountPasskey')).toMatchObject({kind: 'delete', http: 'POST'})
     expect(confirmReason('api', 'membership', 'revokePasskey')).toMatchObject({kind: 'delete', http: 'POST'})
-    // The lists are per host: the api name on the hub is not listed.
-    expect(confirmReason('hub', 'membership', 'revokePasskey')).toBeUndefined()
+    // The lists are per host: the api name on the hub is not listed as a
+    // delete. The hub has no such method, so the CLI cannot classify it.
+    expect(confirmReason('hub', 'membership', 'revokePasskey')).toEqual({kind: 'unknown'})
     // The older verb rule.
     expect(confirmReason('hub', 'scheduler', 'disableSchedulerTask')?.kind).toBe('destructive')
     // Reads and plain writes run with no question.
@@ -329,6 +351,20 @@ describe('hub / api / raw in a shell with no terminal', () => {
       expect(r.stdout, label(r.c.argv)).toBe('')
       expect(r.stderr, label(r.c.argv)).toContain(`Confirmation required: ${r.c.question}`)
       expect(r.stderr, label(r.c.argv)).toContain('Re-run with --yes. Preview first with --dry-run.')
+    }
+
+    expect(gateway.hits).toEqual([])
+  }, SPAWN_ALL_TIMEOUT)
+
+  it('a method the CLI cannot classify exits 3 without --yes and sends nothing, also when its fields name a DELETE', async () => {
+    const crafted = ['api', 'auth', 'signOut', '--method', 'DELETE', '--path', '/v3/x', '--requiresSession:bool', 'false']
+    const plain = ['api', 'auth', 'signOut']
+    for (const argv of [crafted, plain]) {
+      const r = await cli(home, [...argv, '--profile', 'x'])
+      expect(r.code, label(argv)).toBe(3)
+      expect(r.stdout, label(argv)).toBe('')
+      expect(r.stderr, label(argv)).toContain('Confirmation required: The CLI cannot tell what kind of request signOut sends.')
+      expect(r.stderr, label(argv)).toContain('Re-run with --yes. Preview first with --dry-run.')
     }
 
     expect(gateway.hits).toEqual([])
