@@ -70,10 +70,22 @@ describe('account bundles / change-bundle', () => {
     expect(calls).toEqual([{method: 'getManagedServiceBundles', request: {}}])
   })
 
-  it('change-bundle maps the two flags to the gateway enums and says what the account is on', async () => {
+  it('change-bundle maps the two flags to the gateway enums and says the change went to Stripe', async () => {
     const {calls, output} = await run(AccountChangeBundle, ['--bundle', 'scale', '--period', 'monthly', '--yes'])
     expect(calls).toEqual([{method: 'changeManagedServiceBundle', request: {bundle: 'Scale', billingPeriod: 'Monthly'}}])
-    expect(output).toEqual(['The account is now on the Scale bundle, billed monthly.'])
+    expect(output).toEqual([
+      'The change to the Scale bundle, billed monthly, was sent to Stripe. `norbix account status` shows it when Stripe has confirmed it.',
+    ])
+  })
+
+  it('change-bundle --period annual reads "billed annually" in the answer and in the question', async () => {
+    const {calls, output} = await run(AccountChangeBundle, ['--bundle', 'starter', '--period', 'annual', '--yes'])
+    expect(calls).toEqual([{method: 'changeManagedServiceBundle', request: {bundle: 'Starter', billingPeriod: 'Annual'}}])
+    expect(output[0]).toMatch(/^The change to the Starter bundle, billed annually, was sent to Stripe\./)
+
+    await expect(run(AccountChangeBundle, ['--bundle', 'starter', '--period', 'annual'])).rejects.toThrow(
+      'Confirmation required: Move the account to the Starter bundle, billed annually? This changes what the account pays.',
+    )
   })
 
   it('change-bundle without --yes calls nothing', async () => {
