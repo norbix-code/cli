@@ -28,8 +28,8 @@ recorded but flagged suspected-scanner. --json prints the gateway's answer per
 batch as well as the totals.
 
 Running the same file again is safe: the same nblid, url and clickedAt answers
-duplicate. A row with no clickedAt is stamped "now" by the gateway, so only
-rows that carry clickedAt are recognised as duplicates on a second run.
+duplicate. A row with no clickedAt answers duplicate when that link of that
+email already has a click, whenever it was recorded.
 Clicks are recorded only for emails sent while \`norbix email click-tracking\`
 was on.`
 
@@ -70,14 +70,8 @@ was on.`
     }
 
     const summary = summarize(clicks, answers)
-    const undated = clicks.filter((c) => !c.clickedAt).length
     if (!this.jsonEnabled()) {
       this.log(formatSummary(summary).join('\n'))
-      if (undated > 0) {
-        process.stderr.write(
-          `Note: ${undated} row${undated === 1 ? ' has' : 's have'} no clickedAt — the gateway stamped ${undated === 1 ? 'it' : 'them'} now, so running this file again records ${undated === 1 ? 'it' : 'them'} again.\n`,
-        )
-      }
 
       const notValid = summary.rejectedRows.filter((r) => r.reason === 'not-valid').length
       if (notValid > 0 && notValid === summary.clicks) {
@@ -85,14 +79,14 @@ was on.`
       }
     }
 
-    return {...summary, withoutClickedAt: undated, answers}
+    return {...summary, answers}
   }
 }
 
 /** A batch after the first failed: say how many rows the gateway already has, and that a re-run is safe. */
 function partialFailure(error: unknown, sent: number, total: number, command: string): CliError {
   const envelope = toEnvelope(error, {command})
-  const note = `${sent} of ${total} clicks were sent before this error. Running the file again is safe: rows already recorded answer duplicate (rows with no clickedAt are recorded again).`
+  const note = `${sent} of ${total} clicks were sent before this error. Running the file again is safe: rows already recorded answer duplicate.`
   return new CliError({
     ...envelope,
     hint: envelope.hint ? `${note} ${envelope.hint}` : note,
