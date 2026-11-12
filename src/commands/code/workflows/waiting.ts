@@ -6,7 +6,7 @@ import {formatWaitingRuns, RUN_STATUSES, WAITING_KINDS} from '../../../lib/workf
 export default class CodeWorkflowsWaiting extends BaseCommand {
   static description = `Beta: the inbox — runs waiting on a person, an event, a delay or a child run
 
-Across every workflow you may read: one row per wait with what it waits on (step, kind, key, assignees, until, child run). --mine: only approvals assigned to you. --app-user calls the Api host's twin of this route, for an app user's login (a project user, not a team member): it lists only that user's own approvals.`
+Across every workflow you may read: one row per wait with what it waits on (step, kind, key, assignees, until, child run). A group approval (a wait that needs several people) gets a line under the table: how many approvals it has of how many it needs, and who has not answered. --mine: only approvals assigned to you that you have not answered yet. --app-user calls the Api host's twin of this route, for an app user's login (a project user, not a team member): it lists only that user's own approvals.`
 
   static examples = [
     '<%= config.bin %> code workflows waiting --mine',

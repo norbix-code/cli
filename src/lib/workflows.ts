@@ -151,6 +151,25 @@ interface RunStep {
   decision?: string
 }
 
+/** One answer to a group approval (Code.Workflows.md §3.3b): who, what, when. */
+interface RunWaitAnswer {
+  userId?: string
+  decision?: string
+  at?: string
+}
+
+/** What a run waits on. `require` and `answers` are there only for a group approval. */
+interface RunWait {
+  stepId?: string
+  kind?: string
+  until?: string
+  key?: string
+  assignees?: string[]
+  require?: number
+  answers?: RunWaitAnswer[]
+  childRunId?: string
+}
+
 interface Run {
   runId?: string
   workflowId?: string
@@ -161,7 +180,7 @@ interface Run {
   startedAt?: string
   finishedAt?: string
   durationMs?: number
-  waitingOn?: Array<{stepId?: string; kind?: string; until?: string; key?: string; assignees?: string[]; childRunId?: string}>
+  waitingOn?: RunWait[]
   error?: {code?: string; stepId?: string; reason?: string; message?: string}
   output?: unknown
   steps?: RunStep[]
@@ -173,10 +192,32 @@ function itemOf(step: RunStep): string {
 }
 
 /**
+ * A group approval in plain words, for a wait that has `require` (how many of
+ * the assignees must approve): `group approval — 1 of 2 approvals, waiting for
+ * usr_…`. Rejections are named when there are any; "waiting for" lists the
+ * assignees who have not answered. Empty for any other wait.
+ */
+export function formatGroupApproval(wait: RunWait | undefined): string {
+  if (!wait || wait.require === undefined || wait.require === null) return ''
+  const answers = wait.answers ?? []
+  const approvals = answers.filter((a) => a.decision === 'approved').length
+  const rejections = answers.filter((a) => a.decision === 'rejected').length
+  const answered = new Set(answers.map((a) => a.userId))
+  const pending = (wait.assignees ?? []).filter((id) => !answered.has(id))
+  return [
+    `group approval — ${approvals} of ${plural(wait.require, 'approval')}`,
+    rejections > 0 ? plural(rejections, 'rejection') : '',
+    pending.length > 0 ? `waiting for ${pending.join(', ')}` : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
+}
+
+/**
  * A run for the terminal: the header (status, version, source, timing), what
- * it waits on, its error, then one row per step execution — stepId, kind,
- * status, attempt, pass, the element of a foreach, duration — and the run's
- * output.
+ * it waits on (a group approval on a line of its own), its error, then one
+ * row per step execution — stepId, kind, status, attempt, pass, the element
+ * of a foreach, duration — and the run's output.
  */
 export function formatRun(run: Run | undefined): string {
   if (!run) return 'The answer has no run.'
@@ -190,6 +231,8 @@ export function formatRun(run: Run | undefined): string {
       .filter(Boolean)
       .join(', ')
     lines.push(`  waiting on: step ${w.stepId ?? '?'} (${w.kind ?? '?'})${extra ? ` — ${extra}` : ''}`)
+    const group = formatGroupApproval(w)
+    if (group) lines.push(`  ${w.stepId ?? '?'}: ${group}`)
   }
 
   if (run.error) {
@@ -227,12 +270,15 @@ export function formatRun(run: Run | undefined): string {
 
 /**
  * The inbox for the terminal: one row per wait of a run — run, workflow, step,
- * kind, key, assignees, until, the child run — and the next-page cursor.
+ * kind, key, assignees, until, the child run — then one line per group
+ * approval (run, step, the approvals so far, who has not answered) and the
+ * next-page cursor.
  */
 export function formatWaitingRuns(res: unknown): string {
   const list = ((res ?? {}) as {list?: {items?: Run[]; hasMore?: boolean; startingAfter?: string}}).list ?? {}
-  const rows = (Array.isArray(list.items) ? list.items : []).flatMap((run) =>
-    (run.waitingOn?.length ? run.waitingOn : [{}]).map((w: NonNullable<Run['waitingOn']>[number]) => [
+  const items = Array.isArray(list.items) ? list.items : []
+  const rows = items.flatMap((run) =>
+    (run.waitingOn?.length ? run.waitingOn : [{}]).map((w: RunWait) => [
       run.runId ?? '',
       run.workflowId ?? '',
       w.stepId ?? '—',
@@ -248,7 +294,19 @@ export function formatWaitingRuns(res: unknown): string {
   const header = ['RUN', 'WORKFLOW', 'STEP', 'KIND', 'KEY', 'ASSIGNEES', 'UNTIL', 'CHILD']
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i].length)))
   const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd()
-  const lines = [line(header), ...rows.map(line), '', `${rows.length} waiting. Read one: norbix code workflows run <run>`]
+  const groups = items.flatMap((run) =>
+    (run.waitingOn ?? []).flatMap((w) => {
+      const group = formatGroupApproval(w)
+      return group ? [`  ${run.runId ?? ''} ${w.stepId ?? '?'}: ${group}`] : []
+    }),
+  )
+  const lines = [
+    line(header),
+    ...rows.map(line),
+    ...(groups.length > 0 ? ['', 'Group approvals:', ...groups] : []),
+    '',
+    `${rows.length} waiting. Read one: norbix code workflows run <run>`,
+  ]
   if (list.hasMore && list.startingAfter) lines.push(`More: add --after ${list.startingAfter}`)
   return lines.join('\n')
 }

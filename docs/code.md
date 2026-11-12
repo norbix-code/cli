@@ -190,10 +190,10 @@ as everywhere; workflows live per environment.
 | `norbix code workflows disable <wf_…> [--yes]` | turns it off: no new run; runs in flight continue | `PUT /{id}/disable` |
 | `norbix code workflows invoke <wf_…> [--payload '<json>'\|--payload-file <f>] [--wait <0-30>] [--version draft\|<n>] [--follow [--timeout <s>]]` | starts a run (`waitSeconds`, `runVersion`); finished within the wait: status, output, duration, error; not finished: the run id and `running` / `waiting`. `--follow` polls the run (`workflows.waitForRun`) until it finishes or parks on a wait and prints it like `run`; past `--timeout` (default 60 s) it exits 7 with the run id | `POST /{id}/invoke` (+ `GET /runs/{runId}`) |
 | `norbix code workflows runs <wf_…> [--status <s>] [--from <iso>] [--to <iso>] [--limit <n>]` | the workflow's runs, newest first | `GET /{id}/runs` |
-| `norbix code workflows run <wfr_…>` | one run: status, version, source, timing, what it waits on, its error, then a step table — step, kind, status (approval decision), attempt, pass, item (the element of a foreach, `#0` first, empty for a plain step), duration — and the output; `--json` the whole run with every step's input and output | `GET /runs/{runId}` |
+| `norbix code workflows run <wfr_…>` | one run: status, version, source, timing, what it waits on (a group approval on its own line: `approve: group approval — 1 of 2 approvals, waiting for usr_…`), its error, then a step table — step, kind, status (approval decision), attempt, pass, item (the element of a foreach, `#0` first, empty for a plain step), duration — and the output; `--json` the whole run with every step's input and output | `GET /runs/{runId}` |
 | `norbix code workflows logs <wfr_…> [--step <stepId>] [--level Information\|Warning\|Error]` | the run's log lines (needs the Logs module on and `logs:read`) | `GET /runs/{runId}/logs` |
-| `norbix code workflows waiting [--mine\|--assignee <usr_…>] [--kind approval\|event\|delay\|child] [--workflow <wf_…>] [--key <key>] [--status <s>] [--app-user]` | the inbox as a table, one row per wait (`--json` for the answer): runs waiting on a person, an event or a delay; `--mine` = `assignee=me` | `GET /runs` (Hub, or Api with `--app-user`) |
-| `norbix code workflows resume <wfr_…> [--step <id>] [--decision approved\|rejected] [--payload '<json>'] [--app-user] [--yes]` | resumes a waiting run (answers an approval, delivers an event); a wait on a child run cannot be resumed by hand (`CM-ERRORS-WORKFLOWS-016`); prints the run | `POST /runs/{runId}/resume` (Hub, or Api with `--app-user`) |
+| `norbix code workflows waiting [--mine\|--assignee <usr_…>] [--kind approval\|event\|delay\|child] [--workflow <wf_…>] [--key <key>] [--status <s>] [--app-user]` | the inbox as a table, one row per wait (`--json` for the answer): runs waiting on a person, an event or a delay; under the table one line per group approval (run, step, approvals so far, who has not answered); `--mine` = `assignee=me` (leaves out a group approval you have already answered) | `GET /runs` (Hub, or Api with `--app-user`) |
+| `norbix code workflows resume <wfr_…> [--step <id>] [--decision approved\|rejected] [--payload '<json>'] [--app-user] [--yes]` | resumes a waiting run (answers an approval, delivers an event); a group approval counts your answer and the run may still be `waiting` until enough people answered (a second answer by you: `CM-ERRORS-WORKFLOWS-016`); a wait on a child run cannot be resumed by hand (`CM-ERRORS-WORKFLOWS-016`); prints the run | `POST /runs/{runId}/resume` (Hub, or Api with `--app-user`) |
 | `norbix code workflows resume --workflow <wf_…> --key <key> [--step] [--decision] [--payload] [--yes]` | the same, the run found by its wait's `key` (for an outside system); Hub only | `POST /{id}/resume` |
 | `norbix code workflows retry <wfr_…> [--step <id>] [--yes]` | a new attempt of the failed step from its stored input; the run continues | `POST /runs/{runId}/retry` |
 | `norbix code workflows cancel <wfr_…> [--reason <text>] [--yes]` | stops a running or waiting run | `POST /runs/{runId}/cancel` |
@@ -205,6 +205,14 @@ Notes:
 
 - `resume` takes the run id **or** `--workflow` with `--key` — exactly one;
   both or neither is a usage error (exit 2).
+- **Group approval.** A wait step with `require` (`"all"` or a number) asks
+  several people and keeps every answer. `resume --decision approved` records
+  yours; the run goes on once enough people approved, and follows the step's
+  `rejected` edge once that number can no longer be reached. Until then the
+  command prints the run still `waiting`, with a line such as
+  `approve: group approval — 1 of 2 approvals, waiting for usr_…`. `run` and
+  `waiting` print the same line; `--json` has it as `waitingOn[].require` and
+  `waitingOn[].answers` (`userId`, `decision`, `at`).
 - `--app-user` (on `waiting` and `resume <runId>`) calls the Api host's twin
   route, for an app user's login (a project user, not a team member): it lists
   and answers only that user's own approvals. The CLI does not guess from the
