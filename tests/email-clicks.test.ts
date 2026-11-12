@@ -234,15 +234,14 @@ describe('email clicks import', () => {
       flagged: 0,
       rejected: 1,
       rejectedRows: [{row: 2, nblid: 'bad_2', reason: 'not-valid'}],
-      withoutClickedAt: 3,
     })
     expect(out.answers).toHaveLength(1)
     expect(out.answers[0].clicks[2]).toMatchObject({index: 2, status: 'duplicate', to: ['ada@example.com']})
   })
 
-  it('notes the rows with no clickedAt (a second run records them again)', async () => {
+  it('prints no note for rows with no clickedAt (the gateway answers duplicate for them on a re-run)', async () => {
     const {stderr} = await runCommand(['email', 'clicks', 'import', file('c.csv', 'nblid,clickedAt\nntf_1,\nntf_2,2026-11-11T10:00:00Z\n'), ...globalArgs])
-    expect(stderr).toMatch(/Note: 1 row has no clickedAt/)
+    expect(stderr).not.toMatch(/no clickedAt/)
   })
 
   it('hints at --project / --env when every click id is not valid', async () => {

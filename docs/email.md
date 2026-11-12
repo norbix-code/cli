@@ -248,9 +248,10 @@ norbix email clicks import clicks.json --json
   with `flagReason` user-agent / too-soon / burst). Rejected rows do not change
   the exit code (0).
 - Running the same file again is safe: the same `nblid`, `url` and `clickedAt`
-  answers `duplicate`. A row with no `clickedAt` is stamped "now" by the gateway,
-  so it is recorded again on a second run; the command prints a note counting
-  such rows.
+  answers `duplicate`. A row with no `clickedAt` answers `duplicate` when that
+  link of that e-mail already has a click, whenever it was recorded (the gateway
+  also skips the too-soon and burst scanner checks for it, since it has no real
+  time).
 - If a later batch fails, the error's hint says how many clicks were already
   sent (`context.sent` / `context.total` in `--json`); re-run the whole file.
 
