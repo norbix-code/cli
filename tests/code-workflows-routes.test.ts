@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {parse as parseYaml} from 'yaml'
 
-import {BETA_NOTE, formatIssue, formatOf, formatRun, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
+import {BETA_NOTE, formatGroupApproval, formatIssue, formatOf, formatRun, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
 import {envListAnswer} from './_env.js'
 
 /**
@@ -502,6 +502,32 @@ describe('norbix code workflows — runs', () => {
     expect(calls[0]?.body).toEqual({stepId: 'approve', decision: 'approved', payload: {note: 'ok'}})
   })
 
+  it('resume of a group approval prints the run still waiting, with the approvals so far', async () => {
+    answer = {
+      run: {
+        ...RUN_DTO,
+        status: 'waiting',
+        finishedAt: undefined,
+        output: undefined,
+        steps: [],
+        waitingOn: [
+          {
+            stepId: 'approve',
+            kind: 'approval',
+            assignees: ['usr_anna', 'usr_ben'],
+            require: 2,
+            answers: [{userId: 'usr_anna', decision: 'approved', at: '2026-11-12T10:15:00Z'}],
+          },
+        ],
+      },
+    }
+    const {error} = await wf('resume', RUN, '--decision', 'approved', '--yes')
+
+    expect(error).toBeUndefined()
+    expect(out()).toContain(`Run ${RUN} of ${WF}: waiting`)
+    expect(out()).toContain('  approve: group approval — 1 of 2 approvals, waiting for usr_ben')
+  })
+
   it('resume <runId> --app-user → the Api host route', async () => {
     answer = {run: RUN_DTO}
     await wf('resume', RUN, '--decision', 'rejected', '--app-user', '--yes')
@@ -612,6 +638,95 @@ describe('workflows helpers', () => {
 
     const failed = formatRun({...RUN_DTO, status: 'failed', output: undefined, error: {code: 'CM-ERRORS-WORKFLOWS-020', stepId: 'notify', message: 'SMTP refused'}})
     expect(failed).toContain('error: CM-ERRORS-WORKFLOWS-020 · step notify — SMTP refused')
+  })
+
+  it('formatGroupApproval says how many approvals of how many, the rejections, and who has not answered', () => {
+    const wait = {stepId: 'approve', kind: 'approval', assignees: ['usr_anna', 'usr_ben', 'usr_cara'], require: 2}
+
+    // nobody answered yet
+    expect(formatGroupApproval(wait)).toBe('group approval — 0 of 2 approvals, waiting for usr_anna, usr_ben, usr_cara')
+    expect(formatGroupApproval({...wait, answers: []})).toBe('group approval — 0 of 2 approvals, waiting for usr_anna, usr_ben, usr_cara')
+    // one approval
+    expect(formatGroupApproval({...wait, answers: [{userId: 'usr_anna', decision: 'approved', at: '2026-11-12T10:15:00Z'}]})).toBe(
+      'group approval — 1 of 2 approvals, waiting for usr_ben, usr_cara',
+    )
+    // one approval and one rejection
+    expect(
+      formatGroupApproval({
+        ...wait,
+        answers: [
+          {userId: 'usr_anna', decision: 'approved', at: '2026-11-12T10:15:00Z'},
+          {userId: 'usr_ben', decision: 'rejected', at: '2026-11-12T10:20:00Z'},
+        ],
+      }),
+    ).toBe('group approval — 1 of 2 approvals, 1 rejection, waiting for usr_cara')
+    // one needed: singular; no assignees in the record: no "waiting for"
+    expect(formatGroupApproval({stepId: 'approve', kind: 'approval', require: 1})).toBe('group approval — 0 of 1 approval')
+    // not a group approval: nothing
+    expect(formatGroupApproval({stepId: 'approve', kind: 'approval', assignees: ['usr_anna']})).toBe('')
+    expect(formatGroupApproval(undefined)).toBe('')
+  })
+
+  it('formatRun adds one line per group approval and leaves a plain wait as it was', () => {
+    const group = {
+      stepId: 'approve',
+      kind: 'approval',
+      assignees: ['usr_anna', 'usr_ben'],
+      require: 2,
+      answers: [{userId: 'usr_anna', decision: 'approved', at: '2026-11-12T10:15:00Z'}],
+    }
+    const plain = {stepId: 'legal', kind: 'approval', assignees: ['usr_cara']}
+    const lines = formatRun({...RUN_DTO, status: 'waiting', output: undefined, waitingOn: [group, plain], steps: []}).split('\n')
+
+    expect(lines.slice(2)).toEqual([
+      '  waiting on: step approve (approval) — assignees usr_anna, usr_ben',
+      '  approve: group approval — 1 of 2 approvals, waiting for usr_ben',
+      '  waiting on: step legal (approval) — assignees usr_cara',
+    ])
+  })
+
+  it('formatWaitingRuns keeps the table and lists the group approvals under it', () => {
+    const table = formatWaitingRuns({
+      list: {
+        items: [
+          {
+            runId: RUN,
+            workflowId: WF,
+            status: 'waiting',
+            waitingOn: [
+              {
+                stepId: 'approve',
+                kind: 'approval',
+                key: 'order-o1',
+                assignees: ['usr_1', 'usr_2'],
+                require: 2,
+                answers: [{userId: 'usr_1', decision: 'approved', at: '2026-11-12T10:15:00Z'}],
+              },
+            ],
+          },
+          {runId: 'wfr_2', workflowId: WF, status: 'waiting', waitingOn: [{stepId: 'cool', kind: 'delay', until: '2026-11-02T10:00:00Z'}]},
+        ],
+      },
+    })
+
+    expect(table.split('\n')).toEqual([
+      'RUN                         WORKFLOW                   STEP     KIND      KEY       ASSIGNEES     UNTIL                 CHILD',
+      `${RUN}  ${WF}  approve  approval  order-o1  usr_1, usr_2  —                     —`,
+      `wfr_2                       ${WF}  cool     delay     —         —             2026-11-02T10:00:00Z  —`,
+      '',
+      'Group approvals:',
+      `  ${RUN} approve: group approval — 1 of 2 approvals, waiting for usr_2`,
+      '',
+      '2 waiting. Read one: norbix code workflows run <run>',
+    ])
+  })
+
+  it('resume says a group approval counts the answer and the run may still wait', async () => {
+    const {default: resume} = await import('../src/commands/code/workflows/resume.js')
+
+    expect(resume.description).toContain('A group approval')
+    expect(resume.description).toContain('the run may still be waiting afterwards, until enough people have answered')
+    expect(resume.description).toContain('Answering the same wait twice is refused (CM-ERRORS-WORKFLOWS-016)')
   })
 
   it('formatRun tells two elements of one foreach body apart, from #0, and leaves a plain step empty', () => {
