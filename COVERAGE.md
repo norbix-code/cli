@@ -3,7 +3,7 @@
 Compared against the CodeMash docs (`docs/codemash-docs/api-reference`, 452
 documented endpoints) on 2026-07-21.
 
-**356 endpoints have a dedicated CLI command (the sum of the table below;
+**355 endpoints have a dedicated CLI command (the sum of the table below;
 the line said 117 until the Project campaign, 2026-10-03, 287 until the
 integrations campaign, 2026-11-03, which added the files / code / logs /
 membership integration commands and quick connect, and 325 until the triggers
@@ -12,7 +12,8 @@ and the shared trigger routes, and 349 until the bundles and Flex clusters
 round, 2026-11-11, which added four account commands, and 353 until the email
 click-id round, 2026-11-11, which added the two click-id routes and recounted
 the email row against the gateway: `retry-failed` and three provider webhooks
-were missing from it). Every SDK method (~180 hub +
+were missing from it, and 356 until the membership owner round, 2026-11-13,
+which removed `membership integration default`). Every SDK method (~180 hub +
 ~40 api) is also callable with plain words:**
 
 ```sh
@@ -56,7 +57,8 @@ out of reach.
 | code/workflows (beta) | 26/30 | every route a person calls (24 Hub + the Api host's waiting list and resume) — see `docs/code.md`; each command is run through the real transport in `tests/code-workflows-routes.test.ts`. Not commands: the four signed resume-link routes (`GET`/`POST /code/workflows/resume/{token}`, Hub and Api), opened by an approver's browser from an e-mail |
 
 Cross-cutting commands: `norbix integrations <module>` lists integrations for
-9 modules; `norbix module enable|disable <name>` toggles 10 modules.
+9 modules; `norbix module enable|disable <name>` enables 10 modules and disables 8
+(Membership and Database are always on: `disable` is refused for them).
 `norbix integrations keyless-setup <module> <cloud>` covers
 `GET /integrations/keyless/setup` for every module the gateway serves (files, email,
 code, logs, push, payments, database), `--template <kind>` included
