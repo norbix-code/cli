@@ -1,11 +1,12 @@
 # `norbix scheduler`
 
 Manage scheduler tasks from the terminal. A task runs on a cron and, each time
-it fires, sends an email campaign. Every Scheduler endpoint has a command.
+it fires, sends an email campaign, calls a cloud function ("Code call") or
+starts a workflow ("Workflow call"). Every Scheduler endpoint has a command.
 
 Every command is covered by `tests/scheduler-routes.test.ts`, which runs it
 through the real SDK with `fetch` replaced and checks the verb, path, query and
-— for `save` — the exact JSON body it sends. No test sends an e-mail.
+— for every `save` — the exact JSON body it sends. No test sends an e-mail.
 
 All paths below are under `/{version}/scheduler`.
 
@@ -26,7 +27,10 @@ which the gateway refuses — update the CLI.
 |---|---|---|
 | `norbix scheduler list [--type <type>] [--enabled \| --no-enabled] [--page-size <n>] [--after <cursor>]` | list the tasks | `GET /tasks` |
 | `norbix scheduler get <id>` | show one task | `GET /tasks/{id}` |
+| `norbix scheduler runs <id> [--take <1-50>]` | the task's latest runs, newest first: when, outcome (`Fired` / `Failed` / `Skipped`), reason code, who it ran as, the detail of a failure | `GET /tasks/{id}/runs` |
 | `norbix scheduler save --name <n> --cron <cron> [--execution-identity <id\|default>] [--initiator <usr_…>] --template <id> --integration <id> --audience <a> [--id <id>] [...]` | create a task, or update it with `--id` | `POST /tasks` |
+| `norbix scheduler save code --name <n> --cron <cron> --integration <int_…> --function <name> [--qualifier <q>] [--async] [--config <json>] [--token k=v]… [--id <id>] [...]` | a "Code call" task: call a cloud function on the cron | `POST /tasks` |
+| `norbix scheduler save workflow --name <n> --cron <cron> --workflow <wf_…> [--payload k=v]… [--id <id>] [...]` | a "Workflow call" task (beta): start a workflow on the cron | `POST /tasks` |
 | `norbix scheduler enable <id> [--yes]` | switch it on — it fires on its next cron tick | `PUT /tasks/{Id}/enable` |
 | `norbix scheduler disable <id> [--yes]` | switch it off | `PUT /tasks/{Id}/disable` |
 | `norbix scheduler delete <id> [--yes]` | delete it | `DELETE /tasks/{Id}` |
@@ -36,7 +40,7 @@ ask first: in a script or an agent pass `--yes`, and preview with `--dry-run`
 (prints the request, sends nothing).
 
 `list --type` is one of `EmailCampaign`, `PushCampaign`, `SmsCampaign`,
-`CodeFunctionalCall`, `WebhookCall`; `--enabled` shows only enabled tasks,
+`CodeFunctionalCall`, `MarketplaceFunctionCall`, `WorkflowCall`, `WebhookCall`; `--enabled` shows only enabled tasks,
 `--no-enabled` only disabled ones, neither shows both.
 
 ## Saving a task
@@ -76,9 +80,11 @@ and prints `Task <id> saved.` (`--json` prints `{"id": "<id>"}`).
 
 Good to know:
 
-- **Only email campaigns** can be scheduled today (`task.type` is always
-  `EmailCampaign`). The other task types exist in the list filter but the
-  gateway does not save them.
+- **`scheduler save` saves an email campaign** (`task.type` is always
+  `EmailCampaign`); `scheduler save code` and `scheduler save workflow` save
+  the Code and Workflow tasks (below). SMS, push and marketplace-function
+  tasks have no command yet (the SDKs save them); `WebhookCall` is refused by
+  the gateway.
 - **`--cron` has 5 fields** — minute, hour, day of month, month, day of week —
   and runs in **UTC**. The CLI checks the field count before it sends anything;
   the gateway checks the rest. Quote it: `--cron "0 9 * * 1"`.
@@ -114,3 +120,66 @@ Good to know:
 - **`--config`** (a JSON object, `@file.json`, or `-` for stdin) is merged into
   `task.campaign` for any field the flags do not cover; a flag you pass wins
   over the same key in `--config`.
+
+## A "Code call" task
+
+```bash
+# Every night at 02:00 UTC, call nightly-report (alias live) through the Lambda integration, fire and forget.
+norbix scheduler save code --name "Nightly report" --cron "0 2 * * *" \
+  --integration int_lambda --function nightly-report --qualifier live --async --yes
+```
+
+sends
+
+```json
+{
+  "name": "Nightly report",
+  "cron": "0 2 * * *",
+  "isEnabled": true,
+  "stopOnError": false,
+  "task": {
+    "type": "CodeFunctionalCall",
+    "functionRef": {"integrationId": "int_lambda", "functionId": "nightly-report", "qualifier": "live"},
+    "invocationType": "Async"
+  }
+}
+```
+
+Each fire sends the function one event envelope (`event` =
+`scheduler.task.fired`, the task under `data.task`). Without `--async` the
+call waits for the result (`Sync`). `--config` (a JSON object, `@file` or `-`)
+is handed to the function as JSON text; map each `@Model.X` binding in it with
+`--token key=value`. The initiator needs `code:execute` on the integration,
+or the save is refused (`CM-ERRORS-SCHEDULER-012`). `norbix code functions
+--integration <id>` lists what an integration may call.
+
+## A "Workflow call" task (beta)
+
+```bash
+# Every Monday at 08:00 UTC, start the weekly report workflow with two request values.
+norbix scheduler save workflow --name "Weekly report" --cron "0 8 * * 1" \
+  --workflow wf_3kQ9mZ2vXc8LpR4wT7yH1n --payload period=week --payload channel=email --yes
+```
+
+sends `"task": {"type": "WorkflowCall", "workflowRef": "wf_3kQ9mZ2vXc8LpR4wT7yH1n",
+"payload": {"period": "week", "channel": "email"}}`. The values are strings and
+fill the run's `@Model.Request.*`. The run acts as the workflow's own
+execution identity and has `source` `scheduler`; the initiator only needs
+`code:execute` on the workflow. The workflow must exist in the task's
+environment (`CM-ERRORS-WORKFLOWS-002`). Follow the runs with `norbix code
+workflows runs <wf_…>`.
+
+## Run history
+
+```bash
+norbix scheduler runs tsk_456            # the last 10 runs
+norbix scheduler runs tsk_456 --take 50 --json
+```
+
+prints
+
+```text
+WHEN (UTC)            OUTCOME  REASON      RAN AS                   DETAIL
+2026-11-13T09:00:00Z  Failed   run-failed  Project tasks (default)  function timed out
+2026-11-12T09:00:00Z  Fired
+```

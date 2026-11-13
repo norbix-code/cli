@@ -1,5 +1,6 @@
 import {runCommand} from '@oclif/test'
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
+import {formatTaskRuns} from '../src/lib/scheduler.js'
 import {envListAnswer} from './_env.js'
 
 /**
@@ -44,6 +45,15 @@ afterEach(() => {
   globalThis.fetch = realFetch
 })
 
+/** Wrap the capturing fetch so it answers `body` instead of `{id}`, still recording the call. */
+function wrapAnswer(capture: typeof globalThis.fetch, body: unknown): typeof globalThis.fetch {
+  return (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const res = await capture(input, init)
+    if (calls.length === 0) return res
+    return new Response(JSON.stringify(body), {status: 200, headers: {'Content-Type': 'application/json'}})
+  }) as typeof globalThis.fetch
+}
+
 const globalArgs = ['--project', 'test-project', '--api-key', 'test-api-key', '--region', 'nb-eu-germany']
 
 const P = '/v3/scheduler'
@@ -60,6 +70,13 @@ const INTEGRATION = 'int_1'
 /** The flags every `scheduler save` needs. */
 const SAVE = ['--name', 'Weekly', '--cron', CRON, '--initiator', INITIATOR, '--template', TEMPLATE, '--integration', INTEGRATION, '--audience', 'all-users', '--yes']
 
+/** The flags a `scheduler save code` needs: a task and the function it calls. */
+const CODE = ['--name', 'Nightly', '--cron', '"0 2 * * *"', '--integration', 'int_lambda', '--function', 'nightly-report', '--yes']
+
+/** The flags a `scheduler save workflow` needs: a task and the workflow it starts. */
+const WF = 'wf_3kQ9mZ2vXc8LpR4wT7yH1n'
+const WORKFLOW = ['--name', 'Sweep', '--cron', '"0 3 * * *"', '--workflow', WF, '--yes']
+
 /** [argv, verb, path] — argv without the leading `norbix`. */
 const routes: Array<[string[], string, string]> = [
   [['module', 'enable', 'scheduler'], MODULE_VERB, `${P}/enable`],
@@ -70,6 +87,9 @@ const routes: Array<[string[], string, string]> = [
   [['scheduler', 'disable', ID, '--yes'], 'PUT', `${P}/tasks/${ID}/disable`],
   [['scheduler', 'delete', ID, '--yes'], 'DELETE', `${P}/tasks/${ID}`],
   [['scheduler', 'save', ...SAVE], 'POST', `${P}/tasks`],
+  [['scheduler', 'runs', ID], 'GET', `${P}/tasks/${ID}/runs`],
+  [['scheduler', 'save', 'code', ...CODE], 'POST', `${P}/tasks`],
+  [['scheduler', 'save', 'workflow', ...WORKFLOW], 'POST', `${P}/tasks`],
 ]
 
 describe('every scheduler command reaches its route', () => {
@@ -85,8 +105,8 @@ describe('every scheduler command reaches its route', () => {
   }
 })
 
-it('covers all 8 scheduler routes', () => {
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(8)
+it('covers all 9 scheduler routes', () => {
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(9)
 })
 
 /** Run a command and return the one request it sent. */
@@ -267,5 +287,154 @@ describe('scheduler save', () => {
     const {error} = await runCommand(['scheduler', 'save', ...argv, '--dry-run', ...globalArgs])
     expect(error).toBeUndefined()
     expect(calls).toHaveLength(0)
+  })
+})
+
+describe('scheduler runs', () => {
+  it('→ GET /tasks/{id}/runs: the id in the path, --take in the query, no body; a table of the runs', async () => {
+    const printed: string[] = []
+    const log = console.log
+    console.log = (...parts: unknown[]) => printed.push(parts.join(' '))
+    try {
+      globalThis.fetch = wrapAnswer(globalThis.fetch, {
+        runs: [
+          {logId: 'log_2', atUtc: '2026-11-13T09:00:00Z', outcome: 'Failed', reason: 'run-failed', detail: 'function timed out', executionIdentityName: 'Project tasks', executionIdentityIsDefault: true},
+          {logId: 'log_1', atUtc: '2026-11-12T09:00:00Z', outcome: 'Fired'},
+        ],
+      })
+      const call = await callOf(['scheduler', 'runs', ID, '--take', '20'])
+      expect(call.method).toBe('GET')
+      expect(call.path).toBe(`${P}/tasks/${ID}/runs`)
+      expect(Object.fromEntries(call.query)).toEqual({take: '20'})
+      expect(call.body).toBeUndefined()
+    } finally {
+      console.log = log
+    }
+
+    const table = printed.join('\n').split('\n')
+    expect(table[0]).toMatch(/^WHEN \(UTC\)\s+OUTCOME\s+REASON\s+RAN AS\s+DETAIL$/)
+    expect(table[1]).toMatch(/^2026-11-13T09:00:00Z\s+Failed\s+run-failed\s+Project tasks \(default\)\s+function timed out$/)
+    expect(table[2]).toMatch(/^2026-11-12T09:00:00Z\s+Fired$/)
+  })
+
+  it('sends no take by default and refuses a take over 50 before any call', async () => {
+    const call = await callOf(['scheduler', 'runs', ID])
+    expect([...call.query.keys()]).toEqual([])
+
+    calls = []
+    const {error} = await runCommand(['scheduler', 'runs', ID, '--take', '51', ...globalArgs])
+    expect(error?.message).toMatch(/51/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('formatTaskRuns says when a task has not run yet', () => {
+    expect(formatTaskRuns([])).toBe('No runs yet.')
+  })
+})
+
+describe('scheduler save code — a "Code call" task', () => {
+  it('creates a task: the exact body, type CodeFunctionalCall, Sync by default', async () => {
+    const call = await callOf(['scheduler', 'save', 'code', ...CODE])
+    expect(call.method).toBe('POST')
+    expect(call.path).toBe(`${P}/tasks`)
+    expect([...call.query.keys()]).toEqual([])
+    expect(call.body).toEqual({
+      name: 'Nightly',
+      cron: '0 2 * * *',
+      isEnabled: true,
+      stopOnError: false,
+      task: {
+        type: 'CodeFunctionalCall',
+        functionRef: {integrationId: 'int_lambda', functionId: 'nightly-report'},
+        invocationType: 'Sync',
+      },
+    })
+  })
+
+  it('maps --id, --qualifier, --async, --config (sent as JSON text), --token and the task flags', async () => {
+    const call = await callOf([
+      'scheduler', 'save', 'code', ...CODE, '--id', ID, '--description', 'd', '--initiator', INITIATOR,
+      '--execution-identity', 'default', '--no-enabled', '--stop-on-error', '--qualifier', 'live', '--async',
+      '--config', '{"user":"@Model.Initiator.User.Id"}', '--token', 'Initiator.User.Id=usr_1',
+    ])
+    expect(call.body).toEqual({
+      taskId: ID,
+      name: 'Nightly',
+      description: 'd',
+      cron: '0 2 * * *',
+      executionIdentityId: 'default',
+      initiatorUserId: INITIATOR,
+      isEnabled: false,
+      stopOnError: true,
+      task: {
+        type: 'CodeFunctionalCall',
+        functionRef: {integrationId: 'int_lambda', functionId: 'nightly-report', qualifier: 'live'},
+        invocationType: 'Async',
+        config: '{"user":"@Model.Initiator.User.Id"}',
+        mappedTokens: [{key: 'Initiator.User.Id', value: 'usr_1', resolver: 'Custom'}],
+      },
+    })
+  })
+
+  it('requires --integration and --function; refuses a bad cron and a --config that is not an object; --dry-run sends nothing', async () => {
+    const missing = await runCommand(['scheduler', 'save', 'code', '--name', 'n', '--cron', CRON, '--yes', ...globalArgs])
+    expect(missing.error?.message).toContain('Missing required flag integration')
+    expect(missing.error?.message).toContain('Missing required flag function')
+
+    const cron = [...CODE]
+    cron[cron.indexOf('"0 2 * * *"')] = '"0 2 * *"'
+    expect((await runCommand(['scheduler', 'save', 'code', ...cron, ...globalArgs])).error?.message).toContain('--cron needs 5 fields')
+
+    expect((await runCommand(['scheduler', 'save', 'code', ...CODE, '--config', '[1]', ...globalArgs])).error?.message).toMatch(/JSON object/)
+
+    const dry = await runCommand(['scheduler', 'save', 'code', ...CODE.filter((a) => a !== '--yes'), '--dry-run', ...globalArgs])
+    expect(dry.error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+  })
+
+  it('asks first: without --yes in a script nothing is sent', async () => {
+    const {error} = await runCommand(['scheduler', 'save', 'code', ...CODE.filter((a) => a !== '--yes'), ...globalArgs])
+    expect((error as {code?: string} | undefined)?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(calls).toHaveLength(0)
+  })
+})
+
+describe('scheduler save workflow — a "Workflow call" task', () => {
+  it('creates a task: the exact body, type WorkflowCall, no payload when none is given', async () => {
+    const call = await callOf(['scheduler', 'save', 'workflow', ...WORKFLOW])
+    expect(call.method).toBe('POST')
+    expect(call.path).toBe(`${P}/tasks`)
+    expect([...call.query.keys()]).toEqual([])
+    expect(call.body).toEqual({
+      name: 'Sweep',
+      cron: '0 3 * * *',
+      isEnabled: true,
+      stopOnError: false,
+      task: {type: 'WorkflowCall', workflowRef: WF},
+    })
+  })
+
+  it('--payload key=value (repeat) becomes the string payload; --id updates', async () => {
+    const call = await callOf(['scheduler', 'save', 'workflow', ...WORKFLOW, '--id', ID, '--payload', 'period=week', '--payload', 'filter=a=b'])
+    expect(call.body?.taskId).toBe(ID)
+    expect(call.body?.task).toEqual({type: 'WorkflowCall', workflowRef: WF, payload: {period: 'week', filter: 'a=b'}})
+  })
+
+  it('requires --workflow; refuses a --payload without =; --dry-run sends nothing', async () => {
+    const missing = await runCommand(['scheduler', 'save', 'workflow', '--name', 'n', '--cron', CRON, '--yes', ...globalArgs])
+    expect(missing.error?.message).toContain('Missing required flag workflow')
+
+    expect((await runCommand(['scheduler', 'save', 'workflow', ...WORKFLOW, '--payload', 'novalue', ...globalArgs])).error?.message).toMatch(/key=value/)
+
+    const dry = await runCommand(['scheduler', 'save', 'workflow', ...WORKFLOW.filter((a) => a !== '--yes'), '--dry-run', ...globalArgs])
+    expect(dry.error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+  })
+})
+
+describe('scheduler list --type', () => {
+  it.each(['CodeFunctionalCall', 'WorkflowCall', 'MarketplaceFunctionCall'])('%s goes to the query', async (type) => {
+    const call = await callOf(['scheduler', 'list', '--type', type])
+    expect(call.query.get('type')).toBe(type)
   })
 })

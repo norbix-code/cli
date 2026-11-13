@@ -18,7 +18,7 @@ export default class SchedulerSave extends BaseCommand {
 
 Without --id a new task is created; with --id that task is replaced by what the flags say (send every field again — the server does not merge).
 
-The only task type today is an email campaign: each time --cron fires, the task sends the --template to the --audience. --cron has 5 fields (${CRON_FIELDS}) and runs in UTC, e.g. "0 9 * * 1" is every Monday at 09:00 UTC.
+This command saves an email campaign task: each time --cron fires, the task sends the --template to the --audience. \`scheduler save code\` saves a task that calls a cloud function, \`scheduler save workflow\` one that starts a workflow. --cron has 5 fields (${CRON_FIELDS}) and runs in UTC, e.g. "0 9 * * 1" is every Monday at 09:00 UTC.
 
 --execution-identity says who the task runs as: ${EXECUTION_IDENTITY_HELP}. --initiator is the user the task is attributed to (usr_…; default: you). It must belong to this project.
 
