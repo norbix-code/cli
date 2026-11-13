@@ -1090,8 +1090,8 @@ export abstract class BaseCommand extends Command {
       const report: DryRunReport = {
         dryRun: true,
         method: this.dryRunCall?.method ?? 'unknown',
-        request: this.dryRunCall?.request ?? {},
-        http: stop.http,
+        request: maskPasswords(this.dryRunCall?.request ?? {}),
+        http: {...stop.http, ...(stop.http.body === undefined ? {} : {body: maskPasswords(stop.http.body)})},
         ...(this.dryRunValidation ? {validation: this.dryRunValidation} : {}),
       }
       if (this.jsonEnabled()) this.logJson(report)
@@ -1194,6 +1194,21 @@ function sessionMiddleware(refresher: SessionRefresher): NorbixMiddleware {
 
     return ctx.next()
   }
+}
+
+/** Body keys a dry run never prints: what a user types as a password, and imported password hashes. */
+const PASSWORD_KEYS = new Set(['password', 'newPassword', 'currentPassword', 'passwordHash', 'passwordSalt'])
+
+/** A copy of `value` with every password-like key (at any depth) shown as `***`. */
+export function maskPasswords(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((v) => maskPasswords(v))
+  if (typeof value !== 'object' || value === null) return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+      k,
+      PASSWORD_KEYS.has(k) && typeof v === 'string' && v.length > 0 ? '***' : maskPasswords(v),
+    ]),
+  )
 }
 
 /** Stops the SDK just before `fetch` and hands the request back to `catch`. */
