@@ -1,5 +1,8 @@
 import {Flags} from '@oclif/core'
 
+import {CliError} from './cli-error.js'
+import {EXIT} from './exit-codes.js'
+
 /**
  * Shared bits of the membership commands (`users …`, `users contacts …`,
  * `membership settings …`): list flags, true/false flags and the profile
@@ -62,3 +65,20 @@ export function profileOf(flags: ProfileFlagValues): Record<string, string> {
   ]
   return Object.fromEntries(pairs.filter((p): p is [string, string] => p[1] !== undefined))
 }
+
+/**
+ * A read-then-save got nothing back: saving now would replace the stored
+ * value with an empty one, so nothing is saved (exit 5).
+ */
+export function nothingRead(what: string, hint: string): CliError {
+  return new CliError({
+    exit: EXIT.NOT_FOUND,
+    code: 'NOT_FOUND',
+    message: `Could not read the current ${what}; nothing was saved.`,
+    hint,
+  })
+}
+
+/** Help line of every read-then-save command: what --dry-run shows. */
+export const READ_FIRST_DRY_RUN = `--dry-run sends nothing, not even the read, so its request shows only the
+fields you pass.`

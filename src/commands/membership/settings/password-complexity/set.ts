@@ -2,6 +2,7 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../../base.js'
 import {usageError} from '../../../../lib/cli-error.js'
+import {READ_FIRST_DRY_RUN, nothingRead} from '../../../../lib/membership.js'
 
 const LIMITS = [
   ['min-length', 'minLength', 'Shortest password'],
@@ -21,7 +22,9 @@ export default class MembershipSettingsPasswordComplexitySet extends BaseCommand
 
 The gateway replaces all the rules at once, so the command reads them first
 and changes only what you pass. New rules apply at once to every sign-up and
-password change.`
+password change.
+
+${READ_FIRST_DRY_RUN}`
 
   static examples = [
     '<%= config.bin %> membership settings password-complexity set --min-length 12',
@@ -42,11 +45,15 @@ password change.`
     if (flags['allowed-special'] !== undefined) changes.allowedSpecial = flags['allowed-special']
     if (Object.keys(changes).length === 0) throw usageError('Pass at least one rule to change, e.g. --min-length 12.')
 
-    // Read with a live client: a dry run must still show the merged rules.
-    const reader = this.client({...flags, 'dry-run': false})
-    const current = (await reader.hub.membership.getAuthorizationSettings({})).result?.passwordComplexity ?? {minLength: 8}
-
     const client = this.client(flags)
+    let current: Record<string, unknown> = {}
+    if (!flags['dry-run']) {
+      const read = await client.hub.membership.getAuthorizationSettings({})
+      if (!read?.result) throw nothingRead('password rules', 'Check the project and --env, then try again.')
+      // No rules saved yet: the gateway's default is a minimum length of 8.
+      current = {minLength: 8, ...read.result.passwordComplexity}
+    }
+
     const res = await client.hub.membership.updatePasswordComplexity({...current, ...changes} as never)
     this.print('Password rules saved.')
     return res

@@ -2,7 +2,7 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../../../base.js'
 import {usageError} from '../../../../lib/cli-error.js'
-import {boolFlag, boolOf} from '../../../../lib/membership.js'
+import {READ_FIRST_DRY_RUN, boolFlag, boolOf, nothingRead} from '../../../../lib/membership.js'
 
 /** `Name=https://…` → `{name, logoutUrl}`; a usage error otherwise. */
 export function parseMode(value: string): {name: string; logoutUrl: string} {
@@ -16,7 +16,9 @@ export default class MembershipSettingsAuthenticationSet extends BaseCommand {
 
 The gateway replaces all of them at once, so the command reads them first and
 changes only what you pass. A --mode-logout-url changes that one mode; the
-other modes keep their URLs.`
+other modes keep their URLs.
+
+${READ_FIRST_DRY_RUN}`
 
   static examples = [
     '<%= config.bin %> membership settings authentication set --logout-url https://app.example.com/bye',
@@ -39,13 +41,17 @@ other modes keep their URLs.`
       throw usageError('Pass --logout-url, --allow-usernames or --mode-logout-url.')
     }
 
-    // Read with a live client: a dry run must still show the merged settings.
-    const reader = this.client({...flags, 'dry-run': false})
-    const current = (await reader.hub.membership.getAuthenticationSettings({})).result?.credentialsSettings
+    const client = this.client(flags)
+    let current: {logoutUrl?: string; allowUsernames?: boolean; modes?: Array<{name?: string; logoutUrl?: string}>} | undefined
+    if (!flags['dry-run']) {
+      const read = await client.hub.membership.getAuthenticationSettings({})
+      if (!read?.result) throw nothingRead('sign-in settings', 'Check the project and --env, then try again.')
+      current = read.result.credentialsSettings ?? {}
+    }
+
     const merged = new Map((current?.modes ?? []).map((m) => [m.name ?? '', {name: m.name, logoutUrl: m.logoutUrl}]))
     for (const m of modes) merged.set(m.name, m)
 
-    const client = this.client(flags)
     const logoutUrl = flags['logout-url'] ?? current?.logoutUrl
     const res = await client.hub.membership.updateAuthenticationSettings({
       ...(logoutUrl === undefined ? {} : {logoutUrl}),
