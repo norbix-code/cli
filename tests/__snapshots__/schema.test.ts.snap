@@ -674,6 +674,15 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [
       "id",
     ],
+    "destructive": false,
+    "flags": [],
+    "id": "code marketplace connections catalog",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
     "destructive": true,
     "flags": [
       "yes:boolean",
@@ -734,6 +743,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [
       "id",
     ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "code marketplace connections secrets reveal",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
     "destructive": false,
     "flags": [
       "dry-run:boolean",
@@ -762,6 +783,19 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "dry-run:boolean",
     ],
     "id": "code marketplace connections sign-out",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "file:string",
+    ],
+    "id": "code marketplace connections token-mappings",
     "supportsDryRun": true,
   },
   {
@@ -875,6 +909,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "connection:string",
+    ],
+    "id": "code marketplace functions tokens",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
       "listing",
     ],
     "destructive": false,
@@ -901,6 +946,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "kind:option",
       "page-size:string",
       "after:string",
+      "tokens:string",
     ],
     "id": "code marketplace listings",
     "supportsDryRun": false,
@@ -1119,6 +1165,19 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "app-user:boolean",
     ],
     "id": "code workflows resume",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "link",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "use:boolean",
+    ],
+    "id": "code workflows resume-link",
     "supportsDryRun": true,
   },
   {
@@ -4419,6 +4478,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "take:string",
+    ],
+    "id": "scheduler runs",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": true,
     "flags": [
@@ -4454,6 +4524,50 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "config:string",
     ],
     "id": "scheduler save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "id:string",
+      "name:string",
+      "description:string",
+      "cron:string",
+      "execution-identity:string",
+      "initiator:string",
+      "enabled:boolean",
+      "stop-on-error:boolean",
+      "integration:string",
+      "function:string",
+      "qualifier:string",
+      "async:boolean",
+      "config:string",
+      "token:string",
+    ],
+    "id": "scheduler save code",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "id:string",
+      "name:string",
+      "description:string",
+      "cron:string",
+      "execution-identity:string",
+      "initiator:string",
+      "enabled:boolean",
+      "stop-on-error:boolean",
+      "workflow:string",
+      "payload:string",
+    ],
+    "id": "scheduler save workflow",
     "supportsDryRun": true,
   },
   {

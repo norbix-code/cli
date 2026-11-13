@@ -62,6 +62,7 @@ All paths below are under `/{version}/code/marketplace`.
 |---|---|---|
 | `norbix code marketplace listings [--search <text>] [--tags <tag>]… [--category <Category>]… [--transport <Rest\|Mcp\|Code\|Internal\|Sdk>]… [--official] [--kind Connector\|Workflow]` | the catalog this host shows; `--kind Workflow` lists the curated workflows (beta) | `GET /listings` |
 | `norbix code marketplace listings <ml_…>` | one listing in full: install form (config and secret fields), validation steps, functions with key, form kind, parameters and inputs | `GET /listings/{id}` |
+| `norbix code marketplace listings <ml_…> --tokens <function key>` | the `@Model.X` tokens that function of the listing reads, one per line — before it is added to a connection | `GET /listings/{id}/functions/{key}/tokens` |
 | `norbix code marketplace install-workflow <ml_…> [--ref <key=value>]… [--name <text>] [--identity <usr_…>]` | beta: fills a workflow listing's references and saves a new workflow's draft in the current environment; nothing runs and nothing is published. A malformed `--ref` is refused locally. After `CM-ERRORS-MARKETPLACE-036` the listing is read once and the hint names what it wants | `POST /listings/{id}/install-workflow` |
 | `norbix code marketplace connections list` | the project's connections in the current environment | `GET /integrations` |
 | `norbix code marketplace connections get <int_…>` | one connection: listing, config, on/off, `lastValidationSteps` (never secrets) | `GET /integrations/{id}` |
@@ -77,7 +78,11 @@ All paths below are under `/{version}/code/marketplace`.
 | `norbix code marketplace connections access set <int_…> --role <role id> --package <None\|Viewer\|FunctionsOnly\|ReadOnly\|FullAccess> [--manage]` | gives the role one package (case and dashes ignored: `read-only`); without `--manage` the role loses Manage. Needs `membership:managePolicies` | `PUT /integrations/{id}/access/roles` |
 | `norbix code marketplace connections access custom <int_…> --role <role id> [--from <package>] [--tool <name>]… [--function <func_…>]… [--manage] [--new-policy]` | a custom policy for the role: the `--from` package (default `None`) plus the ticked tools and functions; prints the policy id, created or updated, and how many roles hold it. `--new-policy` writes a new one for this role only when its custom policy is shared | `POST /integrations/{id}/access/roles/custom` |
 | `norbix code marketplace connections secrets set <int_…> --secret k=v…` | replaces **all** stored secrets of the connection | `PUT /integrations/{id}/secrets` |
+| `norbix code marketplace connections secrets reveal <int_…> [--yes]` | prints the stored secrets in plain text as `key=value`; asks first (the values land in your terminal); the gateway may refuse it for your role | `POST /integrations/{id}/secrets/reveal` |
+| `norbix code marketplace connections token-mappings <int_…> --file <json\|@file\|-> [--yes]` | replaces the connection's shared token mappings (every function inherits them; its own win): a JSON array of `{"key", "value", "resolver"}` or an object with `tokenMappings`; the whole list, `[]` clears | `PUT /integrations/{id}/token-mappings` |
+| `norbix code marketplace connections catalog <int_…>` | the functions the connection's listing offers (what `functions add --key` takes): key — display name — description per line; `--json` every definition in full | `GET /integrations/{id}/catalog` |
 | `norbix code marketplace functions list --connection <int_…>` | the functions added to a connection | `GET /integrations/{id}/functions` |
+| `norbix code marketplace functions tokens <func_…> --connection <int_…>` | the `@Model.X` tokens the function reads — what a trigger action or a scheduler task must map | `GET /integrations/{id}/functions/{func}/tokens` |
 | `norbix code marketplace functions get <func_…> --connection <int_…>` | one function: key, arguments, inputs, template, mappings | `GET /integrations/{id}/functions/{func}` |
 | `norbix code marketplace functions add --connection <int_…> --key <key> [--name <text>] [--arguments '<json>'] [--arg k=v]… [--input name[:type[:required]]]…` | adds a function and prints the minted id | `POST /integrations/{id}/functions` |
 | `norbix code marketplace functions enable\|disable\|delete <func_…> --connection <int_…>` | turns it on / off, deletes it | `POST …/enable`, `POST …/disable`, `DELETE …` |
@@ -197,6 +202,8 @@ as everywhere; workflows live per environment.
 | `norbix code workflows resume --workflow <wf_…> --key <key> [--step] [--decision] [--payload] [--yes]` | the same, the run found by its wait's `key` (for an outside system); Hub only | `POST /{id}/resume` |
 | `norbix code workflows retry <wfr_…> [--step <id>] [--yes]` | a new attempt of the failed step from its stored input; the run continues | `POST /runs/{runId}/retry` |
 | `norbix code workflows cancel <wfr_…> [--reason <text>] [--yes]` | stops a running or waiting run | `POST /runs/{runId}/cancel` |
+| `norbix code workflows resume-link <link\|token>` | what a signed resume link from a notification will do — workflow, run, step, decision, assignee, expiry; changes nothing; no sign-in needed (Api host) | `GET /resume/{token}` |
+| `norbix code workflows resume-link <link\|token> --use [--yes]` | answers the wait with the link, as its assignee; prints the run (a group approval may still be `waiting`) | `POST /resume/{token}` |
 | `norbix code workflows schema [--format json\|yaml]` | the definition's JSON Schema, every step kind (config / output schema, permissions it needs), the binding families; works with the beta switch off | `GET /schema` |
 | `norbix code workflows beta enable` | turns the Workflows beta on in this environment (on by default) | `PUT /enable` |
 | `norbix code workflows beta disable [--yes]` | turns it off: every route but `schema` refuses, starts are skipped; runs in flight continue | `PUT /disable` |
@@ -217,10 +224,11 @@ Notes:
   route, for an app user's login (a project user, not a team member): it lists
   and answers only that user's own approvals. The CLI does not guess from the
   login which host to use. The signed resume links in an approval e-mail
-  (`/code/workflows/resume/{token}`) are opened by the approver's browser and
-  have no command.
-- `publish`, `draft --discard`, `delete`, `disable`, `resume`, `retry`,
-  `cancel` and `beta disable` ask first; pass `--yes` in a script (without it
+  (`/code/workflows/resume/{token}`) are usually opened by the approver's
+  browser; `resume-link` checks one (or, with `--use`, answers it) from the
+  terminal — pass the whole link or only the token.
+- `publish`, `draft --discard`, `delete`, `disable`, `resume`, `resume-link
+  --use`, `retry`, `cancel` and `beta disable` ask first; pass `--yes` in a script (without it
   they exit 3 and send nothing). Every command that changes something takes
   `--dry-run`. `--json` prints the raw answer.
 
