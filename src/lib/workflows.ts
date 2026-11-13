@@ -151,14 +151,34 @@ interface RunStep {
   decision?: string
 }
 
-/** One answer to a group approval (Code.Workflows.md §3.3b): who, what, when. */
+/** One answer to a group approval (Code.Workflows.md §3.3b): who, what, when, and which slots it filled. */
 interface RunWaitAnswer {
   userId?: string
+  kind?: string
   decision?: string
+  slots?: number[]
+  override?: boolean
   at?: string
 }
 
-/** What a run waits on. `require` and `answers` are there only for a group approval. */
+/**
+ * One thing an approval asks for: a person, or a rule somebody must match
+ * (`role:Accountant`, `teamrole:Developer`). One slot = one `assignees` entry
+ * of the step, and `require` counts slots, not people.
+ */
+interface RunWaitSlot {
+  label?: string
+  userId?: string
+  role?: string
+  tag?: string
+  teamRole?: boolean
+  answeredBy?: string
+  decision?: string
+  at?: string
+  override?: boolean
+}
+
+/** What a run waits on. `require`, `slots` and `answers` are there only for a group approval. */
 interface RunWait {
   stepId?: string
   kind?: string
@@ -166,7 +186,9 @@ interface RunWait {
   key?: string
   assignees?: string[]
   require?: number
+  slots?: RunWaitSlot[]
   answers?: RunWaitAnswer[]
+  mine?: boolean
   childRunId?: string
 }
 
@@ -191,26 +213,73 @@ function itemOf(step: RunStep): string {
   return step.itemIndex === undefined || step.itemIndex === null ? '' : `#${step.itemIndex}`
 }
 
+/** What one slot is called: the rule as it was written, or the person named. */
+function slotLabel(slot: RunWaitSlot): string {
+  return slot.label ?? slot.userId ?? '?'
+}
+
 /**
- * A group approval in plain words, for a wait that has `require` (how many of
- * the assignees must approve): `group approval — 1 of 2 approvals, waiting for
- * usr_…`. Rejections are named when there are any; "waiting for" lists the
- * assignees who have not answered. Empty for any other wait.
+ * The slots of an approval, the unit `require` counts. A run parked before
+ * slots existed carries none, and then each person asked is their own slot,
+ * so the people stand in for them and nothing is counted twice.
+ */
+function slotsOf(wait: RunWait): RunWaitSlot[] {
+  if (wait.slots?.length) return wait.slots
+  const answers = wait.answers ?? []
+  return (wait.assignees ?? []).map((id) => {
+    const answer = answers.find((a) => a.userId === id)
+    return {userId: id, answeredBy: answer?.userId, decision: answer?.decision, override: answer?.override}
+  })
+}
+
+/**
+ * A group approval in plain words, for a wait that has `require` (how many
+ * SLOTS must approve): `group approval — 1 of 2 approvals, waiting for
+ * role:Accountant`. Rejections are named when there are any; "waiting for"
+ * lists the slots nobody has filled, by the rule as its author wrote it. An
+ * answer that came from somebody who was not asked is marked as an override.
+ * Empty for any other wait.
  */
 export function formatGroupApproval(wait: RunWait | undefined): string {
   if (!wait || wait.require === undefined || wait.require === null) return ''
-  const answers = wait.answers ?? []
-  const approvals = answers.filter((a) => a.decision === 'approved').length
-  const rejections = answers.filter((a) => a.decision === 'rejected').length
-  const answered = new Set(answers.map((a) => a.userId))
-  const pending = (wait.assignees ?? []).filter((id) => !answered.has(id))
+  const slots = slotsOf(wait)
+  const approvals = slots.filter((s) => s.decision === 'approved').length
+  const rejections = slots.filter((s) => s.decision === 'rejected').length
+  const pending = slots.filter((s) => !s.answeredBy && !s.decision).map(slotLabel)
+  const overrides = slots.filter((s) => s.override).length
   return [
     `group approval — ${approvals} of ${plural(wait.require, 'approval')}`,
     rejections > 0 ? plural(rejections, 'rejection') : '',
+    overrides > 0 ? `${overrides} by override` : '',
     pending.length > 0 ? `waiting for ${pending.join(', ')}` : '',
   ]
     .filter(Boolean)
     .join(', ')
+}
+
+/**
+ * The ASKS column: what the approval still needs, by the rule as its author
+ * wrote it — never the list of people told, which for a role approval is
+ * everybody who held that role when the wait parked.
+ */
+function asksColumn(wait: RunWait): string {
+  if (wait.slots?.length) {
+    const open = wait.slots.filter((s) => !s.answeredBy && !s.decision).map(slotLabel)
+    return open.length > 0 ? open.join(', ') : 'all answered'
+  }
+
+  return wait.assignees?.length ? wait.assignees.join(', ') : '—'
+}
+
+/** Every slot of an approval, one per line: who or which rule, and how it stands. */
+export function formatSlots(wait: RunWait | undefined): string[] {
+  if (!wait?.slots?.length) return []
+  return wait.slots.map((slot) => {
+    const state = slot.decision
+      ? `${slot.decision} by ${slot.answeredBy ?? '?'}${slot.override ? ' (override)' : ''}${slot.at ? ` at ${slot.at}` : ''}`
+      : 'open'
+    return `    ${slotLabel(slot)}: ${state}`
+  })
 }
 
 /**
@@ -227,12 +296,13 @@ export function formatRun(run: Run | undefined): string {
     `  version: ${version}  source: ${run.source ?? '—'}  started: ${run.startedAt ?? '—'}${run.finishedAt ? `  finished: ${run.finishedAt}` : ''}${run.durationMs === undefined || run.durationMs === null ? '' : `  duration: ${run.durationMs} ms`}`,
   ]
   for (const w of run.waitingOn ?? []) {
-    const extra = [w.childRunId ? `child run ${w.childRunId}` : '', w.until ? `until ${w.until}` : '', w.key ? `key ${w.key}` : '', w.assignees?.length ? `assignees ${w.assignees.join(', ')}` : '']
+    const extra = [w.childRunId ? `child run ${w.childRunId}` : '', w.until ? `until ${w.until}` : '', w.key ? `key ${w.key}` : '', w.assignees?.length ? `told ${w.assignees.join(', ')}` : '']
       .filter(Boolean)
       .join(', ')
     lines.push(`  waiting on: step ${w.stepId ?? '?'} (${w.kind ?? '?'})${extra ? ` — ${extra}` : ''}`)
     const group = formatGroupApproval(w)
     if (group) lines.push(`  ${w.stepId ?? '?'}: ${group}`)
+    lines.push(...formatSlots(w))
   }
 
   if (run.error) {
@@ -284,22 +354,24 @@ export function formatWaitingRuns(res: unknown): string {
       w.stepId ?? '—',
       w.kind ?? run.status ?? '—',
       w.key ?? '—',
-      w.assignees?.length ? w.assignees.join(', ') : '—',
+      asksColumn(w),
+      w.mine === false ? 'override' : w.mine === true ? 'yes' : '—',
       w.until ?? '—',
       w.childRunId ?? '—',
     ]),
   )
   if (rows.length === 0) return 'No runs match.'
 
-  const header = ['RUN', 'WORKFLOW', 'STEP', 'KIND', 'KEY', 'ASSIGNEES', 'UNTIL', 'CHILD']
+  const header = ['RUN', 'WORKFLOW', 'STEP', 'KIND', 'KEY', 'ASKS', 'YOURS', 'UNTIL', 'CHILD']
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i].length)))
   const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd()
   const groups = items.flatMap((run) =>
     (run.waitingOn ?? []).flatMap((w) => {
       const group = formatGroupApproval(w)
-      return group ? [`  ${run.runId ?? ''} ${w.stepId ?? '?'}: ${group}`] : []
+      return group ? [`  ${run.runId ?? ''} ${w.stepId ?? '?'}: ${group}`, ...formatSlots(w)] : []
     }),
   )
+  const overrides = items.flatMap((run) => (run.waitingOn ?? []).filter((w) => w.mine === false)).length
   const lines = [
     line(header),
     ...rows.map(line),
@@ -307,6 +379,13 @@ export function formatWaitingRuns(res: unknown): string {
     '',
     `${rows.length} waiting. Read one: norbix code workflows run <run>`,
   ]
+  // YOURS = override: the step did not ask you. Answering it needs the override
+  // right, and the run records that somebody else decided — never the absent
+  // person's name. Said once, not on every row.
+  if (overrides > 0)
+    lines.push(
+      `${plural(overrides, 'row')} marked "override": the step does not ask you. Answering settles every part still open and is recorded as yours.`,
+    )
   if (list.hasMore && list.startingAfter) lines.push(`More: add --after ${list.startingAfter}`)
   return lines.join('\n')
 }
