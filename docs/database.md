@@ -24,9 +24,10 @@ than the project default.
 
 ## Module
 
-`norbix module enable database` / `norbix module disable database` turn the
-module on and off (`PUT /enable`, `PUT /disable`). A gateway older than
-refactoringV2 (2026-10) has only the GET routes, so this CLI needs a current gateway.
+`norbix module enable database` turns the module on (`PUT /enable`). Database
+is always on and cannot be disabled: `norbix module disable database` is
+refused before anything is sent (exit 2). A gateway older than refactoringV2
+(2026-10) has only the GET route, so this CLI needs a current gateway.
 
 ## Records
 

@@ -110,7 +110,7 @@ All paths are under `/{version}/membership/integrations`. Providers:
 `AppleSignIn`, `GoogleSignIn`, `Google`, `Facebook`, `X`, `GitHub`, `LinkedIn`,
 `Okta`, `Microsoft` — the client id, the client secret and the other provider
 fields go in `--config`. No `test` route: the gateway has none for sign-in
-providers.
+providers. No default either: the app names the provider when a user signs in.
 
 | command | what it does | endpoint |
 |---|---|---|
@@ -119,7 +119,6 @@ providers.
 | `norbix membership integration save --provider <p> …` | create or update one | `POST /` |
 | `norbix membership integration enable <id>` | turn it on | `PUT /{Id}/enable` |
 | `norbix membership integration disable <id> [--yes]` | turn it off | `PUT /{Id}/disable` |
-| `norbix membership integration default <id>` | make it the project default | `PUT /{Id}/default` |
 | `norbix membership integration delete <id> [--yes]` | delete it | `DELETE /{Id}` |
 
 ## Keyless cloud setup (every module)
