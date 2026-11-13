@@ -573,6 +573,57 @@ describe('norbix code workflows — runs', () => {
   })
 })
 
+describe('norbix code workflows resume-link', () => {
+  const TOKEN = 'eyJydW4iOiJ3ZnJfNW5CMiJ9.sig-1'
+  const LINK = {runId: RUN, workflowId: WF, workflowName: 'Approve big orders', stepId: 'approve', stepName: 'Manager approval', mode: 'approval', decision: 'approved', assigneeUserId: 'usr_anna', expiresAt: '2026-11-20T08:00:00Z'}
+
+  it('<token> → GET /code/workflows/resume/{token} on the Api host, no query, no body; prints what it will do', async () => {
+    answer = LINK
+    const {error} = await wf('resume-link', TOKEN)
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({method: 'GET', path: `${W}/resume/${TOKEN}`, body: undefined})
+    expect(calls[0]?.host).toMatch(/\.api\./)
+    expect([...calls[0]!.query.keys()]).toEqual([])
+    expect(out()).toContain('Workflow: Approve big orders (' + WF + ')')
+    expect(out()).toContain('Does:     approval: approved')
+    expect(out()).toContain('Expires:  2026-11-20T08:00:00Z')
+  })
+
+  it('takes the whole link from the notification, query and all', async () => {
+    answer = LINK
+    await wf('resume-link', `https://api.norbix.ai/v3/code/workflows/resume/${TOKEN}?utm=mail`)
+
+    expect(calls[0]).toMatchObject({method: 'GET', path: `${W}/resume/${TOKEN}`})
+    expect([...calls[0]!.query.keys()]).toEqual([])
+  })
+
+  it('--use → POST /code/workflows/resume/{token}, only with --yes; prints the run', async () => {
+    const refused = await wf('resume-link', TOKEN, '--use')
+    expect((refused.error as {code?: string} | undefined)?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(calls).toHaveLength(0)
+
+    answer = {run: RUN_DTO}
+    const {error} = await wf('resume-link', TOKEN, '--use', '--yes')
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({method: 'POST', path: `${W}/resume/${TOKEN}`})
+    expect(calls[0]?.host).toMatch(/\.api\./)
+    expect(calls[0]?.body ?? {}).toEqual({})
+    expect(out()).toContain(`Run ${RUN} of ${WF}: succeeded`)
+  })
+
+  it('--use --dry-run sends nothing; a link with no token is refused before any call', async () => {
+    await wf('resume-link', TOKEN, '--use', '--dry-run')
+    expect(calls).toHaveLength(0)
+
+    const {error} = await wf('resume-link', 'https://api.norbix.ai/v3/code/workflows/resume/')
+    expect(error?.message).toMatch(/not a resume link or token/)
+    expect(calls).toHaveLength(0)
+  })
+})
+
 describe('workflows helpers', () => {
   it('formatOf: the extension decides; otherwise JSON when it parses, YAML when not', () => {
     expect(formatOf('a.json', 'name: x')).toBe('json')

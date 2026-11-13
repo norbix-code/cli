@@ -898,3 +898,83 @@ describe('marketplace helpers', () => {
     expect(() => parseInputs([':string'])).toThrow('name[:type[:required]]')
   })
 })
+
+describe('norbix code marketplace — tokens, catalog, secrets reveal, token mappings', () => {
+  const mp = (...args: string[]) => runCommand(['code', 'marketplace', ...args, ...globalArgs])
+
+  it('listings <id> --tokens <key> → GET /listings/{id}/functions/{key}/tokens, no query, no body; one token per line', async () => {
+    answer = {tokens: ['Request.Filter', 'Initiator.User.Id']}
+    const {error} = await mp('listings', LISTING, '--tokens', 'db.find')
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({method: 'GET', path: `${M}/listings/${LISTING}/functions/db.find/tokens`, body: undefined})
+    expect([...calls[0]!.query.keys()]).toEqual([])
+    expect(out()).toBe('Request.Filter\nInitiator.User.Id')
+  })
+
+  it('listings --tokens without a listing ID is refused before any call', async () => {
+    const {error} = await mp('listings', '--tokens', 'db.find')
+    expect(error?.message).toMatch(/--tokens needs a listing ID/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('functions tokens <func> --connection → GET …/integrations/{id}/functions/{func}/tokens', async () => {
+    answer = {tokens: []}
+    const {error, result} = await mp('functions', 'tokens', FUNCTION, '--connection', CONNECTION, '--json')
+
+    expect(error).toBeUndefined()
+    expect(calls[0]).toMatchObject({method: 'GET', path: `${C}/${CONNECTION}/functions/${FUNCTION}/tokens`, body: undefined})
+    expect([...calls[0]!.query.keys()]).toEqual([])
+    expect(result).toEqual({tokens: []})
+  })
+
+  it('connections catalog <id> → GET …/integrations/{id}/catalog; key — name — description per line', async () => {
+    answer = {functions: [{functionKey: 'db.find', displayName: 'Find records', description: 'Reads records'}, {functionKey: 'db.insert', displayName: 'Insert'}]}
+    const {error} = await mp('connections', 'catalog', CONNECTION)
+
+    expect(error).toBeUndefined()
+    expect(calls[0]).toMatchObject({method: 'GET', path: `${C}/${CONNECTION}/catalog`, body: undefined})
+    expect([...calls[0]!.query.keys()]).toEqual([])
+    expect(out()).toBe('db.find — Find records — Reads records\ndb.insert — Insert')
+  })
+
+  it('connections secrets reveal <id> → POST …/{id}/secrets/reveal, only with --yes; prints key=value', async () => {
+    const refused = await mp('connections', 'secrets', 'reveal', CONNECTION)
+    expect((refused.error as {code?: string} | undefined)?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(calls).toHaveLength(0)
+
+    answer = {secrets: {botToken: 'xoxb-9'}}
+    const {error} = await mp('connections', 'secrets', 'reveal', CONNECTION, '--yes')
+    expect(error).toBeUndefined()
+    expect(calls[0]).toMatchObject({method: 'POST', path: `${C}/${CONNECTION}/secrets/reveal`})
+    expect(calls[0]?.body ?? {}).toEqual({})
+    expect(out()).toContain('botToken=xoxb-9')
+  })
+
+  it('connections token-mappings <id> --file → PUT …/{id}/token-mappings with the whole list, only with --yes', async () => {
+    const mappings = [{key: 'Channel', value: '#sales', resolver: 'Custom'}]
+    const file = join(mkdtempSync(join(tmpdir(), 'norbix-mp-')), 'mappings.json')
+    writeFileSync(file, JSON.stringify({tokenMappings: mappings}))
+
+    const refused = await mp('connections', 'token-mappings', CONNECTION, '--file', file)
+    expect((refused.error as {code?: string} | undefined)?.code).toBe('CONFIRMATION_REQUIRED')
+    expect(calls).toHaveLength(0)
+
+    const {error} = await mp('connections', 'token-mappings', CONNECTION, '--file', file, '--yes')
+    expect(error).toBeUndefined()
+    expect(calls[0]).toMatchObject({method: 'PUT', path: `${C}/${CONNECTION}/token-mappings`})
+    expect([...calls[0]!.query.keys()]).toEqual([])
+    expect(calls[0]?.body).toEqual({tokenMappings: mappings})
+  })
+
+  it('token-mappings takes inline JSON, [] clears; a list that is not mappings is refused before any call', async () => {
+    await mp('connections', 'token-mappings', CONNECTION, '--file', '[]', '--yes')
+    expect(calls[0]?.body).toEqual({tokenMappings: []})
+
+    calls = []
+    const {error} = await mp('connections', 'token-mappings', CONNECTION, '--file', '[1,2]', '--yes')
+    expect(error?.message).toMatch(/array of token mappings/)
+    expect(calls).toHaveLength(0)
+  })
+})
