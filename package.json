@@ -293,7 +293,7 @@
             "description": "People of the project (the dashboard's Users screen): list, show, add, change, archive, merge, logins, roles, marketing consent",
             "subtopics": {
               "identities": {
-                "description": "The logins of a contact: link, unlink, make main"
+                "description": "The logins of a contact: link, unlink, make main, recovery map"
               }
             }
           },
