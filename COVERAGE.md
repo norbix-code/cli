@@ -57,8 +57,8 @@ out of reach.
 | code/workflows (beta) | 26/30 | every route a person calls (24 Hub + the Api host's waiting list and resume) — see `docs/code.md`; each command is run through the real transport in `tests/code-workflows-routes.test.ts`. Not commands: the four signed resume-link routes (`GET`/`POST /code/workflows/resume/{token}`, Hub and Api), opened by an approver's browser from an e-mail |
 
 Cross-cutting commands: `norbix integrations <module>` lists integrations for
-9 modules; `norbix module enable|disable <name>` enables 10 modules and disables 8
-(Membership and Database are always on: `disable` is refused for them).
+9 modules; `norbix module enable|disable <name>` toggles 8 modules
+(Membership and Database are always on: `enable` is a no-op, `disable` is refused).
 `norbix integrations keyless-setup <module> <cloud>` covers
 `GET /integrations/keyless/setup` for every module the gateway serves (files, email,
 code, logs, push, payments, database), `--template <kind>` included
