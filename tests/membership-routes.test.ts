@@ -160,7 +160,6 @@ const routes: Array<[string[], Route[]]> = [
 
   // Settings
   [['module', 'enable', 'membership'], [['PUT', `${M}/enable`]]],
-  [['module', 'disable', 'membership', '--yes'], [['PUT', `${M}/disable`]]],
   [['membership', 'settings', 'authentication'], [['GET', `${M}/authentication`]]],
   [
     ['membership', 'settings', 'authentication', 'set', '--allow-usernames', 'true'],

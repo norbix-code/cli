@@ -56,7 +56,6 @@ const routes: Array<[string[], string, string]> = [
   [['integration', 'enable', ID], 'PUT', `${P}/integrations/${ID}/enable`],
   [['integration', 'disable', ID, '--yes'], 'PUT', `${P}/integrations/${ID}/disable`],
   [['integration', 'delete', ID, '--yes'], 'DELETE', `${P}/integrations/${ID}`],
-  [['integration', 'default', ID], 'PUT', `${P}/integrations/${ID}/default`],
 ]
 
 describe('every membership integration command reaches its route', () => {
@@ -72,9 +71,10 @@ describe('every membership integration command reaches its route', () => {
   }
 })
 
-it('covers all 7 membership integration routes of the gateway', () => {
+it('covers all 6 membership integration routes of the gateway', () => {
   // The gateway's `[Route]` list for /membership/integrations… (Hub.Membership/Integrations/*.cs).
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(7)
+  // No set-as-default route: a sign-in integration has no default (owner, 2026-11-13).
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(6)
 })
 
 /** Run a command and return the body of the one request it sent. */

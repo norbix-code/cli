@@ -12,6 +12,10 @@ import {envListAnswer} from './_env.js'
  * (refactoringV2, 2026-10); `@norbix.ai/ts` 4.10.0 sends PUT. The old GET
  * routes stay on the gateway as hidden, deprecated aliases until 0.2 — the CLI
  * must not depend on them.
+ *
+ * Membership and Database are always on (owner, 2026-11-13): the gateway has
+ * no disable route for them, so `module disable membership|database` is
+ * refused before anything is sent.
  */
 
 interface Call {
@@ -54,9 +58,12 @@ const MODULES: Record<string, string> = {
   sms: '/v3/notifications/sms',
 }
 
+/** Modules with no disable route on the gateway. */
+const ALWAYS_ON = new Set(['database', 'membership'])
+
 describe('every module enable / disable sends PUT', () => {
   for (const [name, prefix] of Object.entries(MODULES)) {
-    for (const action of ['enable', 'disable'] as const) {
+    for (const action of ALWAYS_ON.has(name) ? (['enable'] as const) : (['enable', 'disable'] as const)) {
       const argv = ['module', action, name, ...(action === 'disable' ? ['--yes'] : [])]
       it(`${argv.join(' ')} → PUT ${prefix}/${action}`, async () => {
         const {error} = await runCommand([...argv, ...globalArgs])
@@ -68,4 +75,26 @@ describe('every module enable / disable sends PUT', () => {
       })
     }
   }
+})
+
+describe('module disable membership|database is refused locally', () => {
+  for (const name of ALWAYS_ON) {
+    for (const extra of [[], ['--yes'], ['--dry-run']]) {
+      const argv = ['module', 'disable', name, ...extra]
+      it(`${argv.join(' ')} → usage error, nothing sent`, async () => {
+        const {error} = await runCommand([...argv, ...globalArgs])
+
+        expect(error?.message).toBe('Membership and Database are always on; they cannot be disabled.')
+        expect((error as {oclif?: {exit?: number}} | undefined)?.oclif?.exit).toBe(2)
+        expect(calls).toHaveLength(0)
+      })
+    }
+  }
+
+  it('the other modules can still be disabled', async () => {
+    const {error} = await runCommand(['module', 'disable', 'files', '--yes', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toEqual([{method: 'PUT', path: '/v3/files/disable'}])
+  })
 })

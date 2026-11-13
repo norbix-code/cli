@@ -209,7 +209,7 @@
         "description": "Membership tools: the sign-in integrations, the membership (end-user) triggers, the sign-in and registration settings, the password-reset e-mail test",
         "subtopics": {
           "integration": {
-            "description": "One sign-in integration: show, save, turn on/off, default, delete"
+            "description": "One sign-in integration: show, save, turn on/off, delete"
           },
           "trigger": {
             "description": "One membership trigger (a user registered, was invited, verified, updated, deleted, blocked, reactivated or created): show, save, turn on/off, delete"
