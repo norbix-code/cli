@@ -162,7 +162,7 @@ const routes: Array<[string[], Route[]]> = [
   [['membership', 'settings', 'authentication'], [['GET', `${M}/authentication`]]],
   [
     ['membership', 'settings', 'authentication', 'set', '--allow-usernames', 'true'],
-    [['GET', `${M}/authentication`], ['PUT', `${M}/authentication`]],
+    [['PUT', `${M}/authentication`]],
   ],
   [['membership', 'settings', 'authorization'], [['GET', `${M}/authorization`]]],
   [['membership', 'settings', 'authorization', 'set', '--invite-only', 'true'], [['PUT', `${M}/authorization`]]],
@@ -475,23 +475,21 @@ describe('users roles and policies', () => {
 })
 
 describe('membership settings', () => {
-  it('authentication set reads first and changes only what was passed', async () => {
-    answers[`GET ${M}/authentication`] = {
-      result: {credentialsSettings: {logoutUrl: 'https://a.example/bye', allowUsernames: false, modes: [{name: 'Passkey', logoutUrl: 'https://a.example/p'}, {name: 'Email', logoutUrl: 'https://a.example/e'}]}},
-    }
-    const call = await send(['membership', 'settings', 'authentication', 'set', '--allow-usernames', 'true', '--mode-logout-url', 'Passkey=https://b.example/p'])
-    expect(call.body).toEqual({
-      logoutUrl: 'https://a.example/bye',
-      allowUsernames: true,
-      modes: [{name: 'Passkey', logoutUrl: 'https://b.example/p'}, {name: 'Email', logoutUrl: 'https://a.example/e'}],
-    })
+  it('authentication set sends only allowUsernames: no logout URL, no modes, no read', async () => {
+    const call = await send(['membership', 'settings', 'authentication', 'set', '--allow-usernames', 'false'])
+    expect(call.method).toBe('PUT')
+    expect(call.body).toEqual({allowUsernames: false})
+    expect(calls).toHaveLength(1)
   })
 
-  it('authentication set refuses a mode with no =', async () => {
-    const {error} = await runCommand(['membership', 'settings', 'authentication', 'set', '--mode-logout-url', 'Passkey', ...globalArgs])
-    expect(error?.message).toContain('Name=URL')
-    expect(calls).toHaveLength(0)
-  })
+  for (const argv of [[], ['--logout-url', 'https://a.example/bye'], ['--mode-logout-url', 'Passkey=https://a.example/p']]) {
+    it(`authentication set ${argv.join(' ') || '(no flags)'} is a usage error, nothing sent`, async () => {
+      const {error} = await runCommand(['membership', 'settings', 'authentication', 'set', ...argv, ...globalArgs])
+      expect(error).toBeDefined()
+      expect((error as {oclif?: {exit?: number}} | undefined)?.oclif?.exit).toBe(2)
+      expect(calls).toHaveLength(0)
+    })
+  }
 
   it('authorization set sends only the fields that were passed, and no `setting`', async () => {
     const call = await send([
@@ -544,7 +542,6 @@ describe('membership settings', () => {
   }
 
   for (const [what, path, argv] of [
-    ['sign-in settings', `${M}/authentication`, ['authentication', 'set', '--allow-usernames', 'true']],
     ['password rules', `${M}/authorization`, ['password-complexity', 'set', '--min-length', '12']],
     ['passkey settings', `${M}/passkey/settings`, ['passkey', 'set', '--enabled', 'true']],
   ] as const) {

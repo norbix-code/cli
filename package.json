@@ -218,7 +218,7 @@
             "description": "Sign-in, registration, password and passkey settings: show and change",
             "subtopics": {
               "authentication": {
-                "description": "Sign-in settings: logout URL, user names, per-mode logout URL"
+                "description": "Sign-in settings: user names allowed"
               },
               "authorization": {
                 "description": "Registration settings: default and sign-up roles, guests, invite-only"
