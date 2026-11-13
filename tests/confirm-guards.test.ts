@@ -75,13 +75,16 @@ describe('the two explicit lists', () => {
 })
 
 describe('the rule for a resolved SDK method', () => {
-  it('every SDK method has a generated HTTP verb, except six hand-written helpers', () => {
+  it('every SDK method has a generated HTTP verb, except the hand-written helpers', () => {
     // The verb decides the delete rule, so a method with no generated entry
-    // cannot be judged by it. These six are hand-written helpers of the SDK
+    // cannot be judged by it. These are hand-written helpers of the SDK
     // (positional arguments, no request object); none sends DELETE on its
     // own, but auth.signOut spreads its first argument over the send call, so
     // `--method DELETE --path …` typed as fields changes what it sends. So a
     // method with no generated entry asks, as `unknown` (next test).
+    // The social sign-in and link-identity helpers joined the list in sdk-ts
+    // 4.56–4.62: they drive a browser round trip, so they take a provider and
+    // a return URL, not a request object.
     const missing: string[] = []
     for (const surface of ['hub', 'api'] as const) {
       for (const [moduleName, method] of sdkMethods(surface)) {
@@ -91,10 +94,19 @@ describe('the rule for a resolved SDK method', () => {
 
     expect(missing.sort()).toEqual([
       'api.auth.browserSignIn',
+      'api.auth.completeSocialSignIn',
+      'api.auth.exchangeSocialCode',
+      'api.auth.readSocialReturn',
+      'api.auth.redirectToSocialSignIn',
       'api.auth.sessionSignInBody',
       'api.auth.signIn',
       'api.auth.signOut',
+      'api.auth.socialSignInUrl',
       'api.logs.write',
+      'api.membership.completeLinkIdentity',
+      'api.membership.finishLinkIdentity',
+      'api.membership.redirectToLinkIdentity',
+      'api.membership.startLinkIdentity',
       'hub.code.getMarketplaceFunctionRunDetails',
     ])
   })
