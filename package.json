@@ -110,7 +110,7 @@
         "description": "Execution identities: the service users a trigger, a scheduled task or a workflow runs as"
       },
       "apikeys": {
-        "description": "Service-user API keys for scripts, CI, SDKs and agents: list, create, regenerate, revoke"
+        "description": "Account service-user API keys for the CLI, scripts, CI, SDKs and agents: list, create, regenerate, revoke (a project service user's keys: norbix users api-keys)"
       },
       "email": {
         "description": "Email module, integrations, footers, signatures, templates and campaigns",
@@ -206,13 +206,30 @@
         }
       },
       "membership": {
-        "description": "Membership tools: the sign-in integrations, the membership (end-user) triggers, the password-reset e-mail test",
+        "description": "Membership tools: the sign-in integrations, the membership (end-user) triggers, the sign-in and registration settings, the password-reset e-mail test",
         "subtopics": {
           "integration": {
             "description": "One sign-in integration: show, save, turn on/off, default, delete"
           },
           "trigger": {
             "description": "One membership trigger (a user registered, was invited, verified, updated, deleted, blocked, reactivated or created): show, save, turn on/off, delete"
+          },
+          "settings": {
+            "description": "Sign-in, registration, password and passkey settings: show and change",
+            "subtopics": {
+              "authentication": {
+                "description": "Sign-in settings: logout URL, user names, per-mode logout URL"
+              },
+              "authorization": {
+                "description": "Registration settings: default and sign-up roles, guests, invite-only"
+              },
+              "password-complexity": {
+                "description": "Password rules: length, digits, capitals, small letters, symbols"
+              },
+              "passkey": {
+                "description": "Passkey sign-in settings"
+              }
+            }
           }
         }
       },
@@ -270,7 +287,32 @@
         "description": "SMS module, integrations, templates and campaigns"
       },
       "users": {
-        "description": "Manage project users (membership)"
+        "description": "Project users: logins (list, register, invite, update, roles, block, delete), people (contacts), roles, policies, service-user API keys, import",
+        "subtopics": {
+          "contacts": {
+            "description": "People of the project (the dashboard's Users screen): list, show, add, change, archive, merge, logins, roles, marketing consent",
+            "subtopics": {
+              "identities": {
+                "description": "The logins of a contact: link, unlink, make main"
+              }
+            }
+          },
+          "roles": {
+            "description": "Project roles: list, show, create, update, delete"
+          },
+          "policies": {
+            "description": "Project policies (sets of permissions): list, show, create, update, delete"
+          },
+          "api-keys": {
+            "description": "API keys of a project service user: list, issue, delete"
+          },
+          "preferences": {
+            "description": "Marketing preferences of a login: show, set"
+          },
+          "repair": {
+            "description": "Repair old user data: logins with no project ID, contacts with no roles"
+          }
+        }
       },
       "webhooks": {
         "description": "Inspect the webhook integration and its destinations"
