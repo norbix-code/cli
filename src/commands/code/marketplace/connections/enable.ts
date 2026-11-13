@@ -51,24 +51,43 @@ With a connection ID instead: turns that connection back on.`
     }
 
     const listingViewId = flags.listing as string
+    // Parse the key=value bags first, so a bad pair fails before any call.
+    const config = parseKeyValues(flags.config, 'config') ?? {}
+    const secrets = parseKeyValues(flags.secret, 'secret') ?? {}
     let name = flags.name
-    if (!name && !flags['dry-run']) {
+    // The gateway needs vendor, category and transport on the save
+    // (MarketplaceIntegrationMapper refuses an empty vendor with "Vendor is
+    // required"), and only the listing knows them — the portal copies them
+    // from the listing the same way. So the listing is always read first,
+    // except on --dry-run, which sends nothing at all.
+    let listing: {vendor?: string; category?: unknown; transport?: unknown; displayName?: string} | undefined
+    if (!flags['dry-run']) {
       const found = await client.hub.code.getMarketplaceListing({listingViewId})
-      name = found?.listing?.displayName
+      listing = found?.listing
+      if (!listing?.vendor) {
+        throw usageError(
+          `Listing ${listingViewId} was not found, or it has no vendor.`,
+          'Check the id with `norbix code marketplace listings`.',
+        )
+      }
+      name ??= listing.displayName
     }
 
-    // The server takes transport, vendor and category from the listing and
-    // mints the int_ id when viewId is empty; the cast leaves them out.
+    // The server mints the int_ id when viewId is empty; the cast leaves
+    // out the read-only fields of the DTO.
     const res = await client.hub.code.saveMarketplaceIntegration({
       integration: {
         viewId: flags.id,
         listingViewId,
+        vendor: listing?.vendor,
+        category: listing?.category,
+        transport: listing?.transport,
         integrationName: name ?? listingViewId,
         description: flags.description,
         isEnabled: true,
-        config: parseKeyValues(flags.config, 'config') ?? {},
+        config,
       },
-      secrets: parseKeyValues(flags.secret, 'secret') ?? {},
+      secrets,
     } as unknown as Parameters<typeof client.hub.code.saveMarketplaceIntegration>[0])
 
     const id = res?.id ?? flags.id

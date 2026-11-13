@@ -241,19 +241,20 @@ describe('norbix code marketplace connections', () => {
     expect(calls[0]?.path).toBe(`${C}/${CONNECTION}`)
   })
 
-  it('enable --listing → POST /code/marketplace/integrations without an id, config and secrets as bags; prints the minted id', async () => {
-    answer = {id: CONNECTION}
+  it('enable --listing → reads the listing, then POST /code/marketplace/integrations with its vendor, category and transport, config and secrets as bags; prints the minted id', async () => {
+    answer = {listing: {displayName: 'Slack', vendor: 'Slack', category: 'Communication', transport: 'Rest'}, id: CONNECTION}
     const {error, result} = await runCommand<{id: string}>([
       'code', 'marketplace', 'connections', 'enable', '--listing', 'ml_slack_v1', '--name', 'Slack-support',
       '--config', 'baseUrl=https://slack.com/api', '--secret', 'botToken=xoxb-1=2', ...globalArgs,
     ])
 
     expect(error).toBeUndefined()
-    expect(calls).toHaveLength(1)
-    expect(calls[0]?.method).toBe('POST')
-    expect(calls[0]?.path).toBe(C)
-    expect(calls[0]?.body).toEqual({
-      integration: {listingViewId: 'ml_slack_v1', integrationName: 'Slack-support', isEnabled: true, config: {baseUrl: 'https://slack.com/api'}},
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`GET ${M}/listings/ml_slack_v1`, `POST ${C}`])
+    expect(calls[1]?.body).toEqual({
+      integration: {
+        listingViewId: 'ml_slack_v1', vendor: 'Slack', category: 'Communication', transport: 'Rest',
+        integrationName: 'Slack-support', isEnabled: true, config: {baseUrl: 'https://slack.com/api'},
+      },
       secrets: {botToken: 'xoxb-1=2'},
     })
     expect(result?.id).toBe(CONNECTION)
@@ -263,22 +264,35 @@ describe('norbix code marketplace connections', () => {
   })
 
   it('enable --listing without --name names the connection after the listing (one GET first)', async () => {
-    answer = {listing: {displayName: 'Norbix Database'}, id: CONNECTION}
+    answer = {listing: {displayName: 'Norbix Database', vendor: 'Norbix', category: 'DevTools', transport: 'Rest'}, id: CONNECTION}
     const {error} = await runCommand(['code', 'marketplace', 'connections', 'enable', '--listing', LISTING, ...globalArgs])
 
     expect(error).toBeUndefined()
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`GET ${M}/listings/${LISTING}`, `POST ${C}`])
     expect(calls[1]?.body).toEqual({
-      integration: {listingViewId: LISTING, integrationName: 'Norbix Database', isEnabled: true, config: {}},
+      integration: {
+        listingViewId: LISTING, vendor: 'Norbix', category: 'DevTools', transport: 'Rest',
+        integrationName: 'Norbix Database', isEnabled: true, config: {},
+      },
       secrets: {},
     })
   })
 
+  it('enable --listing refuses a listing that is not found (no vendor) before any save', async () => {
+    answer = {listing: null}
+    const {error} = await runCommand(['code', 'marketplace', 'connections', 'enable', '--listing', 'ml_missing_v1', ...globalArgs])
+
+    expect(error?.message).toContain('Listing ml_missing_v1 was not found, or it has no vendor.')
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`GET ${M}/listings/ml_missing_v1`])
+  })
+
   it('enable --listing --id saves an existing connection again (viewId sent)', async () => {
+    answer = {listing: {displayName: 'Norbix Database', vendor: 'Norbix', category: 'DevTools', transport: 'Rest'}}
     const {error} = await runCommand(['code', 'marketplace', 'connections', 'enable', '--listing', LISTING, '--name', 'DB', '--id', CONNECTION, ...globalArgs])
 
     expect(error).toBeUndefined()
-    expect((calls[0]?.body?.integration as {viewId?: string}).viewId).toBe(CONNECTION)
+    expect((calls[1]?.body?.integration as {viewId?: string; vendor?: string}).viewId).toBe(CONNECTION)
+    expect((calls[1]?.body?.integration as {vendor?: string}).vendor).toBe('Norbix')
   })
 
   it('enable <id> → POST /code/marketplace/integrations/{id}/enable (turn it back on)', async () => {
