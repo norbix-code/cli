@@ -3171,9 +3171,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [
       "dry-run:boolean",
-      "logout-url:string",
       "allow-usernames:option",
-      "mode-logout-url:string",
     ],
     "id": "membership settings authentication set",
     "supportsDryRun": true,

@@ -1,7 +1,7 @@
 import {BaseCommand} from '../../../base.js'
 
 export default class MembershipSettingsAuthentication extends BaseCommand {
-  static description = `Show the sign-in settings: logout URL, user names allowed, and the logout URL of each sign-in mode
+  static description = `Show the sign-in settings: whether user names are allowed
 
 Change them with \`norbix membership settings authentication set\`.`
 
