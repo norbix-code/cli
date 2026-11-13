@@ -10,7 +10,7 @@ export default class MembershipSettingsAuthorizationSet extends BaseCommand {
 Only the settings you pass change; the gateway keeps the others. A role list
 replaces the old list; --clear-default-roles / --clear-registration-roles empty
 it. When you pass --allow-guests alone, the current guest clean-up days are
-sent with it, so they do not change.`
+sent with it, so they do not change (not on --dry-run, which sends nothing).`
 
   static examples = [
     '<%= config.bin %> membership settings authorization set --default-role Customer',
@@ -52,14 +52,13 @@ sent with it, so they do not change.`
 
     if (Object.keys(request).length === 0) throw usageError('Pass at least one setting to change, e.g. --invite-only true.')
 
-    if (allowGuests !== undefined && flags['guest-cleanup-days'] === undefined) {
+    const client = this.client(flags)
+    if (allowGuests !== undefined && flags['guest-cleanup-days'] === undefined && !flags['dry-run']) {
       // The gateway takes the clean-up days together with allowGuestUsers (none = never): keep the current value.
-      const reader = this.client({...flags, 'dry-run': false})
-      const days = (await reader.hub.membership.getAuthorizationSettings({})).result?.guestCleanupPeriodDays
+      const days = (await client.hub.membership.getAuthorizationSettings({})).result?.guestCleanupPeriodDays
       if (days !== undefined && days !== null) request.guestCleanupPeriodDays = days
     }
 
-    const client = this.client(flags)
     // The SDK types needVerification, allowInviteUsers, allowDeactivateUsers, defaultSubscribeToNews and
     // minLength as required; the gateway ignores them when no `setting` is sent, so none is sent.
     const res = await client.hub.membership.updateAuthorizationSettings(request as never)
