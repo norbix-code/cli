@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {parse as parseYaml} from 'yaml'
 
-import {BETA_NOTE, formatGroupApproval, formatIssue, formatOf, formatRun, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
+import {BETA_NOTE, formatGroupApproval, formatIssue, formatOf, formatRun, formatSlots, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
 import {envListAnswer} from './_env.js'
 
 /**
@@ -650,9 +650,9 @@ describe('workflows helpers', () => {
       },
     })
     expect(table.split('\n')).toEqual([
-      'RUN                         WORKFLOW                   STEP     KIND      KEY       ASSIGNEES     UNTIL                 CHILD',
-      `${RUN}  ${WF}  approve  approval  order-o1  usr_1, usr_2  —                     —`,
-      `wfr_2                       ${WF}  cool     delay     —         —             2026-11-02T10:00:00Z  —`,
+      'RUN                         WORKFLOW                   STEP     KIND      KEY       ASKS          YOURS  UNTIL                 CHILD',
+      `${RUN}  ${WF}  approve  approval  order-o1  usr_1, usr_2  —      —                     —`,
+      `wfr_2                       ${WF}  cool     delay     —         —             —      2026-11-02T10:00:00Z  —`,
       '',
       '2 waiting. Read one: norbix code workflows run <run>',
       'More: add --after wfr_2',
@@ -667,7 +667,7 @@ describe('workflows helpers', () => {
       'waiting on: step fulfil (child) — child run wfr_child1, until 2026-11-02T10:00:00Z',
     )
     expect(formatWaitingRuns({list: {items: [{runId: RUN, workflowId: WF, status: 'waiting', waitingOn: [wait]}]}}).split('\n')[1]).toBe(
-      `${RUN}  ${WF}  fulfil  child  —    —          2026-11-02T10:00:00Z  wfr_child1`,
+      `${RUN}  ${WF}  fulfil  child  —    —     —      2026-11-02T10:00:00Z  wfr_child1`,
     )
   })
 
@@ -685,7 +685,7 @@ describe('workflows helpers', () => {
 
   it('formatRun shows what a waiting run waits on and the error of a failed one', () => {
     const waiting = formatRun({...RUN_DTO, status: 'waiting', waitingOn: [{stepId: 'approve', kind: 'approval', key: 'order-o1', assignees: ['usr_1']}], steps: []})
-    expect(waiting).toContain('waiting on: step approve (approval) — key order-o1, assignees usr_1')
+    expect(waiting).toContain('waiting on: step approve (approval) — key order-o1, told usr_1')
 
     const failed = formatRun({...RUN_DTO, status: 'failed', output: undefined, error: {code: 'CM-ERRORS-WORKFLOWS-020', stepId: 'notify', message: 'SMTP refused'}})
     expect(failed).toContain('error: CM-ERRORS-WORKFLOWS-020 · step notify — SMTP refused')
@@ -718,6 +718,66 @@ describe('workflows helpers', () => {
     expect(formatGroupApproval(undefined)).toBe('')
   })
 
+  it('an approval addressed to roles counts SLOTS, names the rule and marks an override', () => {
+    // Two roles must approve. HR is open; the accountant's slot was settled by
+    // somebody the step never asked, on the override right. Six people were
+    // told when it parked — "1 of 2", never "1 of 6".
+    const wait = {
+      stepId: 'approve',
+      kind: 'approval',
+      key: 'order-o1',
+      assignees: ['usr_hr1', 'usr_hr2', 'usr_hr3', 'usr_hr4', 'usr_hr5', 'usr_acc'],
+      require: 2,
+      mine: false,
+      slots: [
+        {label: 'role:HR', role: 'pr_x_nr_hr'},
+        {label: 'role:Accountant', role: 'pr_x_nr_acc', answeredBy: 'usr_boss', decision: 'approved', at: '2026-11-13T09:00:00Z', override: true},
+      ],
+      answers: [{userId: 'usr_boss', kind: 'user', decision: 'approved', slots: [1], override: true, at: '2026-11-13T09:00:00Z'}],
+    }
+
+    expect(formatGroupApproval(wait)).toBe('group approval — 1 of 2 approvals, 1 by override, waiting for role:HR')
+
+    const table = formatWaitingRuns({list: {items: [{runId: RUN, workflowId: WF, status: 'waiting', waitingOn: [wait]}]}}).split('\n')
+    // ASKS is the rule still open, not the six people told; YOURS warns before an override.
+    expect(table[0]).toContain('ASKS')
+    expect(table[0]).toContain('YOURS')
+    expect(table[1]).toContain('role:HR')
+    expect(table[1]).toContain('override')
+    expect(table).toContain('    role:HR: open')
+    expect(table).toContain('    role:Accountant: approved by usr_boss (override) at 2026-11-13T09:00:00Z')
+    expect(table.at(-1)).toBe(
+      '1 row marked "override": the step does not ask you. Answering settles every part still open and is recorded as yours.',
+    )
+  })
+
+  it('an approval whose open slot is the caller\'s says so, and one with no answer to give says nothing', () => {
+    const mine = {stepId: 'approve', kind: 'approval', require: 1, mine: true, slots: [{label: 'role:HR', role: 'r1'}]}
+    const unknown = {stepId: 'approve', kind: 'approval', require: 1, slots: [{label: 'role:HR', role: 'r1'}]}
+
+    const yours = formatWaitingRuns({list: {items: [{runId: RUN, workflowId: WF, status: 'waiting', waitingOn: [mine]}]}}).split('\n')
+    expect(yours[1]).toContain('yes')
+    expect(yours.at(-1)).toBe('1 waiting. Read one: norbix code workflows run <run>')
+
+    const quiet = formatWaitingRuns({list: {items: [{runId: RUN, workflowId: WF, status: 'waiting', waitingOn: [unknown]}]}}).split('\n')
+    expect(quiet[1]).toContain('—')
+    expect(quiet.join('\n')).not.toContain('override')
+  })
+
+  it('a run parked before slots existed still counts right: the people asked are the slots', () => {
+    const old = {
+      stepId: 'approve',
+      kind: 'approval',
+      assignees: ['usr_anna', 'usr_ben', 'usr_cara'],
+      require: 2,
+      answers: [{userId: 'usr_anna', decision: 'approved', at: '2026-11-12T10:15:00Z'}],
+    }
+
+    expect(formatGroupApproval(old)).toBe('group approval — 1 of 2 approvals, waiting for usr_ben, usr_cara')
+    // No slots to list: the lines under the group line are only for a wait that has them.
+    expect(formatSlots(old)).toEqual([])
+  })
+
   it('formatRun adds one line per group approval and leaves a plain wait as it was', () => {
     const group = {
       stepId: 'approve',
@@ -730,9 +790,9 @@ describe('workflows helpers', () => {
     const lines = formatRun({...RUN_DTO, status: 'waiting', output: undefined, waitingOn: [group, plain], steps: []}).split('\n')
 
     expect(lines.slice(2)).toEqual([
-      '  waiting on: step approve (approval) — assignees usr_anna, usr_ben',
+      '  waiting on: step approve (approval) — told usr_anna, usr_ben',
       '  approve: group approval — 1 of 2 approvals, waiting for usr_ben',
-      '  waiting on: step legal (approval) — assignees usr_cara',
+      '  waiting on: step legal (approval) — told usr_cara',
     ])
   })
 
@@ -761,9 +821,9 @@ describe('workflows helpers', () => {
     })
 
     expect(table.split('\n')).toEqual([
-      'RUN                         WORKFLOW                   STEP     KIND      KEY       ASSIGNEES     UNTIL                 CHILD',
-      `${RUN}  ${WF}  approve  approval  order-o1  usr_1, usr_2  —                     —`,
-      `wfr_2                       ${WF}  cool     delay     —         —             2026-11-02T10:00:00Z  —`,
+      'RUN                         WORKFLOW                   STEP     KIND      KEY       ASKS          YOURS  UNTIL                 CHILD',
+      `${RUN}  ${WF}  approve  approval  order-o1  usr_1, usr_2  —      —                     —`,
+      `wfr_2                       ${WF}  cool     delay     —         —             —      2026-11-02T10:00:00Z  —`,
       '',
       'Group approvals:',
       `  ${RUN} approve: group approval — 1 of 2 approvals, waiting for usr_2`,
@@ -772,12 +832,24 @@ describe('workflows helpers', () => {
     ])
   })
 
-  it('resume says a group approval counts the answer and the run may still wait', async () => {
+  it('resume says a group approval counts slots, that one answer fills every slot you match, and what an override is', async () => {
     const {default: resume} = await import('../src/commands/code/workflows/resume.js')
 
     expect(resume.description).toContain('A group approval')
-    expect(resume.description).toContain('the run may still be waiting afterwards, until enough people have answered')
+    expect(resume.description).toContain('counts your answer in SLOTS')
+    expect(resume.description).toContain('One answer fills every slot you match')
     expect(resume.description).toContain('Answering the same wait twice is refused (CM-ERRORS-WORKFLOWS-016)')
+    // the rules an assignee may be, and what happens when the step does not ask you
+    expect(resume.description).toContain('teamrole:<name>')
+    expect(resume.description).toContain('unless you hold the override right')
+  })
+
+  it('waiting explains that ASKS is the open slots and YOURS warns before an override', async () => {
+    const {default: waiting} = await import('../src/commands/code/workflows/waiting.js')
+
+    expect(waiting.description).toContain('ASKS is the slots nobody has filled')
+    expect(waiting.description).toContain('never the list of people told when the wait parked')
+    expect(waiting.description).toContain('"override" when none of them is')
   })
 
   it('formatRun tells two elements of one foreach body apart, from #0, and leaves a plain step empty', () => {
