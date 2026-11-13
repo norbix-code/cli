@@ -20,6 +20,7 @@ permits at registration. An unknown role is refused (CM-ERRORS-MEMBERSHIP-001).`
     '<%= config.bin %> users invite alice@example.com --role Editor',
     '<%= config.bin %> users invite alice@example.com --role Editor --role Viewer',
     '<%= config.bin %> users invite alice@example.com --role Editor,Viewer --dry-run',
+    '<%= config.bin %> users invite alice@example.com --name "Alice Smith" --salutation Dear',
   ]
 
   static args = {
@@ -32,6 +33,8 @@ permits at registration. An unknown role is refused (CM-ERRORS-MEMBERSHIP-001).`
       multiple: true,
       description: "Role name or role ID to give (repeat for several, or a comma list); none = the project's default registration role",
     }),
+    name: Flags.string({description: 'Full name of the person, used in the invitation email'}),
+    salutation: Flags.string({description: 'Salutation used in the invitation email, e.g. Dear'}),
   }
 
   async run(): Promise<unknown> {
@@ -39,7 +42,12 @@ permits at registration. An unknown role is refused (CM-ERRORS-MEMBERSHIP-001).`
     const client = this.client(flags)
 
     const roles = inviteRoles(flags.role)
-    const res = await client.api.membership.inviteUser({email: args.email, ...(roles ? {roles} : {})})
+    const res = await client.api.membership.inviteUser({
+      email: args.email,
+      ...(roles ? {roles} : {}),
+      ...(flags.name ? {fullName: flags.name} : {}),
+      ...(flags.salutation ? {salutation: flags.salutation} : {}),
+    })
     this.print(`Invitation sent to ${args.email}${roles ? ` with role${roles.length > 1 ? 's' : ''} ${roles.join(', ')}` : ''}.`)
     return res
   }
