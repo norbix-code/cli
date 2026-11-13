@@ -2,8 +2,8 @@ import {Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../base.js'
 
-/** The task types the gateway knows (`SchedulerTaskType`); only EmailCampaign can be saved today. */
-const TASK_TYPES = ['EmailCampaign', 'PushCampaign', 'SmsCampaign', 'CodeFunctionalCall', 'WebhookCall']
+/** The task types the gateway knows (`SchedulerTaskType`); every one but WebhookCall can be saved. */
+const TASK_TYPES = ['EmailCampaign', 'PushCampaign', 'SmsCampaign', 'CodeFunctionalCall', 'MarketplaceFunctionCall', 'WorkflowCall', 'WebhookCall']
 
 export default class SchedulerList extends BaseCommand {
   static description = 'List scheduler tasks'
@@ -11,6 +11,7 @@ export default class SchedulerList extends BaseCommand {
   static examples = [
     '<%= config.bin %> scheduler list',
     '<%= config.bin %> scheduler list --type EmailCampaign --enabled',
+    '<%= config.bin %> scheduler list --type WorkflowCall',
     '<%= config.bin %> scheduler list --no-enabled --page-size 50',
   ]
 
