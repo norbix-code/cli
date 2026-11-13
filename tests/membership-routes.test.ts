@@ -36,7 +36,7 @@ beforeEach(() => {
     printed.push(parts.join(' '))
   })
   calls = []
-  answers = {}
+  answers = READS()
   realFetch = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const envList = envListAnswer(input, init)
@@ -70,9 +70,24 @@ const CT = 'ct_7a8b9c0d1e2f'
 const ROLE = 'pr_1_nr_editor'
 const POL = 'pol_3kJ9xJ2mQ0aB'
 
+/** What the reads of the read-then-save commands answer unless a test says otherwise. */
+const READS = (): Record<string, unknown> => ({
+  [`GET ${M}/auth/${USR}`]: {user: {id: USR, generalInfo: {displayName: 'Old'}}},
+  [`GET ${M}/roles/${ROLE}`]: {role: {id: ROLE, name: 'Editor', attachedPolicies: []}},
+  [`GET ${M}/policies/${POL}`]: {policy: {id: POL, name: 'OrdersRead'}},
+  [`GET ${M}/authentication`]: {result: {credentialsSettings: {allowUsernames: false}}},
+  [`GET ${M}/authorization`]: {result: {passwordComplexity: {minLength: 8}}},
+  [`GET ${M}/passkey/settings`]: {result: {enabled: false, rpId: 'app.example.com'}},
+})
+
 const tmp = mkdtempSync(join(tmpdir(), 'nbx-membership-'))
 const POLICY_FILE = join(tmp, 'policy.json')
-writeFileSync(POLICY_FILE, JSON.stringify({statements: [{effect: 'Allow', actions: ['database:read']}]}))
+const POLICY_DOC = {
+  version: '2026-09-17',
+  pid: 'orders-read',
+  permissions: [{effect: 'Allow', actions: ['database:read'], resources: ['nrn:norbix:database:orders:*']}],
+}
+writeFileSync(POLICY_FILE, JSON.stringify(POLICY_DOC))
 
 type Route = [verb: string, path: string, host?: string]
 
@@ -120,6 +135,7 @@ const routes: Array<[string[], Route[]]> = [
   [['users', 'contacts', 'identities', 'add', CT, USR], [['POST', `${M}/users/${CT}/identities`]]],
   [['users', 'contacts', 'identities', 'remove', CT, USR, '--yes'], [['DELETE', `${M}/users/${CT}/identities/${USR}`]]],
   [['users', 'contacts', 'identities', 'promote', CT, USR], [['POST', `${M}/users/${CT}/identities/${USR}/promote`]]],
+  [['users', 'contacts', 'identities', 'map', CT, USR], [['POST', `${M}/users/${CT}/map-auth`, API]]],
   [['users', 'contacts', 'set-roles', CT, '--role', ROLE, '--yes'], [['PUT', `${M}/users/${CT}/roles`, API]]],
   [['users', 'contacts', 'consent', CT, 'Email'], [['POST', `${M}/users/${CT}/marketing-state/Email/consent`, API]]],
   [['users', 'contacts', 'unsubscribe', CT, 'Sms'], [['POST', `${M}/users/${CT}/marketing-state/Sms/unsubscribe`, API]]],
@@ -138,7 +154,7 @@ const routes: Array<[string[], Route[]]> = [
   [['users', 'roles', 'delete', ROLE, '--yes'], [['DELETE', `${M}/roles`]]],
   [['users', 'policies'], [['GET', `${M}/policies`]]],
   [['users', 'policies', POL], [['GET', `${M}/policies/${POL}`]]],
-  [['users', 'policies', 'create', '--name', 'OrdersRead'], [['POST', `${M}/policies`]]],
+  [['users', 'policies', 'create', '--name', 'OrdersRead', '--document', `@${POLICY_FILE}`], [['POST', `${M}/policies`]]],
   [['users', 'policies', 'update', POL, '--document', `@${POLICY_FILE}`], [['GET', `${M}/policies/${POL}`], ['PUT', `${M}/policies`]]],
   [['users', 'policies', 'delete', POL, '--yes'], [['DELETE', `${M}/policies`]]],
 
@@ -265,9 +281,17 @@ describe('users (logins)', () => {
     })
   })
 
-  it('update --dry-run reads, then sends nothing', async () => {
-    const {error} = await runCommand(['users', 'update', USR, '--name', 'Alice', '--dry-run', ...globalArgs])
+  it('update --dry-run sends nothing, not even the read, and shows only the change', async () => {
+    const {error, stdout} = await runCommand(['users', 'update', USR, '--name', 'Alice', '--dry-run', '--json', ...globalArgs])
     expect(error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+    expect((JSON.parse(stdout || out()) as {request: unknown}).request).toEqual({id: USR, ignoreUserRegistersAsRole: false, userGeneralInfo: {displayName: 'Alice'}})
+  })
+
+  it('update stops when the login cannot be read: nothing is saved', async () => {
+    answers[`GET ${M}/auth/${USR}`] = {}
+    const {error} = await runCommand(['users', 'update', USR, '--name', 'Alice', ...globalArgs])
+    expect(error?.message).toContain('Could not read the current login')
     expect(calls.map((c) => c.method)).toEqual(['GET'])
   })
 
@@ -369,6 +393,10 @@ describe('users contacts', () => {
     expect((await send(['users', 'contacts', 'identities', 'add', CT, USR])).body).toEqual({authId: USR})
   })
 
+  it('identities map sends the login ID to map-auth', async () => {
+    expect((await send(['users', 'contacts', 'identities', 'map', CT, USR])).body).toEqual({authId: USR})
+  })
+
   it('set-roles sends composite role IDs as the complete list', async () => {
     expect((await send(['users', 'contacts', 'set-roles', CT, '--role', `${ROLE},pr_1_nr_viewer`, '--yes'])).body).toEqual({roles: [ROLE, 'pr_1_nr_viewer']})
   })
@@ -420,11 +448,31 @@ describe('users roles and policies', () => {
   it('policies create and update send the document as a JSON string', async () => {
     const created = await send(['users', 'policies', 'create', '--name', 'OrdersRead', '--document', `@${POLICY_FILE}`])
     expect(created.body?.policyName).toBe('OrdersRead')
-    expect(JSON.parse(created.body?.policyDocumentJson as string)).toEqual({statements: [{effect: 'Allow', actions: ['database:read']}]})
+    expect(JSON.parse(created.body?.policyDocumentJson as string)).toEqual(POLICY_DOC)
 
     answers[`GET ${M}/policies/${POL}`] = {policy: {id: POL, name: 'OrdersRead', description: 'Read orders'}}
-    const updated = await send(['users', 'policies', 'update', POL, '--document', '{"statements":[]}'])
-    expect(updated.body).toEqual({id: POL, policyName: 'OrdersRead', description: 'Read orders', policyDocumentJson: '{"statements":[]}'})
+    const updated = await send(['users', 'policies', 'update', POL, '--document', `@${POLICY_FILE}`])
+    expect(updated.body).toEqual({id: POL, policyName: 'OrdersRead', description: 'Read orders', policyDocumentJson: JSON.stringify(POLICY_DOC)})
+  })
+
+  it('policies create needs --document (the gateway refuses an empty one)', async () => {
+    const {error} = await runCommand(['users', 'policies', 'create', '--name', 'OrdersRead', ...globalArgs])
+    expect(error?.message).toContain('Missing required flag document')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('roles update stops when the role cannot be read: nothing is saved', async () => {
+    answers[`GET ${M}/roles/${ROLE}`] = {}
+    const {error} = await runCommand(['users', 'roles', 'update', ROLE, '--description', 'New', ...globalArgs])
+    expect(error?.message).toContain('Could not read the current role')
+    expect(calls.map((c) => c.method)).toEqual(['GET'])
+  })
+
+  it('roles update --dry-run sends nothing and shows only what was passed', async () => {
+    const {error, stdout} = await runCommand(['users', 'roles', 'update', ROLE, '--description', 'New', '--dry-run', '--json', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+    expect((JSON.parse(stdout || out()) as {request: unknown}).request).toEqual({id: ROLE, description: 'New'})
   })
 })
 
@@ -484,11 +532,31 @@ describe('membership settings', () => {
     expect(calls.map((c) => c.method)).toEqual(['GET'])
   })
 
-  it('settings set --dry-run reads, then sends nothing', async () => {
-    const {error} = await runCommand(['membership', 'settings', 'passkey', 'set', '--enabled', 'true', '--dry-run', ...globalArgs])
-    expect(error).toBeUndefined()
-    expect(calls.map((c) => c.method)).toEqual(['GET'])
-  })
+  for (const argv of [
+    ['passkey', 'set', '--enabled', 'true'],
+    ['authentication', 'set', '--allow-usernames', 'true'],
+    ['password-complexity', 'set', '--min-length', '12'],
+    ['authorization', 'set', '--allow-guests', 'true'],
+  ]) {
+    it(`settings ${argv.join(' ')} --dry-run sends nothing, not even the read`, async () => {
+      const {error} = await runCommand(['membership', 'settings', ...argv, '--dry-run', ...globalArgs])
+      expect(error).toBeUndefined()
+      expect(calls).toHaveLength(0)
+    })
+  }
+
+  for (const [what, path, argv] of [
+    ['sign-in settings', `${M}/authentication`, ['authentication', 'set', '--allow-usernames', 'true']],
+    ['password rules', `${M}/authorization`, ['password-complexity', 'set', '--min-length', '12']],
+    ['passkey settings', `${M}/passkey/settings`, ['passkey', 'set', '--enabled', 'true']],
+  ] as const) {
+    it(`${argv[0]} set stops when the ${what} cannot be read: nothing is saved`, async () => {
+      answers[`GET ${path}`] = {}
+      const {error} = await runCommand(['membership', 'settings', ...argv, ...globalArgs])
+      expect(error?.message).toContain(`Could not read the current ${what}`)
+      expect(calls.map((c) => c.method)).toEqual(['GET'])
+    })
+  }
 })
 
 describe('service-user API keys and the password-reset test', () => {
