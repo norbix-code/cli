@@ -14,8 +14,10 @@ import {envListAnswer} from './_env.js'
  * must not depend on them.
  *
  * Membership and Database are always on (owner, 2026-11-13): the gateway has
- * no disable route for them, so `module disable membership|database` is
- * refused before anything is sent.
+ * no enable or disable route for them. `module enable membership|database` is
+ * a no-op answered locally (exit 0, like other "nothing to change" answers)
+ * and `module disable membership|database` is refused (usage error, exit 2);
+ * nothing is sent either way.
  */
 
 interface Call {
@@ -58,12 +60,13 @@ const MODULES: Record<string, string> = {
   sms: '/v3/notifications/sms',
 }
 
-/** Modules with no disable route on the gateway. */
+/** Modules with no enable or disable route on the gateway. */
 const ALWAYS_ON = new Set(['database', 'membership'])
 
 describe('every module enable / disable sends PUT', () => {
   for (const [name, prefix] of Object.entries(MODULES)) {
-    for (const action of ALWAYS_ON.has(name) ? (['enable'] as const) : (['enable', 'disable'] as const)) {
+    if (ALWAYS_ON.has(name)) continue
+    for (const action of ['enable', 'disable'] as const) {
       const argv = ['module', action, name, ...(action === 'disable' ? ['--yes'] : [])]
       it(`${argv.join(' ')} → PUT ${prefix}/${action}`, async () => {
         const {error} = await runCommand([...argv, ...globalArgs])
@@ -75,6 +78,29 @@ describe('every module enable / disable sends PUT', () => {
       })
     }
   }
+})
+
+describe('module enable membership|database is a local no-op', () => {
+  // The text line and the exit code, seen from a real process: module-always-on.test.ts.
+  for (const name of ALWAYS_ON) {
+    for (const extra of [[], ['--dry-run'], ['--json']]) {
+      const argv = ['module', 'enable', name, ...extra]
+      it(`${argv.join(' ')} → the no-op answer, nothing sent`, async () => {
+        const {error, result} = await runCommand([...argv, ...globalArgs])
+
+        expect(error).toBeUndefined()
+        expect(result).toEqual({module: name, alwaysOn: true, changed: false})
+        expect(calls).toHaveLength(0)
+      })
+    }
+  }
+
+  it('the other modules are still enabled through the gateway', async () => {
+    const {error} = await runCommand(['module', 'enable', 'files', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toEqual([{method: 'PUT', path: '/v3/files/enable'}])
+  })
 })
 
 describe('module disable membership|database is refused locally', () => {

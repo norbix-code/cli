@@ -158,8 +158,7 @@ const routes: Array<[string[], Route[]]> = [
   [['users', 'policies', 'update', POL, '--document', `@${POLICY_FILE}`], [['GET', `${M}/policies/${POL}`], ['PUT', `${M}/policies`]]],
   [['users', 'policies', 'delete', POL, '--yes'], [['DELETE', `${M}/policies`]]],
 
-  // Settings
-  [['module', 'enable', 'membership'], [['PUT', `${M}/enable`]]],
+  // Settings (Membership is always on: `module enable|disable membership` sends nothing, see module-routes.test.ts)
   [['membership', 'settings', 'authentication'], [['GET', `${M}/authentication`]]],
   [
     ['membership', 'settings', 'authentication', 'set', '--allow-usernames', 'true'],

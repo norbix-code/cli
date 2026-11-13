@@ -24,10 +24,9 @@ than the project default.
 
 ## Module
 
-`norbix module enable database` turns the module on (`PUT /enable`). Database
-is always on and cannot be disabled: `norbix module disable database` is
-refused before anything is sent (exit 2). A gateway older than refactoringV2
-(2026-10) has only the GET route, so this CLI needs a current gateway.
+Database is always on: the gateway has no route to turn it on or off.
+`norbix module enable database` answers "always on" and sends nothing (exit 0);
+`norbix module disable database` is refused before anything is sent (exit 2).
 
 ## Records
 
