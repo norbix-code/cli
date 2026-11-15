@@ -45,6 +45,9 @@ The action: {"type": "Email" | "Sms" | "Push" | "WebhookCall" | "SseCall" |
 "Code" | "Marketplace" | "Workflow", ...}. A Code action names the function:
 {"type": "Code", "functionRef": {"integrationId": "int_…", "functionId": "my-fn"}}.
 A Workflow action starts a workflow: {"type": "Workflow", "workflowRef": "wf_…"}.
+With "resumeKey" it resumes the run of that workflow waiting on the key instead
+(a wait step's key; @Model.Trigger.* tokens allowed, e.g. "purchase-@Model.Trigger.User.Id");
+"payload" is then the wait's payload. No run waiting = the trigger run is skipped (no-waiting-run).
 
 --id sets triggerId (update instead of create), --execution-identity says who
 the trigger runs as (leave it out for the project default). Every trigger of an

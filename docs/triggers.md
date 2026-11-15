@@ -38,7 +38,17 @@ commands at the end work on a trigger of any host.
   ```
 
   starts a workflow (`norbix code workflows`), with `payload` as its
-  `@Model.Request.*` values. The other types: `Email`, `Sms`, `Push`
+  `@Model.Request.*` values. With `resumeKey` it resumes the run of that
+  workflow that is waiting on the key instead of starting one:
+
+  ```json
+  {"type": "Workflow", "workflowRef": "wf_onboard", "resumeKey": "purchase-@Model.Trigger.User.Id", "payload": {"plan": "@Model.Trigger.Record.plan"}}
+  ```
+
+  The key and the payload values may hold `@Model.Trigger.*` tokens of the
+  event; the payload is the wait's payload. When no run waits on the key the
+  trigger run is `skipped` with the reason `no-waiting-run` — not an error.
+  The other types: `Email`, `Sms`, `Push`
   (an integration and a template), `WebhookCall`, `SseCall`, `Marketplace`.
 - A file that holds the whole request (`{"trigger": {…}}`), a `<host> trigger
   <id> --json` answer or a `norbix trigger definition … --json` answer works
