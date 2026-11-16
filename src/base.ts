@@ -848,14 +848,14 @@ export abstract class BaseCommand extends Command {
   /**
    * Rule: with the default *.norbix.ai endpoints a region is REQUIRED (the
    * real endpoint is <region>.api.norbix.ai). With custom endpoints
-   * (localhost, self-hosted, custom domain) a region is optional.
+   * (localhost, custom domain) a region is optional.
    */
   protected assertEndpoints(ctx: ResolvedContext): void {
     if (ctx.usesDefaultEndpoints && !ctx.region) {
       throw usageError(
         'Region is required when using the default norbix.ai endpoints.',
         'Set it with `norbix configure` (region field) or pass --region <code> (e.g. nb-eu-germany). ' +
-          'For your own installation, pass --host <your dashboard or Hub address>.',
+          'For a custom Hub address, pass --host <your dashboard or Hub address>.',
         'norbix configure --help',
       )
     }
@@ -1027,7 +1027,7 @@ export abstract class BaseCommand extends Command {
     if (projects.length > 1) return {state: 'several', projects}
     const [only] = projects
     // On norbix.ai every call needs the project's region: it is kept with the
-    // project. A self-hosted Hub needs none, so nothing changes there.
+    // project. A Hub on a custom address needs none, so nothing changes there.
     const region = ctx.usesDefaultEndpoints && !ctx.region ? only.region : undefined
     if (region) saveProjectRegion(ctx.hubKey, only.id, region)
     const session = ctx.authSource === 'session' ? readSession(ctx.sessionKey) : undefined

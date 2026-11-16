@@ -236,7 +236,7 @@ describe('norbix login (browser sign-in)', () => {
     expect(result).toMatchObject({status: 'signed-in', projectId: 'p-only', region: 'nb-eu-germany'})
   })
 
-  it('a self-hosted Hub: the project is saved without a region, even when the Hub names one', async () => {
+  it('a Hub on a custom address: the project is saved without a region, even when the Hub names one', async () => {
     writeFileSync(PROFILES_PATH, '[default]\nhost = hub.example.com\n')
     const hits = stubNetwork({
       '/v3/echo': [{body: ECHO}],

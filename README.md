@@ -300,7 +300,7 @@ project is saved into the sign-in and the next run uses it (the failed run
 is not repeated by itself, so nothing is sent twice). On norbix.ai the list
 is read from the account Hub (`hub.norbix.ai`), so no `--region` is needed
 for it, and the saved project keeps its primary region with it. A
-self-hosted Hub needs no region, so none is saved there.
+Hub on a custom address needs no region, so none is saved there.
 
 There is no user + password sign-in. **CI and scripts** use a service-user
 API key, never a browser sign-in:
