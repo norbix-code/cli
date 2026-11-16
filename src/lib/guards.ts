@@ -28,11 +28,11 @@ export interface GuardedCall {
 }
 
 /**
- * Calls that start or change a subscription, a licence purchase, or buy
+ * Calls that start or change a subscription, or buy
  * something with the account's money.
  *
  * Reads stay open: getManagedServiceBundles, getAccountStatus, getFlexClusters,
- * getAccountUsageBilling, getLicenses, and getStripeBillingPortalUrl (it only
+ * getAccountUsageBilling, and getStripeBillingPortalUrl (it only
  * answers with a link to Stripe's own portal).
  */
 export const BILLING_CALLS: readonly GuardedCall[] = [
@@ -40,7 +40,7 @@ export const BILLING_CALLS: readonly GuardedCall[] = [
   {surface: 'hub', method: 'changeManagedServiceBundle'},
   // POST /account/flex-clusters/{flexClusterId}/upgrade: a paid cluster tier (M10).
   {surface: 'hub', method: 'upgradeFlexCluster'},
-  // POST /account/stripe/create-checkout-session: a Managed Service bundle or a Self-Hosted licence.
+  // POST /account/stripe/create-checkout-session: a Managed Service bundle.
   {surface: 'hub', method: 'createStripeCheckoutSession'},
   // POST /account/projects/{projectId}/ai/credits/checkout: a one-time AI credit pack.
   {surface: 'hub', method: 'createAiCreditPackCheckout'},

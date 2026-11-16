@@ -88,7 +88,7 @@ written. Later, run any command with --profile <name>.`
     const region =
       (await input({
         message: host
-          ? 'Region (optional on your own installation):'
+          ? 'Region (optional with a custom Hub address):'
           : "Region (e.g. nb-eu-germany; empty = the project's primary region):",
         default: existing.region ?? '',
       })) || undefined
