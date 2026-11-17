@@ -53,4 +53,5 @@ jobs:
             const leaked = paths.filter((f) => /^(src|test|tests|scripts|docs|\.github)\//.test(f));
             if (leaked.length) { console.error('::error::Files that must not ship:', leaked); process.exit(1); }
           "
-      - run: npm audit --omit=dev --audit-level=high
+      # npm audit --omit=dev --audit-level=high, with the dated owner exceptions of audit-exceptions.json
+      - run: node scripts/audit-prod.mjs

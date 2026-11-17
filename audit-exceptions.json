@@ -1,0 +1,10 @@
+{
+  "_why": "Advisories `npm audit --omit=dev` may report without failing CI, each until its date. Owner decisions only; scripts/audit-prod.mjs reads this file.",
+  "exceptions": [
+    {
+      "id": "GHSA-fc5q-39xc-vjpf",
+      "until": "2026-12-17",
+      "reason": "picomatch (every version) reached through @oclif/core → tinyglobby; no fixed version on 2026-11-17. Owner approved 2026-11-17."
+    }
+  ]
+}

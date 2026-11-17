@@ -90,7 +90,8 @@ jobs:
         run: node ./bin/run.js --help
 
       - name: npm audit (production deps only)
-        run: npm audit --omit=dev --audit-level=high
+        # owner exceptions with an end date: audit-exceptions.json
+        run: node scripts/audit-prod.mjs
 
       - name: Release
         if: github.event_name != 'workflow_dispatch' || inputs.republish != true
