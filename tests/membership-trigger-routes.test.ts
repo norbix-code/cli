@@ -69,6 +69,7 @@ const routes: Array<[() => string[], string, string]> = [
   [() => ['trigger', 'enable', ID], 'PATCH', `${P}/${ID}/enable`],
   [() => ['trigger', 'disable', ID, '--yes'], 'PATCH', `${P}/${ID}/disable`],
   [() => ['trigger', 'delete', ID, '--yes'], 'DELETE', `${P}/${ID}`],
+  [() => ['trigger', 'event-values'], 'GET', `${P}/event-values`],
 ]
 
 describe('every membership trigger command reaches its route', () => {
@@ -83,8 +84,8 @@ describe('every membership trigger command reaches its route', () => {
     })
   }
 
-  it('covers the 6 membership trigger routes of the gateway', () => {
-    expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(6)
+  it('covers the 7 membership trigger routes of the gateway', () => {
+    expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(7)
   })
 })
 

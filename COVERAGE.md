@@ -38,7 +38,7 @@ out of reach.
 | membership/users | 6/35 | list, get, invite, block, unblock, delete. Missing: contacts, create-user variants, preferences |
 | membership/roles + policies | 2/10 | read-only lists |
 | membership/integrations (sign-in providers) | 6/6 | list, get, save, enable, disable, delete (no default: the gateway route is gone) — `docs/integrations.md`, `tests/membership-integration-routes.test.ts` |
-| membership/triggers | 6/6 | list, get, save, enable, disable, delete — `docs/triggers.md`, each run through the real transport in `tests/membership-trigger-routes.test.ts` |
+| membership/triggers | 7/7 | list, get, save, enable, disable, delete, event-values — `docs/triggers.md`, each run through the real transport in `tests/membership-trigger-routes.test.ts` |
 | code/integrations | 8/8 | list, get, save, test, confirm-delivery, enable, disable, delete — `docs/integrations.md`, `tests/code-integration-routes.test.ts` |
 | notifications/email | 51/57 | every endpoint except the six recipient / provider callbacks (preferences page, one-click unsubscribe, four provider webhooks) — see `docs/email.md`; each command is run through the real transport in `tests/email-routes.test.ts` (`retry-failed` in `tests/notifications-retry.test.ts`), the click-id commands also in `tests/email-clicks.test.ts` |
 | notifications/push | 37/37 | every endpoint — see `docs/push.md`; each command is run through the real transport in `tests/push-routes.test.ts` |
