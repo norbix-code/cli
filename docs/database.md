@@ -241,6 +241,7 @@ norbix db trigger disable 66b2f0a1c3d4e5f6a7b8c9d1 --yes
 | command | what it does | endpoint |
 |---|---|---|
 | `norbix db integrations [--page-size <n>] [--after <cursor>]` | list the database integrations | `GET /integrations` |
+| `norbix db network-addresses [regionCode]` | the IP addresses Norbix connects to databases from, per region — add them to your MongoDB Atlas IP access list for a connection-string integration | `GET /network-addresses` |
 | `norbix db integration <id>` | show one | `GET /integrations/{id}` |
 | `norbix db integration test <id>` | check that the database behind it answers (writes nothing) | `POST /integrations/test` |
 | `norbix db integration default <id>` | make it the project default | `PUT /integrations/{Id}/default` |

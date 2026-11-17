@@ -1,9 +1,13 @@
 import {BaseCommand} from '../../../../base.js'
 
 export default class CodeWorkflowsBetaDisable extends BaseCommand {
-  static description = `Beta: turn the Workflows beta off for this environment
+  static description = `Beta: refused — workflows can no longer be switched off
 
-Every workflow route except \`schema\` refuses (CM-ERRORS-WORKFLOWS-001) and triggers and scheduler tasks skip their workflows. Runs in flight continue and a waiting run may still be resumed. Nothing is deleted.`
+Since 2026-11-17 workflows are part of every project: the gateway answers
+CM-ERRORS-WORKFLOWS-045 and changes nothing. The command stays so scripts do
+not break. To stop one workflow use \`norbix code workflows disable <id>\`.`
+
+  static state = 'deprecated'
 
   static examples = [
     '<%= config.bin %> code workflows beta disable --yes',
@@ -17,7 +21,7 @@ Every workflow route except \`schema\` refuses (CM-ERRORS-WORKFLOWS-001) and tri
   async run(): Promise<unknown> {
     const {flags} = await this.parse(CodeWorkflowsBetaDisable)
     const client = this.client(flags)
-    await this.confirmOrFail('Turn off the Workflows beta (new runs stop starting)?', flags)
+    await this.confirmOrFail('Ask the gateway to turn workflows off (it refuses since 2026-11-17)?', flags)
 
     const res = await client.hub.code.disableCodeWorkflows()
 

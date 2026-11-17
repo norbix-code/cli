@@ -206,7 +206,7 @@ as everywhere; workflows live per environment.
 | `norbix code workflows resume-link <link\|token> --use [--yes]` | answers the wait with the link, as its assignee; prints the run (a group approval may still be `waiting`) | `POST /resume/{token}` |
 | `norbix code workflows schema [--format json\|yaml]` | the definition's JSON Schema, every step kind (config / output schema, permissions it needs), the binding families; works with the beta switch off | `GET /schema` |
 | `norbix code workflows beta enable` | turns the Workflows beta on in this environment (on by default) | `PUT /enable` |
-| `norbix code workflows beta disable [--yes]` | turns it off: every route but `schema` refuses, starts are skipped; runs in flight continue | `PUT /disable` |
+| `norbix code workflows beta disable [--yes]` | deprecated: refused since 2026-11-17 (`CM-ERRORS-WORKFLOWS-045`) — workflows are part of every project and cannot be switched off; stop one workflow with `code workflows disable <id>` | `PUT /disable` |
 
 Notes:
 

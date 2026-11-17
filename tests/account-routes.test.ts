@@ -61,7 +61,7 @@ const routes: Array<[string[], string, string]> = [
   [['bundles'], 'GET', '/v3/account/stripe/bundles'],
   [['change-bundle', '--bundle', 'growth', '--period', 'annual', '--yes'], 'POST', '/v3/account/stripe/change-bundle'],
   [['clusters'], 'GET', '/v3/account/flex-clusters'],
-  [['clusters', 'upgrade', CLUSTER, '--yes'], 'POST', `/v3/account/flex-clusters/${CLUSTER}/upgrade`],
+  [['clusters', 'upgrade', CLUSTER, '--tier', 'M20', '--yes'], 'POST', `/v3/account/flex-clusters/${CLUSTER}/upgrade`],
 ]
 
 describe('every account command of this round reaches its route', () => {
@@ -159,7 +159,7 @@ describe('account projects / status / bundles / clusters — no project needed',
     [['bundles'], '/v3/account/stripe/bundles'],
     [['clusters'], '/v3/account/flex-clusters'],
     [['change-bundle', '--bundle', 'scale', '--period', 'monthly', '--yes'], '/v3/account/stripe/change-bundle'],
-    [['clusters', 'upgrade', CLUSTER, '--yes'], `/v3/account/flex-clusters/${CLUSTER}/upgrade`],
+    [['clusters', 'upgrade', CLUSTER, '--tier', 'M20', '--yes'], `/v3/account/flex-clusters/${CLUSTER}/upgrade`],
   ] as const) {
     it(`account ${argv.join(' ')} runs with only an API key and sends no project header`, async () => {
       const {error} = await runCommand(['account', ...argv, '--api-key', 'nbsu_k', '--region', 'nb-eu-germany'])
@@ -438,6 +438,8 @@ describe('account clusters — the list', () => {
         atlasClusterName: 'nbx-a1',
         norbixRegionCode: 'nb-eu-germany',
         tierCode: 'FLEX',
+        nextTierCode: 'M10',
+        topTierCode: 'M20',
         status: 'Active',
         databases: [
           {projectId: 'pr_1', projectName: 'Shop', env: 'PROD', integrationId: 'int_1', integrationName: 'Main', databaseName: 'shop_prod'},
@@ -452,6 +454,7 @@ describe('account clusters — the list', () => {
         atlasClusterName: 'nbx-b2',
         norbixRegionCode: 'nb-us-east',
         tierCode: 'M10',
+        topTierCode: 'M10',
         status: 'Provisioning',
         databases: [],
         usage: {databaseCount: 0},
@@ -467,9 +470,9 @@ describe('account clusters — the list', () => {
 
     expect(error).toBeUndefined()
     expect(out().split('\n')).toEqual([
-      'ID     NAME    REGION         TIER  STATUS        DATABASES  NEAR LIMIT',
-      'fxc_1  Shared  nb-eu-germany  FLEX  Active        2          Storage, Connections',
-      'fxc_2  Blog    nb-us-east     M10   Provisioning  0          -',
+      'ID     NAME    REGION         TIER  NEXT  STATUS        DATABASES  NEAR LIMIT',
+      'fxc_1  Shared  nb-eu-germany  FLEX  M10   Active        2          Storage, Connections',
+      'fxc_2  Blog    nb-us-east     M10   -     Provisioning  0          -',
     ])
   })
 
@@ -501,20 +504,27 @@ describe('account clusters — the list', () => {
 describe('account clusters upgrade — the path, the body, the question', () => {
   const out = captureOutput()
 
-  it('puts the cluster id in the path, sends tierCode M10 and says the upgrade is queued', async () => {
+  it('puts the cluster id in the path, sends no tier and says the upgrade to the next tier is queued', async () => {
     const {error} = await runCommand(['account', 'clusters', 'upgrade', CLUSTER, '--yes', ...globalArgs])
 
     expect(error).toBeUndefined()
-    expect(calls[0]?.path).toBe(`/v3/account/flex-clusters/${CLUSTER}/upgrade`)
-    expect(calls[0]?.body).toEqual({tierCode: 'M10'})
-    expect(out()).toBe(`Upgrade of cluster ${CLUSTER} to M10 is queued. \`norbix account clusters\` shows M10 some minutes later.`)
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`POST /v3/account/flex-clusters/${CLUSTER}/upgrade`])
+    expect(calls[0]?.body?.tierCode).toBeUndefined()
+    expect(out()).toBe(
+      `Upgrade of cluster ${CLUSTER} to its next tier is queued. \`norbix account clusters\` shows the new tier some minutes later.`,
+    )
+  })
+
+  it('--tier sends that tier', async () => {
+    await runCommand(['account', 'clusters', 'upgrade', CLUSTER, '--tier', 'm20', '--yes', ...globalArgs])
+    expect(calls[0]?.body).toEqual({tierCode: 'M20'})
   })
 
   it('without --yes in a shell with no terminal it asks, sends nothing and names what changes', async () => {
-    const {error} = await runCommand(['account', 'clusters', 'upgrade', CLUSTER, ...globalArgs])
+    const {error} = await runCommand(['account', 'clusters', 'upgrade', CLUSTER, '--tier', 'M20', ...globalArgs])
 
     expect(error?.message).toBe(
-      `Confirmation required: Move cluster ${CLUSTER} to M10? Every database on it moves, and the price of the cluster changes.`,
+      `Confirmation required: Move cluster ${CLUSTER} to M20? Every database on it moves, and the price of the cluster changes.`,
     )
     expect(calls).toHaveLength(0)
   })

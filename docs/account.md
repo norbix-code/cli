@@ -23,7 +23,7 @@ query string, body); `tests/account.test.ts` checks the SDK method and fields.
 | `norbix account bundles` | list the Managed Service bundles: name, project limit, monthly and annual price | `GET /stripe/bundles` |
 | `norbix account change-bundle --bundle <starter\|growth\|scale> --period <monthly\|annual> [--yes] [--dry-run]` | move the account to another bundle or billing period | `POST /stripe/change-bundle` |
 | `norbix account clusters` | list the account's Norbix-managed Atlas clusters | `GET /flex-clusters` |
-| `norbix account clusters upgrade <flexClusterId> [--yes] [--dry-run]` | queue the upgrade of one cluster to M10 | `POST /flex-clusters/{flexClusterId}/upgrade` |
+| `norbix account clusters upgrade <flexClusterId> [--tier <code>] [--yes] [--dry-run]` | queue the upgrade of one cluster one tier up (FLEX → M10 → M20 → M30 → M40, within the plan) | `POST /flex-clusters/{flexClusterId}/upgrade` |
 
 `account team` pages with `--page-size` (server default 20) and the
 `--after` / `--before` cursors, sent as the flat `pageSize`, `startingAfter`,
@@ -91,12 +91,12 @@ norbix account change-bundle --bundle growth --period annual --yes
 cluster can hold the databases of several projects and environments.
 
 ```
-ID        NAME    REGION         TIER  STATUS  DATABASES  NEAR LIMIT
-fxc_1a2b  Shared  nb-eu-germany  FLEX  Active  3          Storage
-fxc_3c4d  Shop    nb-eu-germany  M10   Active  1          -
+ID        NAME    REGION         TIER  NEXT  STATUS  DATABASES  NEAR LIMIT
+fxc_1a2b  Shared  nb-eu-germany  FLEX  M10   Active  3          Storage
+fxc_3c4d  Shop    nb-eu-germany  M10   M20   Active  1          -
 ```
 
-- TIER is `FLEX` or `M10`; STATUS is `Empty`, `Provisioning`, `Active` or `Failed`.
+- TIER is `FLEX`, `M10`, `M20`, `M30` or `M40`; NEXT is the tier `account clusters upgrade` moves it to (`-` when the cluster is at the highest tier its plan allows); STATUS is `Empty`, `Provisioning`, `Active` or `Failed`.
 - NEAR LIMIT names the limits the cluster is close to (`Databases`, `Storage`, `Connections`, `Operations`); `-` means none.
 - When the account cannot create one more cluster, a last line says why (a
   trial account has one cluster; or the account's cluster limit is reached).
@@ -105,15 +105,20 @@ fxc_3c4d  Shop    nb-eu-germany  M10   Active  1          -
   database name) and its `usage` (database count, storage bytes, connections,
   operations per second).
 
-`account clusters upgrade <flexClusterId>` moves one cluster to M10. Every
-database on the cluster moves with it and the price of the cluster changes,
-so the command asks first (`--yes`, `--dry-run`, as above). The upgrade is
-queued: `account clusters` shows `M10` some minutes later.
+`account clusters upgrade <flexClusterId>` moves one cluster one tier up on
+the ladder FLEX → M10 → M20 → M30 → M40, within the plan: a trial stays on
+FLEX, Starter goes up to M20, Growth up to M30, Scale up to M40. Without
+`--tier` the cluster moves to its next tier (NEXT); a cluster already at its
+plan's top is refused (`CM-ERRORS-DATABASE-068`). `--tier` must name that
+same next step — the gateway refuses any other tier. Every database on the
+cluster moves with it and the price of the cluster changes, so the command
+asks first (`--yes`, `--dry-run`, as above). The upgrade is queued:
+`account clusters` shows the new tier some minutes later.
 
 ```bash
 norbix account clusters
 norbix account clusters --json
-norbix account clusters upgrade fxc_2ToIiRM03X63TZaJ2dJdv2 --dry-run
+norbix account clusters upgrade fxc_2ToIiRM03X63TZaJ2dJdv2 --tier M20 --dry-run
 norbix account clusters upgrade fxc_2ToIiRM03X63TZaJ2dJdv2 --yes
 ```
 
