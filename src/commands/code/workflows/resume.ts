@@ -7,11 +7,12 @@ import {DECISIONS, formatRun, readObjectFlag} from '../../../lib/workflows.js'
 export default class CodeWorkflowsResume extends BaseCommand {
   static description = `Beta: resume a waiting run — answer an approval, deliver an event
 
-Address the run by its id, or — when you only know the wait's key (an outside system) — by --workflow and --key: exactly one of the two. --step names the waiting step when several wait (parallel branches). An approval needs --decision approved or rejected; when it names assignees you must be one of them. An assignee can be a person (usr_…) or a rule — role:<name>, tag:<name>, the two joined with '+', or teamrole:<name> — and a rule is judged against the stores at the moment you answer, so the person who holds the role today can answer a wait parked before they held it. --payload is checked against the wait's inputs. A group approval (a wait that asks for several things: "require" in its config) counts your answer in SLOTS, one per assignees entry: the run may still be waiting afterwards, until enough slots have approved — the printed run then lists every slot and how it stands. One answer fills every slot you match, so holding both roles asked settles it in one go. Answering the same wait twice is refused (CM-ERRORS-WORKFLOWS-016). If the step does not ask you at all, the answer is refused unless you hold the override right (the "Workflows — override a waiting approval" policy, or a project administrator): an override settles every slot still open and the run records that you decided, never that the absent person did. A wait on a child run cannot be resumed by hand (the gateway answers CM-ERRORS-WORKFLOWS-016): only the child's end or the wait's deadline settles it. --app-user calls the Api host's twin of the run-id route, for an app user's login (not with --key: that route is Hub-only). Prints the run.`
+Address the run by its id, or — when you only know the wait's key (an outside system) — by --workflow and --key: exactly one of the two. --step names the waiting step when several wait (parallel branches). An approval needs --decision approved or rejected; when it names assignees you must be one of them. An assignee can be a person (usr_…) or a rule — role:<name>, tag:<name>, the two joined with '+', or teamrole:<name> — and a rule is judged against the stores at the moment you answer, so the person who holds the role today can answer a wait parked before they held it. --payload is checked against the wait's inputs. --reason says why in a sentence or two: it is kept with the answer and shown on the run. An approval may also ask an AI agent ("agents" in the wait's config): the agent has its own slot ("AI agent <id>"), answers as its own service user, and an answer sent for that slot — the agent's, or yours with its API key — must pass the agent's "accept" check (CM-ERRORS-WORKFLOWS-043 when it does not). A group approval (a wait that asks for several things: "require" in its config) counts your answer in SLOTS, one per assignees entry: the run may still be waiting afterwards, until enough slots have approved — the printed run then lists every slot and how it stands. One answer fills every slot you match, so holding both roles asked settles it in one go. Answering the same wait twice is refused (CM-ERRORS-WORKFLOWS-016). If the step does not ask you at all, the answer is refused unless you hold the override right (the "Workflows — override a waiting approval" policy, or a project administrator): an override settles every slot still open and the run records that you decided, never that the absent person did. A wait on a child run cannot be resumed by hand (the gateway answers CM-ERRORS-WORKFLOWS-016): only the child's end or the wait's deadline settles it. --app-user calls the Api host's twin of the run-id route, for an app user's login (not with --key: that route is Hub-only). Prints the run.`
 
   static examples = [
     '<%= config.bin %> code workflows resume wfr_5nB2xQ7wLk9RmT3vYc1HdP --decision approved --yes',
     `<%= config.bin %> code workflows resume wfr_5nB2xQ7wLk9RmT3vYc1HdP --step wait-for-payment --payload '{"paid":true}' --yes`,
+    `<%= config.bin %> code workflows resume wfr_5nB2xQ7wLk9RmT3vYc1HdP --decision rejected --reason "Over the monthly budget" --yes`,
     '<%= config.bin %> code workflows resume --workflow wf_3kQ9mZ2vXc8LpR4wT7yH1n --key order-6ac54a59 --decision rejected --yes',
     '<%= config.bin %> code workflows resume wfr_5nB2xQ7wLk9RmT3vYc1HdP --decision approved --dry-run',
   ]
@@ -27,6 +28,7 @@ Address the run by its id, or — when you only know the wait's key (an outside 
     step: Flags.string({description: 'The waiting step (its stepId); required when several steps wait'}),
     decision: Flags.string({description: 'The answer to an approval', options: DECISIONS}),
     payload: Flags.string({description: 'JSON object handed to the step (inline, @file or - for stdin)'}),
+    reason: Flags.string({description: 'Why, in a sentence or two — kept with the answer and shown on the run'}),
     'payload-file': Flags.string({description: 'Read the payload from this JSON file'}),
     'app-user': Flags.boolean({description: "Use the Api host's route (an app user's login) instead of the Hub's", default: false, exclusive: ['key']}),
   }
@@ -47,6 +49,7 @@ Address the run by its id, or — when you only know the wait's key (an outside 
       ...(flags.step ? {stepId: flags.step} : {}),
       ...(flags.decision ? {decision: flags.decision} : {}),
       ...(payload ? {payload} : {}),
+      ...(flags.reason?.trim() ? {reason: flags.reason.trim()} : {}),
     }
 
     await this.confirmOrFail(

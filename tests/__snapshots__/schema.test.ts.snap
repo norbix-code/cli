@@ -1161,6 +1161,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "step:string",
       "decision:option",
       "payload:string",
+      "reason:string",
       "payload-file:string",
       "app-user:boolean",
     ],
