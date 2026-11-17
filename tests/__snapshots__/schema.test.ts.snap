@@ -44,6 +44,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "destructive": true,
     "flags": [
+      "tier:string",
       "yes:boolean",
       "dry-run:boolean",
     ],
@@ -1495,6 +1496,15 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "before:string",
     ],
     "id": "db integrations",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[regionCode]",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db network-addresses",
     "supportsDryRun": false,
   },
   {

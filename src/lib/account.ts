@@ -23,6 +23,10 @@ interface Cluster {
   displayName?: string
   norbixRegionCode?: string
   tierCode?: string
+  /** The next step on the ladder FLEX → M10 → M20 → M30 → M40 within the plan; empty at the top. */
+  nextTierCode?: string
+  /** The highest tier the account's plan allows. */
+  topTierCode?: string
   status?: string
   databases?: unknown[]
   usage?: {databaseCount?: number}
@@ -40,9 +44,6 @@ export const BILLING_PERIODS = {monthly: 'Monthly', annual: 'Annual'} as const
 
 /** Flag value → the word in a sentence: "billed monthly", "billed annually". */
 export const BILLED = {monthly: 'monthly', annual: 'annually'} as const
-
-/** The only tier a cluster can be moved to. */
-export const UPGRADE_TIER = 'M10'
 
 function table(header: string[], rows: string[][]): string {
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i].length)))
@@ -83,12 +84,13 @@ export function formatClusters(res: unknown): string {
     clusters.length === 0
       ? 'No Norbix-managed clusters.'
       : table(
-          ['ID', 'NAME', 'REGION', 'TIER', 'STATUS', 'DATABASES', 'NEAR LIMIT'],
+          ['ID', 'NAME', 'REGION', 'TIER', 'NEXT', 'STATUS', 'DATABASES', 'NEAR LIMIT'],
           clusters.map((c) => [
             c.id ?? '-',
             c.displayName ?? '-',
             c.norbixRegionCode ?? '-',
             c.tierCode ?? '-',
+            c.nextTierCode || '-',
             c.status ?? '-',
             String(c.usage?.databaseCount ?? c.databases?.length ?? 0),
             c.nearLimits?.length ? c.nearLimits.join(', ') : '-',

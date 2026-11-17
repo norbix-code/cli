@@ -126,6 +126,7 @@ const routes: Array<[string[], string, string]> = [
 
   // Integrations
   [['integrations'], 'GET', `${P}/integrations`],
+  [['network-addresses'], 'GET', `${P}/network-addresses`],
   [['integration', ID], 'GET', `${P}/integrations/${ID}`],
   [['integration', 'test', ID], 'POST', `${P}/integrations/test`],
   [['integration', 'default', ID], 'PUT', `${P}/integrations/${ID}/default`],
@@ -156,10 +157,10 @@ describe('every db command reaches its route', () => {
   }
 })
 
-it('covers 48 distinct db routes', () => {
+it('covers 49 distinct db routes', () => {
   // `db distinct`/`db delete`/`db update`/`db aggregate` each have two shapes;
   // count distinct verb + path pairs so a duplicated row is caught.
-  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(48)
+  expect(new Set(routes.map(([, verb, path]) => `${verb} ${path}`)).size).toBe(49)
 })
 
 /** Run a command and return the one request it sent. */
@@ -491,5 +492,15 @@ describe('JSON flags read @file like db seed does', () => {
     const {error} = await runCommand(['db', 'insert-many', COL, '--docs', '@/nope/orders.json', ...globalArgs])
     expect(error?.message).toMatch(/cannot read the file "\/nope\/orders.json"/)
     expect(calls).toHaveLength(0)
+  })
+})
+
+describe('db network-addresses', () => {
+  it('sends the region code in the query when one is given, none without', async () => {
+    await runCommand(['db', 'network-addresses', 'nb-eu-germany', ...globalArgs])
+    await runCommand(['db', 'network-addresses', ...globalArgs])
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`GET ${P}/network-addresses`, `GET ${P}/network-addresses`])
+    expect(calls[0]?.query.get('regionCode')).toBe('nb-eu-germany')
+    expect(calls[1]?.query.has('regionCode')).toBe(false)
   })
 })

@@ -103,16 +103,21 @@ describe('account clusters / clusters upgrade', () => {
     expect(calls).toEqual([{method: 'getFlexClusters', request: {}}])
   })
 
-  it('clusters upgrade sends the cluster id and tierCode M10', async () => {
-    const {calls} = await run(AccountClustersUpgrade, ['fxc_1', '--yes'])
-    expect(calls).toEqual([{method: 'upgradeFlexCluster', request: {flexClusterId: 'fxc_1', tierCode: 'M10'}}])
+  it('clusters upgrade --tier sends the cluster id and that tier, with no read first', async () => {
+    const {calls} = await run(AccountClustersUpgrade, ['fxc_1', '--tier', 'm20', '--yes'])
+    expect(calls).toEqual([{method: 'upgradeFlexCluster', request: {flexClusterId: 'fxc_1', tierCode: 'M20'}}])
   })
 
-  it('clusters upgrade without --yes calls nothing', async () => {
+  it('clusters upgrade without --tier sends only the cluster id (the gateway takes the next step)', async () => {
+    const {calls} = await run(AccountClustersUpgrade, ['fxc_1', '--yes'])
+    expect(calls).toEqual([{method: 'upgradeFlexCluster', request: {flexClusterId: 'fxc_1'}}])
+  })
+
+  it('clusters upgrade without --yes calls nothing that changes', async () => {
     const calls: RecordedCall[] = []
-    await expect(runCommand(AccountClustersUpgrade, ['fxc_1'], {account: recordingNotifications(calls)})).rejects.toThrow(
-      /Confirmation required: Move cluster fxc_1 to M10\?/,
-    )
+    await expect(
+      runCommand(AccountClustersUpgrade, ['fxc_1', '--tier', 'M20'], {account: recordingNotifications(calls)}),
+    ).rejects.toThrow(/Confirmation required: Move cluster fxc_1 to M20\?/)
     expect(calls).toEqual([])
   })
 })
