@@ -250,7 +250,14 @@ only for its own host: `--host` for another Hub leaves `[default]` out, so a
 key is never sent to another host. `norbix whoami` shows the host, Hub, Api,
 profile and auth source that won, and checks them against the server.
 
-**Region** — on norbix.ai calls go to `<region>.api.norbix.ai`. With no
+**Project host** — on norbix.ai a project's API calls go to the project's
+own host, `pr-<32 hex>.api.norbix.ai` (the project id written as hex; its DNS
+record follows the project's region). `norbix whoami` shows it. An address you
+set yourself (`api_url`, `NORBIX_API_URL`) and another install's address are
+never rewritten. If your network allows outgoing calls by host name, allow
+`*.api.norbix.ai`.
+
+**Region** — on norbix.ai Hub calls go to `<region>.hub.norbix.ai`. With no
 region set, the CLI asks the Hub for the project's primary region once and
 caches it; if the key or sign-in may not read the project, pass `--region`
 (or `region` in the profile). On your own Norbix the Hub lists its regions,

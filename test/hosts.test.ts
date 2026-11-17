@@ -331,6 +331,67 @@ describe('context: host → Hub and Api', () => {
     expect(ctx.usesDefaultEndpoints).toBe(true)
   })
 
+  // The labels are the server's own values (devops docs/tasks/clients-project-host.md).
+  const VIRGINIA = 'pr_5XvmrTA6JVggZdmEE5bGdm'
+  const VIRGINIA_API = 'https://pr-022c4aca9f9e4df787ab0a20c83c44b6.api.norbix.ai'
+  const GERMANY = 'pr_3vlTD52e9VK8lXzdv0SmWG'
+  const GERMANY_API = 'https://pr-184336d00e2141c3be5138e8dcf52e81.api.norbix.ai'
+
+  it('norbix.ai with a project: the Api is the project\'s own host, the Hub stays shared', async () => {
+    const ctx = await (await probe()).context({project: VIRGINIA})
+    expect([ctx.apiUrl, ctx.hubUrl]).toEqual([VIRGINIA_API, 'https://hub.norbix.ai'])
+    expect(ctx.usesDefaultEndpoints).toBe(true)
+  })
+
+  it('norbix.ai with a project and a region: the project host with no region label, the regional Hub', async () => {
+    const ctx = await (await probe()).context({project: GERMANY, region: 'nb-eu-germany'})
+    expect([ctx.apiUrl, ctx.hubUrl, ctx.region]).toEqual([GERMANY_API, 'https://nb-eu-germany.hub.norbix.ai', 'nb-eu-germany'])
+  })
+
+  it('norbix.ai with a region the Hub lists: still the project host, not the region\'s Api address', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fakeFetch({
+        'hub.norbix.ai/.well-known/norbix.json': {status: 404, body: ''},
+        'hub.norbix.ai/v3/echo': {
+          body: {
+            hubUrl: 'https://hub.norbix.ai/v3',
+            apiUrl: 'https://api.norbix.ai/v3',
+            hubVersion: 'v3',
+            apiVersion: 'v3',
+            regions: [{code: 'nb-eu-germany', apiUrl: 'https://nb-eu-germany.api.norbix.ai/v3', hubUrl: 'https://nb-eu-germany.hub.norbix.ai/v3'}],
+          },
+        },
+      }).fetch,
+    )
+    const ctx = await (await probe()).context({project: GERMANY, region: 'nb-eu-germany'})
+    expect([ctx.apiUrl, ctx.hubUrl]).toEqual([GERMANY_API, 'https://nb-eu-germany.hub.norbix.ai'])
+  })
+
+  it('norbix.ai with an id that is not a Norbix project id: the shared host, as before', async () => {
+    const ctx = await (await probe()).context({project: 'p1', region: 'nb-eu-germany'})
+    expect(ctx.apiUrl).toBe('https://nb-eu-germany.api.norbix.ai')
+    const plain = await (await probe()).context({project: 'p1'})
+    expect(plain.apiUrl).toBe('https://api.norbix.ai')
+  })
+
+  it('another install is never rewritten: its own Api address, with a real project id too', async () => {
+    stubFinlo()
+    const ctx = await (await probe()).context({host: 'hub.finlo.space', project: VIRGINIA})
+    expect(ctx.apiUrl).toBe('https://api.finlo.space')
+    const regional = await (await probe()).context({host: 'hub.finlo.space', project: VIRGINIA, region: 'nb-eu-germany'})
+    expect(regional.apiUrl).toBe('https://nb-eu-germany.api.finlo.space')
+  })
+
+  it('an Api address somebody set is never rewritten, also when it is api.norbix.ai or staging', async () => {
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    writeFileSync(PROFILES_PATH, `[default]\nproject_id = ${VIRGINIA}\napi_url = https://api.norbix.ai\n`)
+    expect((await (await probe()).context()).apiUrl).toBe('https://api.norbix.ai')
+    writeFileSync(PROFILES_PATH, `[default]\nproject_id = ${VIRGINIA}\nhub_url = https://hub.norbix.io\napi_url = https://api.norbix.io\n`)
+    expect((await (await probe()).context()).apiUrl).toBe('https://api.norbix.io')
+    stderr.mockRestore()
+  })
+
   it('deprecated hub_url / api_url and NORBIX_HUB_URL still work for one release, with one warning each', async () => {
     writeFileSync(PROFILES_PATH, '[default]\nproject_id = p1\nhub_url = https://hub.finlo.space/v3\napi_url = https://api.finlo.space\n')
     const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)

@@ -1,7 +1,7 @@
 import {existsSync} from 'node:fs'
 import {join} from 'node:path'
 
-import {Norbix} from '@norbix.ai/ts'
+import {Norbix, projectHostLabel} from '@norbix.ai/ts'
 import {Command, Flags, ux} from '@oclif/core'
 
 import {CliError, formatErrorText, toEnvelope, usageError} from './lib/cli-error.js'
@@ -125,7 +125,11 @@ export interface ResolvedContext {
   region?: string
   apiKey?: string
   bearerToken?: string
-  /** Api / Hub base URLs for the calls (regional when a region is set), no version. */
+  /**
+   * Api / Hub base URLs for the calls, no version. On norbix.ai the Api URL is
+   * the project's own host (`pr-<hex>.api.norbix.ai`); the Hub URL is regional
+   * when a region is set.
+   */
   apiUrl: string
   hubUrl: string
   /** The host the CLI was pointed at, as an origin: `https://cloud.finlo.space`. */
@@ -597,9 +601,18 @@ export abstract class BaseCommand extends Command {
     const regional = info ? regionalEndpoints(info, region) : undefined
     const withRegion = (url: string, isDefaultUrl: boolean) =>
       isDefaultUrl && region ? url.replace('://', `://${region}.`) : url
-    const apiUrl = target.apiOverride
-      ? withRegion(apiUrlBase, apiUrlBase === DEFAULT_API_URL)
-      : (regional?.apiUrl ?? withRegion(apiUrlBase, apiUrlBase === DEFAULT_API_URL))
+    // On norbix.ai a project's calls go to its own host (pr-<32 hex>.api.norbix.ai,
+    // the project id written as hex): the load balancer's log holds the host
+    // only, so this is how traffic is counted per project. Its DNS record
+    // already points at the project's region, so no region label is added. An
+    // address somebody set (api_url, NORBIX_API_URL) or another install's
+    // address is never rewritten.
+    const projectLabel = !target.apiOverride && apiUrlBase === DEFAULT_API_URL ? projectHostLabel(projectId) : undefined
+    const apiUrl = projectLabel
+      ? apiUrlBase.replace('://', `://${projectLabel}.`)
+      : target.apiOverride
+        ? withRegion(apiUrlBase, apiUrlBase === DEFAULT_API_URL)
+        : (regional?.apiUrl ?? withRegion(apiUrlBase, apiUrlBase === DEFAULT_API_URL))
     const hubUrl = target.hubOverride
       ? withRegion(hubUrlBase, hubUrlBase === DEFAULT_HUB_URL)
       : (regional?.hubUrl ?? withRegion(hubUrlBase, hubUrlBase === DEFAULT_HUB_URL))
