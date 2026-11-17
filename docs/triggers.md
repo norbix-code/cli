@@ -90,6 +90,7 @@ norbix files trigger disable trg_123 --yes
 | `norbix membership trigger enable <id>` | turn it on | `PATCH /membership/triggers/{triggerId}/enable` |
 | `norbix membership trigger disable <id> [--yes]` | turn it off | `PATCH /membership/triggers/{triggerId}/disable` |
 | `norbix membership trigger delete <id> [--yes]` | delete it | `DELETE /membership/triggers/{triggerId}` |
+| `norbix membership trigger event-values [--when <event>]` | the values each event carries by name, for token bindings | `GET /membership/triggers/event-values` |
 
 `when`: `OnRegistered` (a login was created), `OnInvited`, `OnVerified`,
 `OnUpdated`, `OnDeleted`, `OnBlocked`, `OnReactivated`, `OnUserCreated` (a
@@ -97,6 +98,14 @@ person was created — the user, not the credential). A message action may go to
 the person the event is about: `"deliverySettings": {"recipientsSourceType":
 "TriggerSubject"}` on an `Email`, `Sms` or `Push` action (membership triggers
 only).
+
+A token of a membership trigger's e-mail, SMS or push template gets the event's
+value through a token mapping: `{"key": "<template token>", "value": "User.Email",
+"resolver": "New"}` ("Registered user → e-mail address"). `norbix membership
+trigger event-values` lists every key with its resolver (`New` = after the event,
+`Old` = before the change, `OnUpdated` only). Never resolver `Custom` for an event
+key: that sends the key as fixed text. Preview the e-mail as it is sent with
+`norbix email template render --file t.mjml --preview --subject-user usr_…`.
 
 ```bash
 norbix membership trigger save --file welcome.json --when OnRegistered

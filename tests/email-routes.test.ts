@@ -325,6 +325,13 @@ describe('email template render / attach', () => {
     })
   })
 
+  it('render --subject-user / --subject-before-user send the simulated people of a membership trigger', async () => {
+    const body = await bodyOf([
+      'template', 'render', '--code', '<mjml>@Model.User.Email</mjml>', '--preview', '--subject-user', 'usr_new', '--subject-before-user', 'usr_old',
+    ])
+    expect(body).toMatchObject({isForPreview: true, triggerSubjectUserId: 'usr_new', triggerSubjectBeforeUserId: 'usr_old'})
+  })
+
   it('attach sends the template id and the file reference in the body', async () => {
     const body = await bodyOf(['template', 'attach', ID, '--file-ref', '{"path":"terms.pdf","provider":"Fake"}'])
     expect(body).toEqual({templateId: ID, fileRef: {path: 'terms.pdf', provider: 'Fake'}})

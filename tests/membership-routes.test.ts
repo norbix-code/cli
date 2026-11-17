@@ -172,6 +172,12 @@ const routes: Array<[string[], Route[]]> = [
     [['GET', `${M}/authorization`], ['PUT', `${M}/authorization/password-complexity`]],
   ],
   [['membership', 'settings', 'passkey'], [['GET', `${M}/passkey/settings`]]],
+  [['membership', 'settings', 'email-bindings', 'Welcome'], [['GET', `${M}/settings/email-bindings`]]],
+  [
+    ['membership', 'settings', 'email-bindings', 'set', 'Invitation', '--bindings', '[{"token":"Order.Number","kind":"Empty"}]'],
+    [['PUT', `${M}/authorization`]],
+  ],
+  [['membership', 'settings', 'welcome-email', 'set', '--off'], [['PUT', `${M}/authorization`]]],
   [['membership', 'settings', 'passkey', 'set', '--enabled', 'true'], [['GET', `${M}/passkey/settings`], ['POST', `${M}/passkey/settings`]]],
 
   // Service-user API keys
@@ -503,6 +509,58 @@ describe('membership settings', () => {
     const call = await send(['membership', 'settings', 'authorization', 'set', '--allow-guests', 'true'])
     expect(calls.map((c) => c.method)).toEqual(['GET', 'PUT'])
     expect(call.body).toEqual({allowGuestUsers: true, guestCleanupPeriodDays: 30})
+  })
+
+  it('email-bindings sends the e-mail and the template in the query', async () => {
+    const call = await send(['membership', 'settings', 'email-bindings', 'PasswordReset', '--template', 'tmpl_66b2f0a1'])
+    expect(call.query.get('setting')).toBe('PasswordReset')
+    expect(call.query.get('templateId')).toBe('tmpl_66b2f0a1')
+  })
+
+  it('email-bindings without --template sends no templateId', async () => {
+    const call = await send(['membership', 'settings', 'email-bindings', 'Welcome'])
+    expect(call.query.get('setting')).toBe('Welcome')
+    expect(call.query.has('templateId')).toBe(false)
+  })
+
+  it('email-bindings set sends setting EmailBindings, the e-mail and the bindings, nothing else', async () => {
+    const bindings = [
+      {token: 'Order.Number', kind: 'Fixed', value: 'n/a', translations: [{language: 'lt', value: 'nėra'}]},
+      {token: 'Shop.Url', kind: 'Field', value: 'Project.Name'},
+    ]
+    const call = await send(['membership', 'settings', 'email-bindings', 'set', 'Invitation', '--bindings', JSON.stringify(bindings)])
+    expect(call.body).toEqual({setting: 'EmailBindings', bindingsEvent: 'Invitation', bindings})
+  })
+
+  for (const bad of ['{"token":"A"}', '[{"kind":"Fixed"}]', '[{"token":"A","kind":"Custom"}]', 'not json']) {
+    it(`email-bindings set --bindings ${bad} is a usage error, nothing sent`, async () => {
+      const {error} = await runCommand(['membership', 'settings', 'email-bindings', 'set', 'Welcome', '--bindings', bad, ...globalArgs])
+      expect(error).toBeDefined()
+      expect(calls).toHaveLength(0)
+    })
+  }
+
+  it('welcome-email set --template sends setting RegistrationTemplate with the template and the bindings', async () => {
+    const call = await send([
+      'membership', 'settings', 'welcome-email', 'set', '--template', 'tmpl_66b2f0a1', '--bindings', '[{"token":"Order.Number","kind":"Empty"}]',
+    ])
+    expect(call.body).toEqual({
+      setting: 'RegistrationTemplate',
+      welcomeEmailTemplate: 'tmpl_66b2f0a1',
+      bindings: [{token: 'Order.Number', kind: 'Empty'}],
+    })
+  })
+
+  it('welcome-email set --off sends an empty template (no welcome e-mail in this environment)', async () => {
+    const call = await send(['membership', 'settings', 'welcome-email', 'set', '--off'])
+    expect(call.body).toEqual({setting: 'RegistrationTemplate', welcomeEmailTemplate: ''})
+  })
+
+  it('welcome-email set with neither --template nor --off is a usage error, nothing sent', async () => {
+    const {error} = await runCommand(['membership', 'settings', 'welcome-email', 'set', ...globalArgs])
+    expect(error).toBeDefined()
+    expect((error as {oclif?: {exit?: number}} | undefined)?.oclif?.exit).toBe(2)
+    expect(calls).toHaveLength(0)
   })
 
   it('password-complexity set merges the change into the current rules', async () => {

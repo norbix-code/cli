@@ -2387,6 +2387,8 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "file:string",
       "token:string",
       "preview:boolean",
+      "subject-user:string",
+      "subject-before-user:string",
     ],
     "id": "email template render",
     "supportsDryRun": false,
@@ -3213,6 +3215,29 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [
+      "setting",
+    ],
+    "destructive": false,
+    "flags": [
+      "template:string",
+    ],
+    "id": "membership settings email-bindings",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "setting",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "bindings:string",
+    ],
+    "id": "membership settings email-bindings set",
+    "supportsDryRun": true,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [],
@@ -3266,6 +3291,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "template:string",
+      "off:boolean",
+      "bindings:string",
+    ],
+    "id": "membership settings welcome-email set",
+    "supportsDryRun": true,
+  },
+  {
     "args": [
       "id",
     ],
@@ -3308,6 +3345,15 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "membership trigger enable",
     "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "when:option",
+    ],
+    "id": "membership trigger event-values",
+    "supportsDryRun": false,
   },
   {
     "args": [],

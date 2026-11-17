@@ -94,7 +94,7 @@ to keep.
 | `norbix email template create --name <n> (--subject <s> (--body <code> \| --body-file <f>) \| --translations <json>)` | create a template | `POST /templates` |
 | `norbix email template update <id> --name <n> (…same as create…)` | replace a template | `PUT /templates` |
 | `norbix email template tokens <id>` | list the tokens the template uses | `GET /templates/{id}/tokens` |
-| `norbix email template render (--code <mjml> \| --file <f>) [--token key=value]... [--preview]` | render MJML + Razor to HTML | `POST /templates/mjml` |
+| `norbix email template render (--code <mjml> \| --file <f>) [--token key=value]... [--preview] [--subject-user <usr>] [--subject-before-user <usr>]` | render MJML + Razor to HTML; the subject flags fill a membership trigger event's tokens for those users | `POST /templates/mjml` |
 | `norbix email template attach <id> --file-ref <json> [--language <l>]` | attach an uploaded file to every e-mail of the template | `POST /templates/attachments` |
 | `norbix email system-templates [--tag <t>]... [--theme <t>]... [--channel <c>] [--trigger <t>]` | list ready-made templates | `GET /system-templates` |
 | `norbix email system-template <id>` | show one ready-made template | `GET /system-templates/{id}` |
@@ -272,3 +272,22 @@ These Email routes exist in the gateway, but nobody runs them from a terminal:
   field, but it comes from a gateway branch that is not released yet (the AI
   campaign-timing rule); the released gateway ignores it. Without `--at` a
   campaign is already sent right away.
+
+## Membership e-mails — welcome e-mail and token values
+
+| command | what it does | endpoint |
+|---|---|---|
+| `norbix membership settings email-bindings <Welcome\|Verification\|PasswordReset\|Invitation\|Deactivation\|LoginAlert> [--template <tmpl>]` | list the template's tokens: Auto, NeedsValue or NotAvailable | `GET /membership/settings/email-bindings` |
+| `norbix membership settings email-bindings set <e-mail> --bindings <json>` | save the values of the tokens Norbix does not fill | `PUT /membership/authorization` (`setting: EmailBindings`) |
+| `norbix membership settings welcome-email set (--template <tmpl> \| --off) [--bindings <json>]` | choose the welcome e-mail of the environment, or send none | `PUT /membership/authorization` (`setting: RegistrationTemplate`) |
+
+A binding is `{"token": "Order.Number", "kind": "Fixed" | "Field" | "Empty", "value": "…",
+"translations": [{"language": "lt", "value": "…"}]}`. The gateway refuses a template save
+(`CM-ERRORS-MEMBERSHIP-060`) while one of its tokens still has no value.
+`norbix membership settings authorization` shows the welcome template and
+`welcomeEmailTriggers` — enabled sign-up triggers that already e-mail the new user.
+
+```bash
+norbix membership settings email-bindings Welcome --template tmpl_66b2f0a1
+norbix membership settings welcome-email set --template tmpl_66b2f0a1 --bindings '[{"token":"Order.Number","kind":"Empty"}]'
+```
