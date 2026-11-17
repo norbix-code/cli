@@ -159,6 +159,7 @@ interface RunWaitAnswer {
   slots?: number[]
   override?: boolean
   at?: string
+  reason?: string
 }
 
 /**
@@ -172,10 +173,14 @@ interface RunWaitSlot {
   role?: string
   tag?: string
   teamRole?: boolean
+  /** Set when the slot is an AI agent's: the agent's id in the step; `userId` is then its service user. */
+  agent?: string
   answeredBy?: string
   decision?: string
   at?: string
   override?: boolean
+  /** The reason given with the answer that filled the slot; an AI agent always gives one. */
+  reason?: string
 }
 
 /** What a run waits on. `require`, `slots` and `answers` are there only for a group approval. */
@@ -213,9 +218,18 @@ function itemOf(step: RunStep): string {
   return step.itemIndex === undefined || step.itemIndex === null ? '' : `#${step.itemIndex}`
 }
 
-/** What one slot is called: the rule as it was written, or the person named. */
+/** What one slot is called: the rule as it was written, the person named, or "AI agent <id>" for an agent's slot. */
 function slotLabel(slot: RunWaitSlot): string {
-  return slot.label ?? slot.userId ?? '?'
+  return slot.agent ? `AI agent ${slot.agent}` : (slot.label ?? slot.userId ?? '?')
+}
+
+/** The longest reason printed on a slot's line; the whole text is in --json. */
+const MAX_REASON = 200
+
+/** A reason as one printed line: no line breaks, cut. */
+function reasonText(reason: string | undefined): string {
+  const text = (reason ?? '').replaceAll(/\s+/g, ' ').trim()
+  return text.length > MAX_REASON ? `${text.slice(0, MAX_REASON)}…` : text
 }
 
 /**
@@ -275,8 +289,11 @@ function asksColumn(wait: RunWait): string {
 export function formatSlots(wait: RunWait | undefined): string[] {
   if (!wait?.slots?.length) return []
   return wait.slots.map((slot) => {
+    // An agent's own answer reads "by the agent"; its slot settled by somebody else names that somebody.
+    const by = slot.agent && slot.answeredBy === slot.userId && !slot.override ? 'the agent' : (slot.answeredBy ?? '?')
+    const why = slot.decision ? reasonText(slot.reason) : ''
     const state = slot.decision
-      ? `${slot.decision} by ${slot.answeredBy ?? '?'}${slot.override ? ' (override)' : ''}${slot.at ? ` at ${slot.at}` : ''}`
+      ? `${slot.decision} by ${by}${slot.override ? ' (override)' : ''}${slot.at ? ` at ${slot.at}` : ''}${why ? ` — ${why}` : ''}`
       : 'open'
     return `    ${slotLabel(slot)}: ${state}`
   })

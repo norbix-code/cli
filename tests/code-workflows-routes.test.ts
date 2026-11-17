@@ -544,6 +544,20 @@ describe('norbix code workflows — runs', () => {
     expect(calls[0]?.body).toEqual({key: 'order-o1', decision: 'rejected'})
   })
 
+  it('resume --reason sends the reason with the answer, by run id and by key; an empty one is not sent', async () => {
+    // runCommand joins and re-splits its arguments, so a value with spaces is quoted.
+    answer = {run: RUN_DTO}
+    await wf('resume', RUN, '--decision', 'rejected', '--reason', '"  Over the monthly budget  "', '--yes')
+    await wf('resume', '--workflow', WF, '--key', 'order-o1', '--decision', 'approved', '--reason', '"Looks fine"', '--yes')
+    await wf('resume', RUN, '--decision', 'approved', '--reason', '"   "', '--yes')
+
+    expect(calls.map((c) => c.body)).toEqual([
+      {decision: 'rejected', reason: 'Over the monthly budget'},
+      {key: 'order-o1', decision: 'approved', reason: 'Looks fine'},
+      {decision: 'approved'},
+    ])
+  })
+
   it('resume needs exactly one of a run id and --workflow/--key', async () => {
     expect((await wf('resume', '--yes')).error?.message).toMatch(/Name the run/)
     expect((await wf('resume', RUN, '--workflow', WF, '--key', 'k', '--yes')).error?.message).toMatch(/not both/)
@@ -776,6 +790,28 @@ describe('workflows helpers', () => {
     expect(formatGroupApproval(old)).toBe('group approval — 1 of 2 approvals, waiting for usr_ben, usr_cara')
     // No slots to list: the lines under the group line are only for a wait that has them.
     expect(formatSlots(old)).toEqual([])
+  })
+
+  it("formatSlots names an AI agent's slot, says the agent answered, and prints its reason on one line, cut", () => {
+    const wait = {
+      stepId: 'approve',
+      kind: 'approval',
+      require: 2,
+      slots: [
+        {label: 'role:Accountant'},
+        {label: 'agent:reviewer', userId: 'usr_bot', agent: 'reviewer', answeredBy: 'usr_bot', decision: 'approved', reason: 'The amount is\nwithin the limit.'},
+        {label: 'agent:second', userId: 'usr_bot2', agent: 'second', answeredBy: 'usr_admin', decision: 'approved', override: true, reason: 'x'.repeat(260)},
+        {label: 'agent:third', userId: 'usr_bot3', agent: 'third'},
+      ],
+    }
+
+    expect(formatSlots(wait)).toEqual([
+      '    role:Accountant: open',
+      '    AI agent reviewer: approved by the agent — The amount is within the limit.',
+      `    AI agent second: approved by usr_admin (override) — ${'x'.repeat(200)}…`,
+      '    AI agent third: open',
+    ])
+    expect(formatGroupApproval(wait)).toBe('group approval — 2 of 2 approvals, 1 by override, waiting for role:Accountant, AI agent third')
   })
 
   it('formatRun adds one line per group approval and leaves a plain wait as it was', () => {
