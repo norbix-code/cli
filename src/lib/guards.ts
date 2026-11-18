@@ -40,6 +40,8 @@ export const BILLING_CALLS: readonly GuardedCall[] = [
   {surface: 'hub', method: 'changeManagedServiceBundle'},
   // POST /account/flex-clusters/{flexClusterId}/upgrade: a paid cluster tier (M10).
   {surface: 'hub', method: 'upgradeFlexCluster'},
+  // POST /account/stripe/discount: a discount code on the running bundle subscription.
+  {surface: 'hub', method: 'applyBundleDiscount'},
   // POST /account/stripe/create-checkout-session: a Managed Service bundle.
   {surface: 'hub', method: 'createStripeCheckoutSession'},
   // POST /account/projects/{projectId}/ai/credits/checkout: a one-time AI credit pack.

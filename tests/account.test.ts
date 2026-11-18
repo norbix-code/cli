@@ -4,6 +4,8 @@ import AccountBundles from '../src/commands/account/bundles.js'
 import AccountChangeBundle from '../src/commands/account/change-bundle.js'
 import AccountClusters from '../src/commands/account/clusters.js'
 import AccountClustersUpgrade from '../src/commands/account/clusters/upgrade.js'
+import AccountDiscountApply from '../src/commands/account/discount/apply.js'
+import AccountDiscountCheck from '../src/commands/account/discount/check.js'
 import AccountMe from '../src/commands/account/me.js'
 import AccountMeSetPhone from '../src/commands/account/me/set-phone.js'
 import AccountTeam from '../src/commands/account/team.js'
@@ -118,6 +120,25 @@ describe('account clusters / clusters upgrade', () => {
     await expect(
       runCommand(AccountClustersUpgrade, ['fxc_1', '--tier', 'M20'], {account: recordingNotifications(calls)}),
     ).rejects.toThrow(/Confirmation required: Move cluster fxc_1 to M20\?/)
+    expect(calls).toEqual([])
+  })
+})
+
+describe('account discount check / apply', () => {
+  it('check sends only the code without flags, and the gateway enums with them', async () => {
+    expect((await run(AccountDiscountCheck, ['LAUNCH30'])).calls).toEqual([{method: 'checkBundleDiscount', request: {code: 'LAUNCH30'}}])
+    expect((await run(AccountDiscountCheck, ['LAUNCH30', '--bundle', 'scale', '--period', 'annual'])).calls).toEqual([
+      {method: 'checkBundleDiscount', request: {code: 'LAUNCH30', bundle: 'Scale', billingPeriod: 'Annual'}},
+    ])
+  })
+
+  it('apply sends the code with --yes and calls nothing without it', async () => {
+    expect((await run(AccountDiscountApply, ['LAUNCH30', '--yes'])).calls).toEqual([{method: 'applyBundleDiscount', request: {code: 'LAUNCH30'}}])
+
+    const calls: RecordedCall[] = []
+    await expect(runCommand(AccountDiscountApply, ['LAUNCH30'], {account: recordingNotifications(calls)})).rejects.toThrow(
+      /Confirmation required: Put the discount code LAUNCH30/,
+    )
     expect(calls).toEqual([])
   })
 })

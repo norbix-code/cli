@@ -4,8 +4,9 @@ Account-level commands: the organisation, its projects and its team. All
 paths below are under `/{version}/account` on the Hub host.
 
 `account team`, `account me`, `account me set-phone`, `account regions`,
-`account bundles`, `account change-bundle`, `account clusters` and
-`account clusters upgrade` are run through the
+`account bundles`, `account change-bundle`, `account clusters`,
+`account clusters upgrade`, `account discount check` and
+`account discount apply` are run through the
 real SDK with `fetch` replaced in `tests/account-routes.test.ts` (verb, path,
 query string, body); `tests/account.test.ts` checks the SDK method and fields.
 
@@ -22,6 +23,8 @@ query string, body); `tests/account.test.ts` checks the SDK method and fields.
 | `norbix account me set-phone <phone>` / `--clear` | save (E.164, `+37060000000`) or clear your own phone | `PUT /me/phone` |
 | `norbix account bundles` | list the Managed Service bundles: name, project limit, monthly and annual price | `GET /stripe/bundles` |
 | `norbix account change-bundle --bundle <starter\|growth\|scale> --period <monthly\|annual> [--yes] [--dry-run]` | move the account to another bundle or billing period | `POST /stripe/change-bundle` |
+| `norbix account discount check <code> [--bundle <starter\|growth\|scale>] [--period <monthly\|annual>]` | check a discount code and say what it gives; changes nothing | `POST /stripe/discount/check` |
+| `norbix account discount apply <code> [--yes] [--dry-run]` | put a discount code on the running bundle subscription | `POST /stripe/discount` |
 | `norbix account clusters` | list the account's Norbix-managed Atlas clusters | `GET /flex-clusters` |
 | `norbix account clusters upgrade <flexClusterId> [--tier <code>] [--yes] [--dry-run]` | queue the upgrade of one cluster one tier up (FLEX → M10 → M20 → M30 → M40, within the plan) | `POST /flex-clusters/{flexClusterId}/upgrade` |
 
@@ -83,6 +86,34 @@ and `projectCap`.
 norbix account bundles
 norbix account change-bundle --bundle growth --period annual --dry-run
 norbix account change-bundle --bundle growth --period annual --yes
+```
+
+## Discount codes
+
+`account discount check <code>` asks the gateway what a code gives and changes
+nothing. `--bundle` and `--period` are the plan about to be bought; without
+them the code is checked against the account's current plan. It prints one
+line, for example `LAUNCH30: 30% off for 3 months`; `--json` prints the whole
+answer (`discount`: `code`, `percentOff`, `amountOff` in minor units with
+`currency`, `months` — empty means forever — and `endsAt`).
+
+`account discount apply <code>` puts the code on the account's running
+subscription. It changes what the account pays, so it asks first like
+`change-bundle` (`--yes`, `--dry-run`). The discount reaches
+`account status` (`discount`) when Stripe has confirmed it. An account with no
+subscription is refused with `CM-ERRORS-PROJECTS-039`. A new subscription
+takes its code at checkout, in Cloud; the CLI starts no checkout.
+
+A code that cannot be used is refused with `CM-ERRORS-ACCOUNT-027` (exit 6).
+The hint says what the reason means; with `--json` the reason is in
+`error.context.reason`: `not_found`, `not_started`, `expired`,
+`not_for_bundle`, `monthly_only`, `wrong_billing_period`,
+`already_has_discount` or `already_used`.
+
+```bash
+norbix account discount check LAUNCH30 --bundle growth --period monthly
+norbix account discount apply LAUNCH30 --dry-run
+norbix account discount apply LAUNCH30 --yes
 ```
 
 ## Norbix-managed Atlas clusters

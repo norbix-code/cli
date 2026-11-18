@@ -44,6 +44,7 @@ function sdkMethods(surface: Surface): Array<[string, string]> {
 const LISTED_ROUTES: Record<string, string> = {
   'hub.changeManagedServiceBundle': 'POST /account/stripe/change-bundle',
   'hub.upgradeFlexCluster': 'POST /account/flex-clusters/{flexClusterId}/upgrade',
+  'hub.applyBundleDiscount': 'POST /account/stripe/discount',
   'hub.createStripeCheckoutSession': 'POST /account/stripe/create-checkout-session',
   'hub.createAiCreditPackCheckout': 'POST /account/projects/{projectId}/ai/credits/checkout',
   'hub.cleanLogs': 'POST /logs/clean',
