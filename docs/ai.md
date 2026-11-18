@@ -107,14 +107,14 @@ under `/{version}/account/chat` unless shown in full.
 | `norbix ai chat entries <session> [--since <seq>]` | the transcript: messages, plans, questions, steps | `GET /sessions/{SessionId}/entries` |
 | `norbix ai chat plan <session> <entry> approve\|reject [--comment <c>]` | approve a proposed plan, or reject it (with what to do instead) | `POST /sessions/{SessionId}/plans/{EntryId}/decision` |
 | `norbix ai chat answer <session> <entry> --answer <key>=<value>...` | answer a question the assistant asked | `POST /sessions/{SessionId}/questions/{EntryId}/answer` |
-| `norbix ai chat stop <session> <entry> [--yes]` | stop a running plan step | `POST /sessions/{SessionId}/steps/{EntryId}/stop` |
+| `norbix ai chat stop <session> <entry> [--yes]` | stop a queued, running or waiting plan step (it ends failed, its dependants are blocked, the assistant asks retry / skip / fix) | `POST /sessions/{SessionId}/steps/{EntryId}/stop` |
 | `norbix ai chat feedback <session> <entry> up\|down\|clear` | like / dislike an entry | `POST /sessions/{SessionId}/entries/{EntryId}/feedback` |
 | `norbix ai chat attach <file> [--session <id>] [--content-type <t>]` | put a file into a chat (a new one without `--session`) | `POST /attachments` |
 | `norbix ai chat archive <session> [--undo]` | archive / unarchive | `PATCH /sessions/{SessionId}/archive` |
 | `norbix ai chat pin <session> [--undo]` | pin / unpin | `PATCH /sessions/{SessionId}/pin` |
-| `norbix ai chat sharing <session> private\|shared` | keep the chat out of the shared improvement data, or not | `PATCH /sessions/{SessionId}/sharing` |
-| `norbix ai chat delete <session> [--yes]` | delete a chat | `DELETE /sessions/{SessionId}` |
-| `norbix ai chat memory [--account-level]` | what the assistant remembers | `GET /memory` |
+| `norbix ai chat sharing <session> private\|shared` | private: never trace this chat, whatever the account's sharing consent; shared: follow the consent | `PATCH /sessions/{SessionId}/sharing` |
+| `norbix ai chat delete <session> [--yes]` | delete a chat (soft: it leaves the list and history, the data is kept) | `DELETE /sessions/{SessionId}` |
+| `norbix ai chat memory [--account-level]` | what the assistant remembers (filtered to the project that is set) | `GET /memory` |
 | `norbix ai chat forget <note> [--yes]` | delete one memory note | `DELETE /memory/{NoteId}` |
 | `norbix ai tools [--toolset <t>]` | the chat-tool inventory (shaped like MCP `tools/list`) | `GET /{version}/account/ai/tools` |
 | `norbix ai tool call <name> [--args <json>] [--yes]` | call one tool by name, as the chat would | `POST /{version}/account/ai/tools/{ToolName}` |
@@ -126,9 +126,11 @@ under `/{version}/account/chat` unless shown in full.
 - What the assistant proposes is not done until you approve the plan
   (`ai chat entries` shows the plan entry id). The live progress the dashboard
   shows comes over server-sent events; the CLI prints the final reply only.
-- `ai tool call` can change data: it asks first (`--yes` in scripts,
-  `--dry-run` to see the request). `--args` is a JSON object; the tool gets it
-  as `argumentsJson`.
+- `ai tool call` runs the tool under your identity and can change data: it
+  asks first (`--yes` in scripts, `--dry-run` to see the request). `--args` is
+  a JSON object; the tool gets it as `argumentsJson`. The env comes from an
+  `env` argument, then the `--env` header; a PROD write needs `"env":"PROD"` in
+  `--args`.
 - `ai chat delete`, `stop` and `forget` ask first too.
 
 ```bash

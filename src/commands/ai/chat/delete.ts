@@ -3,7 +3,7 @@ import {Args} from '@oclif/core'
 import {AiChatCommand} from '../../../lib/ai-chat.js'
 
 export default class AiChatDelete extends AiChatCommand {
-  static description = 'Delete one of your developer AI chats'
+  static description = 'Delete one of your developer AI chats (it leaves the list and the history; the gateway keeps the data)'
 
   static examples = ['<%= config.bin %> ai chat delete aics_123 --yes', '<%= config.bin %> ai chat delete aics_123 --dry-run']
 

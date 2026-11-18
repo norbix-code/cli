@@ -3,8 +3,8 @@ import {AiChatCommand} from '../../../lib/ai-chat.js'
 export default class AiChatMemory extends AiChatCommand {
   static description = `List what the assistant remembers (its memory notes)
 
-With a project set, only the notes of that project and the account-wide ones;
---account-level lists all.`
+With a project set, the list is filtered to that project; --account-level
+lists them without the filter.`
 
   static examples = ['<%= config.bin %> ai chat memory', '<%= config.bin %> ai chat memory --account-level']
 
