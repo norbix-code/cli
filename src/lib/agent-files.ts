@@ -10,7 +10,7 @@ export const MARKER_START = '<!-- norbix-cli:start -->'
 export const MARKER_END = '<!-- norbix-cli:end -->'
 
 /** Raise it when the text below changes: `norbix ai init --update` compares it. */
-export const AGENT_FILES_VERSION = 3
+export const AGENT_FILES_VERSION = 4
 const VERSION_LINE = `<!-- norbix-cli:version ${AGENT_FILES_VERSION} -->`
 
 /** The version a file was written with; 0 when it has no version line (older CLI). */
@@ -41,7 +41,9 @@ function buildContract(): string[] {
     '| files | Files | direct S3, GCS or Azure Blob SDK |',
     '| email, SMS, push | templates with triggers or campaigns | nodemailer, SES or Twilio SDK |',
     '| recurring work | Scheduler: campaign, code function or webhook on a cron | node-cron, EventBridge, Cloud Scheduler |',
-    '| server logic | Code functions and Workflows (functions run in your cloud account, Norbix calls them) | a function Norbix does not know about |',
+    '| an app request that needs a server-side rule (who may see what) | Membership roles and policies first; a rule they cannot express runs on your own server: a Norbix SDK with a service user API key, one named endpoint per use case | a Workflow as the app\'s API, one generic "collection + query" endpoint, the service user key inside the app |',
+    '| code that reacts to an event (record, user, file, payment) | a trigger with a Code function (it runs in your cloud account, Norbix calls it) | polling, a function Norbix does not know about |',
+    '| a process with steps, waits or approvals | Workflows (shared environments: 60 starts a minute per workflow for all users together; an invoke waits at most 30 seconds) | a workflow run per screen load or button press |',
     '| payments | Payments | direct Stripe SDK |',
     '| logs and audit | Logs | a separate log store |',
     '',
@@ -71,6 +73,7 @@ export function buildChecklist(): string[] {
     '- [ ] Text in several languages is one translatable field (`"meta":{"translateOptions":{"translatable":true}}`, values `{"en":"…","lt":"…"}`), never a separate language field or one record per language.',
     '- [ ] Never build your own users, sessions or auth tables: Membership has native cookie sessions, password reset and email verification.',
     '- [ ] Recurring or delayed work is a Scheduler task or a Workflow (`norbix scheduler save`, `norbix code workflows list`), never a polling job or a loop that checks the database.',
+    '- [ ] A Workflow is for a process with steps, waits or approvals. It is never the app\'s request / response API: a screen load or a button press is not a workflow run.',
     '',
     '```html',
     "<mj-section background-color='@Model.Cmf.BrandMainColorOrDefault(\"#003E6B\")'>",
