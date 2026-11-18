@@ -165,6 +165,191 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "message",
+    ],
+    "destructive": false,
+    "flags": [
+      "session:string",
+      "surface:string",
+      "topic:string",
+      "llm:string",
+      "model:string",
+      "account-level:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "session",
+      "entry",
+    ],
+    "destructive": false,
+    "flags": [
+      "answer:string",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat answer",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "session",
+    ],
+    "destructive": false,
+    "flags": [
+      "undo:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat archive",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "file",
+    ],
+    "destructive": false,
+    "flags": [
+      "session:string",
+      "content-type:string",
+      "surface:string",
+      "topic:string",
+      "account-level:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat attach",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "account-level:boolean",
+    ],
+    "id": "ai chat availability",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "session",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "session",
+    ],
+    "destructive": false,
+    "flags": [
+      "since:string",
+    ],
+    "id": "ai chat entries",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "session",
+      "entry",
+      "feedback",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "ai chat feedback",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "note",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat forget",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "account-level:boolean",
+    ],
+    "id": "ai chat memory",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "session",
+    ],
+    "destructive": false,
+    "flags": [
+      "undo:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat pin",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "session",
+      "entry",
+      "decision",
+    ],
+    "destructive": false,
+    "flags": [
+      "comment:string",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat plan",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "take:string",
+      "archived:boolean",
+    ],
+    "id": "ai chat sessions",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "session",
+      "state",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "ai chat sharing",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "session",
+      "entry",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai chat stop",
+    "supportsDryRun": true,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [
@@ -426,6 +611,29 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [],
     "id": "ai service-users",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "name",
+    ],
+    "destructive": true,
+    "flags": [
+      "args:string",
+      "account-level:boolean",
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "ai tool call",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "toolset:string",
+    ],
+    "id": "ai tools",
     "supportsDryRun": false,
   },
   {
