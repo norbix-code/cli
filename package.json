@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.2",
-    "@norbix.ai/ts": "^4.70.0",
+    "@norbix.ai/ts": "^4.71.0",
     "@oclif/core": "^5.0.0",
     "@oclif/plugin-autocomplete": "^4.0.0",
     "@oclif/plugin-help": "^7.0.0",
@@ -89,6 +89,14 @@
           },
           "discount": {
             "description": "Discount codes for the Managed Service bundle: check a code, put one on the subscription"
+          },
+          "trial": {
+            "description": "Free Managed Service trial: can one start in a region now, join the waiting list when the region is full",
+            "subtopics": {
+              "waitlist": {
+                "description": "The free-trial waiting list: put the account owner's email on it"
+              }
+            }
           }
         }
       },

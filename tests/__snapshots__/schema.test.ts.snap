@@ -136,6 +136,28 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "[region]",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "account trial availability",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[region]",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "consent:boolean",
+      "consent-version:string",
+    ],
+    "id": "account trial waitlist join",
+    "supportsDryRun": true,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [],
