@@ -62,6 +62,8 @@ const routes: Array<[string[], string, string]> = [
   [['change-bundle', '--bundle', 'growth', '--period', 'annual', '--yes'], 'POST', '/v3/account/stripe/change-bundle'],
   [['clusters'], 'GET', '/v3/account/flex-clusters'],
   [['clusters', 'upgrade', CLUSTER, '--tier', 'M20', '--yes'], 'POST', `/v3/account/flex-clusters/${CLUSTER}/upgrade`],
+  [['discount', 'check', 'LAUNCH30'], 'POST', '/v3/account/stripe/discount/check'],
+  [['discount', 'apply', 'LAUNCH30', '--yes'], 'POST', '/v3/account/stripe/discount'],
 ]
 
 describe('every account command of this round reaches its route', () => {
@@ -160,6 +162,8 @@ describe('account projects / status / bundles / clusters — no project needed',
     [['clusters'], '/v3/account/flex-clusters'],
     [['change-bundle', '--bundle', 'scale', '--period', 'monthly', '--yes'], '/v3/account/stripe/change-bundle'],
     [['clusters', 'upgrade', CLUSTER, '--tier', 'M20', '--yes'], `/v3/account/flex-clusters/${CLUSTER}/upgrade`],
+    [['discount', 'check', 'LAUNCH30'], '/v3/account/stripe/discount/check'],
+    [['discount', 'apply', 'LAUNCH30', '--yes'], '/v3/account/stripe/discount'],
   ] as const) {
     it(`account ${argv.join(' ')} runs with only an API key and sends no project header`, async () => {
       const {error} = await runCommand(['account', ...argv, '--api-key', 'nbsu_k', '--region', 'nb-eu-germany'])
@@ -535,5 +539,94 @@ describe('account clusters upgrade — the path, the body, the question', () => 
     const none = await runCommand(['account', 'clusters', 'upgrade', '--yes', ...globalArgs])
     expect(none.error?.message).toMatch(/Missing 1 required arg/)
     expect(calls).toHaveLength(0)
+  })
+})
+
+describe('account discount check / apply — the body, the question, the refusal', () => {
+  const out = captureOutput()
+
+  it('check sends the code, the bundle and the period as the gateway spells them and prints what the code gives', async () => {
+    answer = {discount: {code: 'LAUNCH30', percentOff: 30, months: 3}}
+    const {error} = await runCommand(['account', 'discount', 'check', 'LAUNCH30', '--bundle', 'growth', '--period', 'monthly', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.body).toEqual({code: 'LAUNCH30', bundle: 'Growth', billingPeriod: 'Monthly'})
+    expect(out()).toContain('LAUNCH30: 30% off for 3 months')
+  })
+
+  it('check without --bundle and --period sends only the code; an amount code reads as money, forever', async () => {
+    answer = {discount: {code: 'WELCOME', amountOff: 1000, currency: 'usd'}}
+    const {error} = await runCommand(['account', 'discount', 'check', 'WELCOME', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.body).toEqual({code: 'WELCOME'})
+    expect(out()).toContain('WELCOME: 10.00 USD off each invoice forever')
+  })
+
+  it('check --json prints the whole answer', async () => {
+    const discount = {code: 'LAUNCH30', percentOff: 30, months: 3, endsAt: '2027-02-18T00:00:00Z'}
+    answer = {discount}
+    const {result} = await runCommand(['account', 'discount', 'check', 'LAUNCH30', '--json', ...globalArgs])
+
+    expect(result).toEqual({discount})
+  })
+
+  it('apply sends the code and says it went to Stripe', async () => {
+    const {error} = await runCommand(['account', 'discount', 'apply', 'LAUNCH30', '--yes', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.body).toEqual({code: 'LAUNCH30'})
+    expect(out()).toContain('The discount code LAUNCH30 was sent to Stripe.')
+  })
+
+  it('apply without --yes in a shell with no terminal asks and sends nothing; --dry-run sends nothing', async () => {
+    const asked = await runCommand(['account', 'discount', 'apply', 'LAUNCH30', ...globalArgs])
+    expect(asked.error?.message).toBe(
+      "Confirmation required: Put the discount code LAUNCH30 on the account's subscription? This changes what the account pays.",
+    )
+    expect((asked.error as {code?: string} | undefined)?.code).toBe('CONFIRMATION_REQUIRED')
+
+    const dry = await runCommand(['account', 'discount', 'apply', 'LAUNCH30', '--dry-run', ...globalArgs])
+    expect(dry.error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+  })
+
+  /** The gateway's DiscountCodeNotUsableError: HTTP 400, `reason` in the context. */
+  const refusal = (reason: string) => ({
+    responseStatus: {
+      errorCode: 'CM-ERRORS-ACCOUNT-027',
+      message: 'This discount code cannot be used.',
+      errors: [{errorCode: 'CM-ERRORS-ACCOUNT-027', message: 'This discount code cannot be used.', context: {reason}}],
+    },
+  })
+
+  for (const argv of [
+    ['discount', 'check', 'LAUNCH30'],
+    ['discount', 'apply', 'LAUNCH30', '--yes'],
+  ]) {
+    it(`CM-ERRORS-ACCOUNT-027 on ${argv.slice(0, 2).join(' ')}: the reason in the context and a hint that explains it, exit 6`, async () => {
+      answer = refusal('already_used')
+      status = 400
+      const {error} = await runCommand(['account', ...argv, ...globalArgs])
+
+      const refused = error as {code?: string; status?: number; hint?: string; context?: Record<string, unknown>; oclif?: {exit?: number}} | undefined
+      expect(calls).toHaveLength(1)
+      expect(refused?.code).toBe('CM-ERRORS-ACCOUNT-027')
+      expect(refused?.status).toBe(400)
+      expect(refused?.oclif?.exit).toBe(6)
+      expect(refused?.context).toMatchObject({reason: 'already_used'})
+      expect(refused?.hint).toBe('This code was already used by this account owner.')
+    })
+  }
+
+  it('an unknown reason keeps the server message and adds no hint', async () => {
+    answer = refusal('something_new')
+    status = 400
+    const {error} = await runCommand(['account', 'discount', 'check', 'LAUNCH30', ...globalArgs])
+
+    const refused = error as {code?: string; hint?: string; context?: Record<string, unknown>} | undefined
+    expect(error?.message).toBe('This discount code cannot be used.')
+    expect(refused?.context).toMatchObject({reason: 'something_new'})
+    expect(refused?.hint ?? '').not.toContain('already used')
   })
 })

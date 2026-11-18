@@ -119,3 +119,55 @@ export function explainBundleRefusal(error: unknown, command: string): unknown {
     hint: 'Turn projects off with `norbix project disable --project <id> --yes` (list them: `norbix account projects`), then run the command again.',
   })
 }
+
+/** The gateway refuses a discount code with this code; `reason` in the context says why. */
+export const DISCOUNT_REFUSED_CODE = 'CM-ERRORS-ACCOUNT-027'
+
+/** Each `reason` of a refused discount code, as a sentence with what to do next. */
+const DISCOUNT_REASONS: Record<string, string> = {
+  not_found: 'No discount code with this name exists. Check the spelling.',
+  not_started: 'This code cannot be used yet: its start date has not come.',
+  expired: 'This code has expired.',
+  not_for_bundle: 'This code is not for this bundle. Check it with another `--bundle`.',
+  monthly_only: 'This code is for monthly billing only. Check it with `--period monthly`.',
+  wrong_billing_period: 'This code is for the other billing period. Check it with the other `--period`.',
+  already_has_discount: 'The account already has a discount; only one at a time. `norbix account status` shows it.',
+  already_used: 'This code was already used by this account owner.',
+}
+
+export interface BundleDiscount {
+  code?: string
+  percentOff?: number
+  amountOff?: number
+  currency?: string
+  months?: number
+  endsAt?: string
+}
+
+/** What a discount gives, in one line: `LAUNCH30: 30% off for 3 months`, `WELCOME: 10.00 USD off each invoice, forever`. */
+export function formatDiscount(discount: BundleDiscount | undefined): string {
+  if (!discount) return 'No discount.'
+  const off =
+    typeof discount.percentOff === 'number'
+      ? `${discount.percentOff}% off`
+      : typeof discount.amountOff === 'number'
+        ? `${formatPrice({amount: discount.amountOff, currency: discount.currency})} off each invoice`
+        : 'a discount'
+  const term =
+    typeof discount.months === 'number' ? `for ${discount.months} month${discount.months === 1 ? '' : 's'}` : 'forever'
+  const ends = discount.endsAt ? `, until ${discount.endsAt.slice(0, 10)}` : ''
+  return `${discount.code ?? 'Discount'}: ${off} ${term}${ends}`
+}
+
+/**
+ * A refused discount code as a CLI error: the gateway's envelope (the reason
+ * stays in the context) with a hint that says what the reason means. Any
+ * other error comes back unchanged.
+ */
+export function explainDiscountRefusal(error: unknown, command: string): unknown {
+  const envelope = toEnvelope(error, {command})
+  if (envelope.code !== DISCOUNT_REFUSED_CODE) return error
+  const reason = envelope.context?.reason
+  const hint = typeof reason === 'string' ? DISCOUNT_REASONS[reason] : undefined
+  return new CliError({...envelope, ...(hint ? {hint} : {})})
+}

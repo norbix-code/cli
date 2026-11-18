@@ -52,6 +52,30 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [
+      "code",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "account discount apply",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "code",
+    ],
+    "destructive": false,
+    "flags": [
+      "bundle:option",
+      "period:option",
+    ],
+    "id": "account discount check",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [],
