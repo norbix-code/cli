@@ -101,8 +101,14 @@
         }
       },
       "ai": {
-        "description": "LLM and MCP server integrations, AI service users, AI triggers (credits and quota events), coding-agent setup (ai init) and the agent project context (ai context)",
+        "description": "LLM and MCP server integrations, AI service users, the developer AI chat and its tools, AI triggers (credits and quota events), coding-agent setup (ai init) and the agent project context (ai context)",
         "subtopics": {
+          "chat": {
+            "description": "The developer AI chat: send a message, list and manage chats, read entries, decide plans, answer questions, attach files, memory"
+          },
+          "tool": {
+            "description": "Call one AI tool by name (list them with ai tools)"
+          },
           "llm": {
             "description": "Create, test, turn on/off and delete an LLM integration"
           },

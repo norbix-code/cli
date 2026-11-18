@@ -13,7 +13,12 @@ export default class AiMcpSave extends BaseCommand {
 integration carries a short card — --server-name, --category, --description and
 --icon are all required. Put the provider-specific fields (serverUrl, a token,
 command, …) in --config as a JSON object (inline, @file.json, or - for stdin).
-Pass --id to update an existing integration.`
+Pass --id to update an existing integration.
+
+Deprecated on the gateway: project MCP integrations moved to the Code
+Marketplace ("MCP server" listing, norbix code marketplace), and every save is
+refused with CM-ERRORS-MARKETPLACE-030. The command stays for the integrations
+that exist; --dry-run still shows the request.`
 
   static examples = [
     '<%= config.bin %> ai mcp save --provider GitHub --name GitHub --server-name GitHub --category Code --description "Issues and pull requests" --icon github --config @github.json',
