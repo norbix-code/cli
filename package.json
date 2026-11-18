@@ -199,7 +199,7 @@
         }
       },
       "env": {
-        "description": "Project environments (PROD, TEST, ...): list, pick a default, promote TEST → PROD, roll back, repair built-ins",
+        "description": "Project environments (PROD, TEST, ...): list, add, rank, pick a default, promote TEST → PROD, roll back, repair built-ins",
         "subtopics": {
           "built-ins": {
             "description": "PROD's built-in templates, footer and signature in every environment"
@@ -273,7 +273,7 @@
         }
       },
       "project": {
-        "description": "Project settings: name, languages, regions, CORS, admin portal, legal documents, AI chat",
+        "description": "Project settings: create, health, name, languages, regions, CORS, admin portal, legal documents, public brand / sign-in, AI chat and plans",
         "subtopics": {
           "cors": {
             "description": "Browser origins allowed to call the project's APIs"
@@ -292,8 +292,20 @@
               },
               "settings": {
                 "description": "AI chat on/off, default LLM and model"
+              },
+              "knowledge": {
+                "description": "Put uploaded files into the project's AI knowledge, or stop"
+              },
+              "plans": {
+                "description": "End-user AI plans: list, add / change / remove, assign to roles, users with their own plan"
               }
             }
+          },
+          "brand": {
+            "description": "What the public sees of the brand: expose, hide, download the logo / icon"
+          },
+          "auth": {
+            "description": "Show or hide the sign-in methods and password policy in the public config"
           }
         }
       },
