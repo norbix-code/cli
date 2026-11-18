@@ -1212,8 +1212,11 @@ function sessionMiddleware(refresher: SessionRefresher): NorbixMiddleware {
   }
 }
 
-/** Body keys a dry run never prints: what a user types as a password, and imported password hashes. */
-const PASSWORD_KEYS = new Set(['password', 'newPassword', 'currentPassword', 'passwordHash', 'passwordSalt'])
+/**
+ * Body keys a dry run never prints: what a user types as a password, imported
+ * password hashes, and a database connection string (it carries the password).
+ */
+const PASSWORD_KEYS = new Set(['password', 'newPassword', 'currentPassword', 'passwordHash', 'passwordSalt', 'connectionString'])
 
 /** A copy of `value` with every password-like key (at any depth) shown as `***`. */
 export function maskPasswords(value: unknown): unknown {
