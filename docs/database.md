@@ -48,6 +48,10 @@ Database is always on: the gateway has no route to turn it on or off.
 | `norbix db aggregate <collection> --pipeline <json>` | run an inline aggregation | `POST /collections/{collectionName}/aggregate` |
 | `norbix db aggregate <collection> --id <aggregateId> [--tokens <json>]` | run a saved aggregate | `POST /collections/{collectionName}/aggregates/{aggregateId}/execute` |
 | `norbix db aggregates [--schema <id>]` | list saved aggregates | `GET /aggregates` |
+| `norbix db aggregates get <id> --schema <id>` | show one saved aggregate (its pipeline as JSON text) | `GET /aggregates/{Id}` |
+| `norbix db aggregates test <collection> --pipeline <json> [--tokens <json>]` | try a pipeline before saving it; nothing is saved | `POST /aggregates/test` |
+| `norbix db aggregates save --schema <id> [--id <id>] [--name <name>] [--description <text> \| --clear-description] [--pipeline <json>]` | create a saved aggregate, or change one (`--id`): the gateway replaces name, description and pipeline together, so the command reads the aggregate first | `POST /aggregates` |
+| `norbix db aggregates delete <id> --schema <id> [--yes]` | delete a saved aggregate; code that runs it by id stops working | `DELETE /aggregates/{Id}` |
 | `norbix db change-owner <collection> <id> --user <userId>` | hand a record to another user | `PUT /collections/{collectionName}/{id}/responsibility` |
 
 The record's owner (responsible user) decides who may read or change it under
@@ -161,6 +165,14 @@ counts, the new ids, and any errors.
 | `norbix db schema publish <id> [--yes]` | publish the draft | `POST /schemas/{Id}/publish` |
 | `norbix db schema versions <id>` | list the published versions | `GET /schemas/{Id}/versions` |
 | `norbix db schema diff <id> --from <n> --to <n>` | what changed between two versions | `GET /schemas/{Id}/versions/diff` |
+| `norbix db schema rename <id> --title <title>` | rename it; the collection name (slug) is derived from the title | `PUT /schemas/{Id}/rename` |
+| `norbix db schema settings <id>` | show its settings: softDelete, hasRecordOwner, description, uniqueIndexes, endUserOwnRecords | `GET /schemas/{id}` |
+| `norbix db schema settings set <id> [--soft-delete] [--record-owner] [--own-records] [--description <text> \| --clear-description] [--unique <a,b>]… [--clear-unique]` | change them (read first, see below) | `PUT /schemas/{Id}/settings` |
+| `norbix db schema list-settings <id>` | how the records list looks in this environment: columns, default sort, filter fields | `GET /schemas/{Id}/list-settings` |
+| `norbix db schema list-settings set <id> [--columns <a,b>] [--primary <field>] [--sort <field> [--desc]] [--filters <a,b>] \| --file <json>` | change the list layout (read first) | `PUT /schemas/{Id}/list-settings` |
+| `norbix db schema embed <id>` | its AI embed setting: enabled, fields, embedding integration, per user | `GET /schemas/{id}` |
+| `norbix db schema embed set <id> [--enabled] [--fields <a,b>] [--embedding-integration <id> \| --default-embedding-integration] [--per-user]` | change it (read first) | `PUT /schemas/{Id}/embed` |
+| `norbix db schema own-records [--enable <a,b>] [--yes]` | every schema with its "signed-in users can create their own records" switch; a preview by default, `--enable … --yes` turns it on for exactly those collections | `POST /schemas/end-user-own-records` |
 | `norbix db schema index-status <id>` | the last schema-index run: the indexes Norbix made (`idx_<field>` per reference, `uniq_<field>` per unique field, `idx_<field>__id` for the default sort, at most 8), state `building` / `ready` / `refused` / `partial` per database | `GET /schemas/{Id}/index-status` |
 | `norbix db schema delete <id> [--yes]` | delete the schema **and its records**: the collection (records and indexes) in the environment is dropped, and removed from the AI knowledge when AI embed is on; no undo. Refused while a schema trigger uses it (`CM-ERRORS-SCHEMA-017`) or a saved aggregate starts on / joins it (`CM-ERRORS-SCHEMA-018`, the aggregates are in `BlockerAggregateNames`); then nothing is dropped | `DELETE /schemas/{Id}` |
 
@@ -187,6 +199,16 @@ published version until `schema publish`. `publish` asks first and sends the
 server's `confirmed: true`, so it also publishes a change the server calls
 breaking — read `schema draft` (or `schema diff` after a publish) before you
 answer yes.
+
+**Settings, list layout and embed are replaced whole.** The gateway takes the
+complete object on `settings set` (softDelete, hasRecordOwner and the
+description: one left out is turned off or cleared; uniqueIndexes and
+endUserOwnRecords left out are kept), `list-settings set` and `embed set`. So
+these commands read the current value first and change only the flags you
+pass; a read that answers nothing stops the command (exit 5) and saves
+nothing. `--dry-run` sends nothing, not even the read, so its request shows
+only the fields you passed. A `true|false` flag (`--soft-delete false`) left
+out keeps the stored value.
 
 ```bash
 norbix db schema create --name orders --file orders.schema.json --ui-file orders.ui.json
@@ -245,16 +267,25 @@ norbix db trigger disable 66b2f0a1c3d4e5f6a7b8c9d1 --yes
 | `norbix db integration <id>` | show one | `GET /integrations/{id}` |
 | `norbix db integration test <id>` | check that the database behind it answers (writes nothing) | `POST /integrations/test` |
 | `norbix db integration default <id>` | make it the project default | `PUT /integrations/{Id}/default` |
+| `norbix db integration save --name <name> --connection-string <uri> [--database <name>] [--keyless [--audience <aud>]] [--config <json>]` | connect your own MongoDB in the environment (`--env`); a dry run prints the connection string as `***` | `POST /integrations` |
+| `norbix db integration enable <id>` | turn it on | `PUT /integrations/{Id}/enable` |
+| `norbix db integration disable <id> [--yes]` | turn it off; a default is refused while another integration exists in that environment | `PUT /integrations/{Id}/disable` |
+| `norbix db integration delete <id> [--yes]` | delete it; for a Norbix-managed database the database of that environment is **dropped** with its records; a default is refused while another integration exists in that environment | `DELETE /integrations/{Id}` |
+| `norbix db integrations flex-tiers` | the Norbix-managed database tiers the account may pick (managed service only) | `GET /integrations/flex-tiers` |
 
 `norbix integrations database` lists them too, for scripts that treat every
-module alike.
+module alike. A Norbix-managed database is created in the dashboard: it is
+placed on a cluster of the account (`norbix account clusters`).
 
 ## Taxonomies and terms
 
 | command | what it does | endpoint |
 |---|---|---|
 | `norbix db taxonomies` | list taxonomies | `GET /taxonomies` |
+| `norbix db taxonomies tree [--include-terms] [--all-languages]` | every taxonomy as a tree (parents and their children) | `GET /taxonomies/tree` |
 | `norbix db taxonomy <id>` | show one taxonomy | `GET /taxonomies/{id}` |
+| `norbix db taxonomy save [--id <id>] [--name <title>] [--description <text> \| --clear-description] [--parent <id> \| --clear-parent] [--depends-on <a,b> \| --clear-depends-on] [--term-fields <json>] [--term-form <json>] [--clear-term-fields]` | create a taxonomy, or change one (`--id`): the gateway replaces the whole taxonomy, so the command reads it first | `POST /taxonomies` |
+| `norbix db taxonomy delete <id> [--yes]` | delete a taxonomy; the gateway checks no schema or child taxonomy and leaves its terms in the database | `DELETE /taxonomies/{Id}` |
 | `norbix db terms <taxonomyName> [--filter <json>] [--page-size <n>] [--after <cursor>] [--desc]` | list the terms of a taxonomy | `GET /taxonomies/{taxonomyName}/terms` |
 | `norbix db terms <taxonomyName> --parent <termId>` | only the children of one term | `GET /taxonomies/{taxonomyName}/terms/{parentId}/children` |
 | `norbix db term <taxonomyId> <id>` | show one term | `GET /taxonomies/{TaxonomyId}/terms/{Id}` |
@@ -263,6 +294,7 @@ module alike.
 | `norbix db term create <taxonomyId> --doc <json>` | add a term | `POST /taxonomies/{TaxonomyId}/terms` |
 | `norbix db term update <taxonomyId> <id> --set <json>` | change some fields of a term | `PUT /taxonomies/{TaxonomyId}/terms/{Id}` |
 | `norbix db term delete <taxonomyId> <id> [--yes]` | delete a term | `DELETE /taxonomies/{TaxonomyId}/terms/{Id}` |
+| `norbix db term delete-many <taxonomy> --filter <json> \| --all [--yes]` | delete the terms matching a filter, or every term (`--all`); `--filter '{}'` is refused | `DELETE /taxonomies/{TaxonomyId}/terms/many` |
 
 Note the two kinds of key: listing and trees take the taxonomy **name**; a single
 term is addressed by the taxonomy **id** and the term id (that is how the
@@ -298,22 +330,21 @@ norbix db term tree countries --depth 2
   --dry-run` asks the Hub's read-only `account.validateSchema` and exits 6
   with the issues when the bundle is invalid.
 - `delete`, `discard`, `publish`, `seed`, `trigger disable`, `trigger delete`,
-  `term delete` and the `--many` / `--all` record writes ask first; `--yes` skips the
-  question, and without a terminal they exit 3 unless `--yes` is given.
+  `term delete`, `term delete-many`, `aggregates delete`, `integration disable`,
+  `integration delete`, `taxonomy delete` and the `--many` / `--all` record
+  writes ask first; `--yes` skips the question, and without a terminal they exit
+  3 unless `--yes` is given. `schema own-records` is a preview unless `--yes`
+  (with `--enable`) is given.
 - Exit codes are in the README ("Errors and exit codes").
 
 ## No command on purpose
 
-These Database routes exist in the gateway and the SDKs, but are not commands
-yet: they are dashboard settings, or their body is the dashboard's own editor
-state. `norbix hub database <words…>` reaches every one of them.
+These Database routes exist in the gateway and the SDKs, but are not `db`
+commands. `norbix hub database <words…>` reaches every one of them.
 
 | endpoint | why there is no command |
 |---|---|
-| `POST /taxonomies`, `DELETE /taxonomies/{Id}`, `GET /taxonomies/tree`, `DELETE /taxonomies/{TaxonomyId}/terms/many` | Taxonomy structure (dependencies, translatable names) is edited in the dashboard; terms — the data — have commands. |
-| `POST /schemas/apply-bundle` | Applies a whole generated bundle of schemas; it is the AI schema builder's step, not a hand-run one. |
-| `PUT /schemas/{Id}/rename`, `/embed`, `/list-settings`, `/settings` | Dashboard settings of one schema (title, embedding, list columns, soft delete / owner). |
-| `POST /integrations`, `DELETE /integrations/{Id}`, `PUT /integrations/{Id}/enable` / `disable`, `GET /integrations/flex-tiers` | Creating or removing a database is an account-level decision taken in the dashboard. A Norbix-managed database is placed on a cluster there too (reuse one, or name a new one); `norbix account clusters` lists the clusters. |
-| `POST /aggregates`, `DELETE /aggregates/{Id}`, `GET /aggregates/{Id}`, `POST /aggregates/test` | Saved aggregates are written in the dashboard's pipeline editor; `db aggregate --id` runs one and `db aggregate --pipeline` runs any pipeline. |
+| `POST /schemas/apply-bundle` | Applies a whole generated bundle of schemas — the AI schema builder's step. Run it as `norbix hub database schema bundle apply --bundleJson '<json>'` (`--dry-run` checks the bundle first). |
 | `/imports/**` | The CSV / JSON import flow (upload URL, analyze, create) is a dashboard wizard; out of the audit scope. |
 | Hub `/collections/**` record routes | The same record operations as the data-plane API routes the record commands already use. |
+| Api `GET /taxonomies/tree`, `GET /taxonomies/{taxonomyName}/terms/tree`, `GET /taxonomies/{taxonomyName}/merged-tree` | The Hub serves the same trees; `db taxonomies tree` and `db term tree` use the Hub. |
