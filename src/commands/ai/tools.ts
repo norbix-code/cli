@@ -1,12 +1,13 @@
 import {Flags} from '@oclif/core'
 
-import {AiChatCommand} from '../../lib/ai-chat.js'
+import {AiToolsCommand} from '../../lib/ai-tools.js'
 
-export default class AiTools extends AiChatCommand {
-  static description = `List the AI tools: the chat-tool inventory
+export default class AiTools extends AiToolsCommand {
+  static description = `List the AI tools: the tool inventory
 
-Every tool the chat (and an MCP client) may call, with its toolsets, whether
-it asks for confirmation, and its parameters — shaped like MCP tools/list.`
+Every tool an external agent (an MCP client) may call, with its toolsets,
+whether it asks for confirmation, and its parameters — shaped like MCP
+tools/list.`
 
   static examples = ['<%= config.bin %> ai tools', '<%= config.bin %> ai tools --toolset ai:database-read --json']
 

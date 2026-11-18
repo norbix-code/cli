@@ -1,13 +1,18 @@
 # `norbix ai`
 
 Manage the AI integrations of a project (LLM providers, MCP servers), the
-account's AI service users, and talk to the developer AI chat from the
-terminal. The project's AI chat settings and assistants (the end-user chat)
-are under `norbix project ai` ([docs/project.md](project.md)).
+account's AI service users, and list or call the AI tools. The project's AI
+chat settings and assistants (the end-user chat) are under `norbix project ai`
+([docs/project.md](project.md)).
+
+There is no developer chat in Cloud and no `ai chat` command: developers
+connect their own AI tool (Claude Code, Cursor, …) to Norbix over MCP (the
+Hub's developer MCP endpoint), or let it run this CLI — `norbix ai init` sets
+that up ([docs/AGENTS.md](AGENTS.md)).
 
 Every command is covered by `tests/project-routes.test.ts`, which runs it
 through the real SDK with `fetch` replaced and checks the verb and path it
-sends, and the save / create bodies. The LLM, MCP, chat and tool commands are
+sends, and the save / create bodies. The LLM, MCP and tool commands are
 also in `tests/ai-cluster-routes.test.ts`, which checks the host, verb, exact
 path, query and body of every request. No test contacts an LLM provider or an
 MCP server.
@@ -89,55 +94,27 @@ norbix ai service-user create --name "Claude Code on my laptop" --project-role r
 norbix ai service-user rotate-key su_123 --revoke key_old
 ```
 
-## Developer AI chat
+## AI tools
 
-The AI chat of the Cloud dashboard, on the Hub. A chat belongs to you (the
-signed-in user or the API key's service user), so the session commands need no
-project. `ai chat`, `ai chat availability`, `ai chat attach` (new chat) and
-`ai chat memory` send the project that is set, and the turn and the attach send
-its environment too — the env rule applies to them as to any project command.
-`--account-level` sends no project: the chat then works at account level. Paths are
-under `/{version}/account/chat` unless shown in full.
+The AI tool inventory on the Hub: the tools an external agent can call. The
+list needs no project; a tool call sends the project that is set and its
+environment — the env rule applies to it as to any project command.
+`--account-level` sends no project.
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix ai chat "<message>" [--session <id>] [--surface <s>] [--topic <t>] [--llm <integrationId>] [--model <m>] [--account-level]` | send one message; prints the reply, the tools called and the chat id | `POST /turn` |
-| `norbix ai chat availability [--account-level]` | can the chat run here, its profiles and models | `GET /availability` |
-| `norbix ai chat sessions [--take <n>] [--archived]` | your chats, newest first | `GET /sessions` |
-| `norbix ai chat entries <session> [--since <seq>]` | the transcript: messages, plans, questions, steps | `GET /sessions/{SessionId}/entries` |
-| `norbix ai chat plan <session> <entry> approve\|reject [--comment <c>]` | approve a proposed plan, or reject it (with what to do instead) | `POST /sessions/{SessionId}/plans/{EntryId}/decision` |
-| `norbix ai chat answer <session> <entry> --answer <key>=<value>...` | answer a question the assistant asked | `POST /sessions/{SessionId}/questions/{EntryId}/answer` |
-| `norbix ai chat stop <session> <entry> [--yes]` | stop a queued, running or waiting plan step (it ends failed, its dependants are blocked, the assistant asks retry / skip / fix) | `POST /sessions/{SessionId}/steps/{EntryId}/stop` |
-| `norbix ai chat feedback <session> <entry> up\|down\|clear` | like / dislike an entry | `POST /sessions/{SessionId}/entries/{EntryId}/feedback` |
-| `norbix ai chat attach <file> [--session <id>] [--content-type <t>]` | put a file into a chat (a new one without `--session`) | `POST /attachments` |
-| `norbix ai chat archive <session> [--undo]` | archive / unarchive | `PATCH /sessions/{SessionId}/archive` |
-| `norbix ai chat pin <session> [--undo]` | pin / unpin | `PATCH /sessions/{SessionId}/pin` |
-| `norbix ai chat sharing <session> private\|shared` | private: never trace this chat, whatever the account's sharing consent; shared: follow the consent | `PATCH /sessions/{SessionId}/sharing` |
-| `norbix ai chat delete <session> [--yes]` | delete a chat (soft: it leaves the list and history, the data is kept) | `DELETE /sessions/{SessionId}` |
-| `norbix ai chat memory [--account-level]` | what the assistant remembers (filtered to the project that is set) | `GET /memory` |
-| `norbix ai chat forget <note> [--yes]` | delete one memory note | `DELETE /memory/{NoteId}` |
-| `norbix ai tools [--toolset <t>]` | the chat-tool inventory (shaped like MCP `tools/list`) | `GET /{version}/account/ai/tools` |
-| `norbix ai tool call <name> [--args <json>] [--yes]` | call one tool by name, as the chat would | `POST /{version}/account/ai/tools/{ToolName}` |
+| `norbix ai tools [--toolset <t>]` | the tool inventory (shaped like MCP `tools/list`) | `GET /{version}/account/ai/tools` |
+| `norbix ai tool call <name> [--args <json>] [--yes] [--account-level]` | call one tool by name | `POST /{version}/account/ai/tools/{ToolName}` |
 
-- A turn runs the model and the tools it calls before the reply comes back, so
-  the command waits up to 5 minutes. It is never retried (a retry would run the
-  turn twice). Every message is one quoted argument; a single-word message
-  that is also a subcommand name (`sessions`, `memory`, …) runs that command.
-- What the assistant proposes is not done until you approve the plan
-  (`ai chat entries` shows the plan entry id). The live progress the dashboard
-  shows comes over server-sent events; the CLI prints the final reply only.
 - `ai tool call` runs the tool under your identity and can change data: it
   asks first (`--yes` in scripts, `--dry-run` to see the request). `--args` is
   a JSON object; the tool gets it as `argumentsJson`. The env comes from an
   `env` argument, then the `--env` header; a PROD write needs `"env":"PROD"` in
   `--args`.
-- `ai chat delete`, `stop` and `forget` ask first too.
 
 ```bash
-norbix ai chat "Add a phone field to customers" --prod
-norbix ai chat entries aics_123
-norbix ai chat plan aics_123 ent_456 approve
 norbix ai tools --toolset ai:database-read --json
+norbix ai tool call get_schemas --args '{"take":5}' --yes
 ```
 
 ## Not offered

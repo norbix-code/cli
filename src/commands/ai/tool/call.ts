@@ -1,10 +1,10 @@
 import {Args, Flags} from '@oclif/core'
 
-import {AiChatCommand} from '../../../lib/ai-chat.js'
+import {AiToolsCommand} from '../../../lib/ai-tools.js'
 import {usageError} from '../../../lib/cli-error.js'
 
-export default class AiToolCall extends AiChatCommand {
-  static description = `Call one AI tool by name, as the chat would
+export default class AiToolCall extends AiToolsCommand {
+  static description = `Call one AI tool by name, as an MCP client would
 
 The tool runs under your identity and answers with its envelope ({ok, data} or
 {ok: false, errors}). The project that is set is sent as for any project
@@ -23,8 +23,8 @@ an "env" argument, then the --env header; a PROD write needs "env":"PROD" in
 
   static flags = {
     args: Flags.string({description: 'The arguments as a JSON object', default: '{}'}),
-    ...AiChatCommand.accountFlag,
-    ...AiChatCommand.mutatingFlags,
+    ...AiToolsCommand.accountFlag,
+    ...AiToolsCommand.mutatingFlags,
   }
 
   async run(): Promise<unknown> {

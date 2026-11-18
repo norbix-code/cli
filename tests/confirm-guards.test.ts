@@ -161,7 +161,6 @@ describe('the rule for a resolved SDK method', () => {
       ['hub', 'code', 'discardCodeWorkflowDraft'],
       ['hub', 'account', 'cancelTeamInvitation'],
       ['hub', 'account', 'revokeAiServiceUserKey'],
-      ['hub', 'account', 'forgetChatMemory'],
       ['hub', 'compliance', 'clearRegime'],
       ['api', 'ai', 'forgetEndUserChatMemory'],
     ] as const) {
