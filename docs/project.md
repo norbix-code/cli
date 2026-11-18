@@ -158,8 +158,9 @@ norbix project ai assistant update ast_123 --no-memory
 
 - **`project list`** — the list is `norbix account projects`; one name per
   command.
-- **AI credit packs** (`POST /ai/credits/checkout`) — a purchase: the Stripe
-  checkout is started in the dashboard.
+- **AI credit packs** (`POST /ai/credits/checkout`) — a purchase. Purchases are
+  not a CLI use case (the same rule as Membership's end-user browser flows):
+  the Stripe checkout is started in the dashboard.
 - **A project on a Norbix-managed database** — created in the dashboard: it is
   placed on a cluster of the account and counts against the plan.
   `project create` takes your own MongoDB connection string.
