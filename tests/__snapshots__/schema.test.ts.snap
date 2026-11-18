@@ -2826,6 +2826,21 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [
       "name",
     ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "connection-string:string",
+      "database:string",
+      "integration-name:string",
+      "config:string",
+    ],
+    "id": "env create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "name",
+    ],
     "destructive": true,
     "flags": [
       "yes:boolean",
@@ -2855,6 +2870,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "map:string",
     ],
     "id": "env promote",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "name",
+      "rank",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "env rank",
     "supportsDryRun": true,
   },
   {
@@ -4125,6 +4152,56 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   {
     "args": [],
     "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "embed-files:option",
+    ],
+    "id": "project ai knowledge set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "project ai plans",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "role:string",
+      "clear-roles:boolean",
+      "default:string",
+      "clear-default:boolean",
+    ],
+    "id": "project ai plans assign",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "plan:string",
+      "remove:string",
+      "file:string",
+    ],
+    "id": "project ai plans set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "project ai plans users",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
     "flags": [],
     "id": "project ai settings",
     "supportsDryRun": false,
@@ -4149,6 +4226,64 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "top:string",
     ],
     "id": "project ai usage",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project auth expose",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project auth hide",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project brand expose",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "project brand hide",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "kind",
+    ],
+    "destructive": false,
+    "flags": [
+      "output:string",
+    ],
+    "id": "project brand show",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[languages]",
+    ],
+    "destructive": false,
+    "flags": [
+      "default:string",
+    ],
+    "id": "project check-languages",
     "supportsDryRun": false,
   },
   {
@@ -4196,6 +4331,23 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "primary:string",
+      "additional:string",
+      "description:string",
+      "connection-string:string",
+      "database:string",
+      "integration-name:string",
+      "config:string",
+    ],
+    "id": "project create",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
     "destructive": true,
     "flags": [
       "yes:boolean",
@@ -4222,6 +4374,16 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "project enable",
     "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "refresh:boolean",
+      "period:option",
+    ],
+    "id": "project health",
+    "supportsDryRun": false,
   },
   {
     "args": [],
@@ -4383,6 +4545,15 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "target-user:string",
     ],
     "id": "project tokens",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "timeout:string",
+    ],
+    "id": "project wait-active",
     "supportsDryRun": false,
   },
   {
