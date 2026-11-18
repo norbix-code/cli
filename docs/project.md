@@ -44,10 +44,11 @@ All hub paths below are under `/{version}/account/projects/{projectId}`.
 object with `resource`, `integrationId`, `provider`, `path`, `isPublic`) —
 inline, `@file.json`, or `-`. Upload the image with `norbix files upload` first.
 
-`project create` is account-level: it needs no project. The primary region
-defaults to the region of the command (`--region`). The project prepares
-itself in the background, so run `project wait-active --project <id>` once
-before you build inside it. A dry run prints the connection string as `***`.
+`project create` is account-level: it needs no project. `--primary` is required
+on the Managed Service (norbix.ai); the command never guesses it. The project
+prepares itself in the background, so run `project wait-active --project <id>`
+once before you build inside it. A dry run prints the connection string as
+`***`.
 
 The primary region is set once and never changes. `--additional` is the full
 new list; without it (and without `--clear-additional`) the command reads the
@@ -141,7 +142,8 @@ only what you pass. The LLM integrations themselves are `norbix ai llm …`
 
 The plans and their assignments are replaced as a whole too: `plans set
 --plan` and `--remove` read the stored list first (a `--plan` with a stored id
-replaces that plan, one without an id is added), and `plans assign` keeps the
+changes only the fields it names, an id that is not stored is refused, one
+without an id is added), and `plans assign` keeps the
 part you do not pass. `--remove` and `--file` drop plans, so they ask first
 (`--yes`). `--dry-run` sends nothing, not even the read, so it shows only what
 you pass.

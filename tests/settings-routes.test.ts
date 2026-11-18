@@ -38,7 +38,10 @@ const STORED_PLANS = {
   result: {
     plans: [
       {id: 'aip_free', name: 'Free', quotaUnit: 'Credits', monthlyQuota: 100},
-      {id: 'aip_pro', name: 'Pro', quotaUnit: 'Credits', monthlyQuota: 5000},
+      {
+        id: 'aip_pro', name: 'Pro', quotaUnit: 'Credits', monthlyQuota: 5000,
+        allowedModels: [{llmIntegrationId: 'int_llm', model: 'gpt-4o'}], features: {attachments: true, rag: true, memory: false},
+      },
     ],
     roles: [{roleId: 'rl_pro', planId: 'aip_pro'}],
     defaultPlanId: 'aip_free',
@@ -219,8 +222,8 @@ describe('general info', () => {
     const shown = `${stdout}\n${printed.join('\n')}`
     expect(shown).toContain('"connectionString":"***"')
     expect(shown).not.toContain('secret')
-    // The primary region defaults to the region of the command.
-    expect(shown).toContain('"primaryRegion":"nb-eu-germany"')
+    // The primary region is never guessed: without --primary it is not sent.
+    expect(shown).not.toContain('primaryRegion')
   })
 })
 
@@ -317,18 +320,27 @@ describe('ai settings', () => {
     expect(sent(['project'])).toHaveLength(0)
   })
 
-  it('plans set --plan keeps the stored plans, replaces the one with the same id and adds a new one', async () => {
+  it('plans set --plan keeps the stored plans, changes only the passed fields of a stored one and adds a new one', async () => {
     expect(await bodyOf([
       'project', 'ai', 'plans', 'set', '--prod',
-      '--plan', '{"id":"aip_pro","name":"Pro","quotaUnit":"Credits","monthlyQuota":9000}',
+      '--plan', '{"id":"aip_pro","monthlyQuota":9000}',
       '--plan', '{"name":"Team","quotaUnit":"None"}',
     ])).toEqual({
       plans: [
         {id: 'aip_free', name: 'Free', quotaUnit: 'Credits', monthlyQuota: 100},
-        {id: 'aip_pro', name: 'Pro', quotaUnit: 'Credits', monthlyQuota: 9000},
+        {
+          id: 'aip_pro', name: 'Pro', quotaUnit: 'Credits', monthlyQuota: 9000,
+          allowedModels: [{llmIntegrationId: 'int_llm', model: 'gpt-4o'}], features: {attachments: true, rag: true, memory: false},
+        },
         {name: 'Team', quotaUnit: 'None'},
       ],
     })
+  })
+
+  it('plans set --plan with an id that is not stored saves nothing', async () => {
+    const {error} = await runCommand(['project', 'ai', 'plans', 'set', '--plan', '{"id":"aip_gone","name":"X"}', '--prod', ...globalArgs])
+    expect(error?.message).toMatch(/No AI plan aip_gone/)
+    expect(sent(['project']).map((c) => c.method)).toEqual(['GET'])
   })
 
   it('plans set --remove asks first and sends no write without --yes', async () => {
