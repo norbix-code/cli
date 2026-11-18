@@ -220,6 +220,24 @@ describe('db schema', () => {
     expect(call.body).toEqual({settings: {columns: [{field: 'total'}], filters: []}})
   })
 
+  it('list-settings set with no saved layout and no --columns is refused: nothing is saved', async () => {
+    answers[`GET ${P}/schemas/${SCH}/list-settings`] = {}
+    const {error} = await runCommand(['db', 'schema', 'list-settings', 'set', SCH, '--sort', 'title', ...globalArgs])
+    expect(error?.message).toMatch(/No list layout is saved/)
+    expect(calls.map((c) => c.method)).toEqual(['GET'])
+  })
+
+  it('list-settings set with no saved layout and --columns saves those columns', async () => {
+    answers[`GET ${P}/schemas/${SCH}/list-settings`] = {}
+    expect((await send(['db', 'schema', 'list-settings', 'set', SCH, '--columns', 'title,total'])).body).toEqual({
+      settings: {columns: [{field: 'title', primary: false, linkReference: false}, {field: 'total', primary: false, linkReference: false}]},
+    })
+  })
+
+  it('list-settings set --dry-run shows only the fields passed', async () => {
+    expect(await dryRun(['db', 'schema', 'list-settings', 'set', SCH, '--sort', 'title', '--desc'])).toEqual({id: SCH, settings: {defaultSort: {field: 'title', order: -1}}})
+  })
+
   it('embed set merges the change into the stored setting', async () => {
     expect((await send(['db', 'schema', 'embed', 'set', SCH, '--enabled', 'true', '--fields', 'title,body'])).body).toEqual({
       embed: {enabled: true, fields: ['title', 'body'], embeddingIntegrationId: 'int_emb', perUser: false},
@@ -337,7 +355,7 @@ describe('db integration', () => {
     expect(call.body?.integration).toMatchObject({authMode: 'Keyless', audience: 'my-aud', connectionString: 'mongodb+srv://cluster0.example.test'})
   })
 
-  it('save --config takes `db integration <id>` output: its viewId becomes the integrationId', async () => {
+  it('save --config: a viewId in the file is sent as the integrationId', async () => {
     const call = await send(['db', 'integration', 'save', '--config', `@${MONGO_FILE}`])
     expect(call.body?.integration).toMatchObject({integrationId: INT, integrationName: 'Main', databaseName: 'shop', provider: 'MongoDbConnectionString'})
   })

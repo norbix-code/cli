@@ -15,7 +15,9 @@ export default class DbSchemaListSettingsSet extends BaseCommand {
   static description = `Change how the records list of a schema looks
 
 The gateway replaces the whole list layout at once, so the command reads it
-first and changes only what you pass.
+first and changes only what you pass. Columns not listed are hidden, so while
+no layout is saved yet (every field shows) the first change must name
+--columns.
 
 --columns sets the visible columns in order (a field id, or _id,
 _meta.createdOn, _meta.modifiedOn); a column that was already there keeps its
@@ -72,6 +74,23 @@ ${READ_FIRST_DRY_RUN}`
       const read = await client.hub.database.getDatabaseSchemaListSettings({id: args.id})
       if (!read) throw nothingRead(`list settings of schema ${args.id}`, 'Check the schema id (sch_…), the project and --env.')
       current = (read.settings ?? {}) as typeof current
+    }
+
+    if (!flags['dry-run'] && !columns && (current.columns ?? []).length === 0) {
+      throw usageError(
+        'No list layout is saved for this schema yet, so every field shows; a change without --columns would hide them all.',
+        'Pass --columns with the fields to show (in order), e.g. --columns title,total.',
+      )
+    }
+
+    if (flags['dry-run']) {
+      // Nothing was read: the request shows only what was passed.
+      const shown: Record<string, unknown> = {}
+      if (columns) shown.columns = columns.map((field) => ({field, primary: field === flags.primary}))
+      else if (flags.primary) shown.primary = flags.primary
+      if (flags.sort) shown.defaultSort = {field: flags.sort, order: flags.desc ? -1 : 1}
+      if (filters) shown.filters = filters
+      return client.hub.database.updateDatabaseSchemaListSettings({id: args.id, settings: shown} as never)
     }
 
     const before = new Map((current.columns ?? []).map((c) => [c.field, c]))

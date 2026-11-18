@@ -14,8 +14,8 @@ Norbix signs in with its own token (Atlas M10+, the cluster must trust the
 Norbix issuer; --audience defaults to norbix-atlas). A dry run prints the
 connection string as ***.
 
-Other provider fields can come from --config (inline JSON, @file or -), e.g.
-the output of \`db integration <id> --json\`. Test the connection with
+Other provider fields can come from --config (inline JSON, @file or -); the
+flags win over it. Test the connection with
 \`db integration test <id>\`, make it the default with
 \`db integration default <id>\`.
 
@@ -36,7 +36,7 @@ flex-tiers\` the tiers you may use).`
     database: Flags.string({description: 'Database name'}),
     keyless: Flags.boolean({description: 'Sign in with the Norbix token instead of a password (Atlas M10+)', default: false}),
     audience: Flags.string({description: 'Keyless: audience of the Atlas workload identity provider', dependsOn: ['keyless']}),
-    id: Flags.string({description: 'Integration ID to save under (default: a new one)'}),
+    id: Flags.string({description: 'Integration ID to use (default: a new one)'}),
     disabled: Flags.boolean({description: 'Save it turned off', default: false}),
     config: Flags.string({description: 'Provider fields as a JSON object, @file or -'}),
   }
