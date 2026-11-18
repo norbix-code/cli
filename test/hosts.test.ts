@@ -375,7 +375,7 @@ describe('context: host → Hub and Api', () => {
     expect(plain.apiUrl).toBe('https://api.norbix.ai')
   })
 
-  it('another install is never rewritten: its own Api address, with a real project id too', async () => {
+  it('another install that announces no template: its own Api address, with a real project id too', async () => {
     stubFinlo()
     const ctx = await (await probe()).context({host: 'hub.finlo.space', project: VIRGINIA})
     expect(ctx.apiUrl).toBe('https://api.finlo.space')
@@ -383,13 +383,42 @@ describe('context: host → Hub and Api', () => {
     expect(regional.apiUrl).toBe('https://nb-eu-germany.api.finlo.space')
   })
 
-  it('an Api address somebody set is never rewritten, also when it is api.norbix.ai or staging', async () => {
+  it('an Api address somebody set: a norbix.ai address goes to the project host, staging is used as given', async () => {
     const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
     writeFileSync(PROFILES_PATH, `[default]\nproject_id = ${VIRGINIA}\napi_url = https://api.norbix.ai\n`)
-    expect((await (await probe()).context()).apiUrl).toBe('https://api.norbix.ai')
+    expect((await (await probe()).context()).apiUrl).toBe(VIRGINIA_API)
+    writeFileSync(PROFILES_PATH, `[default]\nproject_id = ${GERMANY}\napi_url = https://nb-eu-germany.api.norbix.ai/v3\n`)
+    expect((await (await probe()).context()).apiUrl).toBe(GERMANY_API)
     writeFileSync(PROFILES_PATH, `[default]\nproject_id = ${VIRGINIA}\nhub_url = https://hub.norbix.io\napi_url = https://api.norbix.io\n`)
     expect((await (await probe()).context()).apiUrl).toBe('https://api.norbix.io')
     stderr.mockRestore()
+  })
+
+  it('an Api address template somebody set is filled with the project label', async () => {
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    writeFileSync(PROFILES_PATH, `[default]\nproject_id = ${VIRGINIA}\nhub_url = https://hub.customer.com\napi_url = https://{projectHostLabel}.api.customer.com/v3\n`)
+    const ctx = await (await probe()).context()
+    expect([ctx.apiUrl, ctx.apiVersion]).toEqual(['https://pr-022c4aca9f9e4df787ab0a20c83c44b6.api.customer.com', 'v3'])
+    stderr.mockRestore()
+  })
+
+  it('an install that announces apiUrlTemplate: a project calls its own host there, also with a region', async () => {
+    stubFinlo({'hub.finlo.space/v3/echo': {body: {...FINLO_ECHO, apiUrlTemplate: 'https://{projectHostLabel}.api.finlo.space/v3'}}})
+    const ctx = await (await probe()).context({host: 'hub.finlo.space', project: VIRGINIA})
+    expect([ctx.apiUrl, ctx.apiVersion]).toEqual(['https://pr-022c4aca9f9e4df787ab0a20c83c44b6.api.finlo.space', 'v3'])
+    const regional = await (await probe()).context({host: 'hub.finlo.space', project: GERMANY, region: 'nb-eu-germany'})
+    expect([regional.apiUrl, regional.hubUrl]).toEqual(['https://pr-184336d00e2141c3be5138e8dcf52e81.api.finlo.space', 'https://nb-eu-germany.hub.finlo.space'])
+    const noId = await (await probe()).context({host: 'hub.finlo.space', project: 'p1'})
+    expect(noId.apiUrl).toBe('https://api.finlo.space')
+  })
+
+  it('an announced template that is not safe is ignored: the install\'s own address', async () => {
+    for (const apiUrlTemplate of ['http://{projectHostLabel}.api.finlo.space/v3', 'https://api.finlo.space/{projectHostLabel}', 'https://{projectHostLabel}.{projectHostLabel}.finlo.space', 42]) {
+      rmSync(join(HOSTS_DIR), {recursive: true, force: true})
+      stubFinlo({'hub.finlo.space/v3/echo': {body: {...FINLO_ECHO, apiUrlTemplate}}})
+      const ctx = await (await probe()).context({host: 'hub.finlo.space', project: VIRGINIA})
+      expect(ctx.apiUrl).toBe('https://api.finlo.space')
+    }
   })
 
   it('deprecated hub_url / api_url and NORBIX_HUB_URL still work for one release, with one warning each', async () => {
