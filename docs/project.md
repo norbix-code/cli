@@ -1,13 +1,15 @@
 # `norbix project`
 
-Manage one project's settings from the terminal: name, look, languages,
-regions, CORS origins, the admin portal, legal documents and AI chat.
+Manage one project's settings from the terminal: create it, its health,
+name, look, languages, regions, CORS origins, the admin portal, legal
+documents, what the public sees, AI chat and the end-user AI plans.
 
 Every command acts on the configured project (`norbix configure`, the login
 session, `NORBIX_PROJECT_ID`) or the one passed with `--project`. List the
 account's projects with `norbix account projects`.
 
-Every command is covered by `tests/project-routes.test.ts`, which runs it
+Every command is covered by `tests/project-routes.test.ts` or
+`tests/settings-routes.test.ts`, which run it
 through the real SDK with `fetch` replaced and checks the verb, host and path
 of each request it sends, and the request body where the body matters. No test
 contacts a real project.
@@ -33,10 +35,19 @@ All hub paths below are under `/{version}/account/projects/{projectId}`.
 | `norbix project delete [--yes]` | delete the project and its data | `DELETE /` |
 | `norbix project tokens [--initiator <id>] [--recipient <id>] [--target-user <id>]` | list the template tokens (`@Model…`) the project offers | `GET /tokens` |
 | `norbix project public-config [id]` | show the public config apps read before sign-in | API host `GET /{version}/public/projects/{ProjectId}/config` |
+| `norbix project create --name <n> --connection-string <cs> [--database <db>] [--primary <region>] [--additional <region>]... [--description <text>] [--config <json>]` | create a project on your own MongoDB database | `POST /{version}/account/projects` |
+| `norbix project wait-active [--timeout <s>]` | wait until a new project is ready (at most 90 s; a timeout answers `isActive: false`) | `GET /wait-active` |
+| `norbix project health [--refresh] [--period 7\|30\|90]` | what is wrong with the project and the Cloud page that fixes each, plus user / e-mail / API call numbers | `GET /health` |
+| `norbix project check-languages [<lang>...] [--default <lang>]` | the e-mail / push / SMS templates that miss a language of a proposed list; changes nothing | `POST /settings/languages/check` |
 
 `--file-resource` is the stored file, as the files module describes it (a JSON
 object with `resource`, `integrationId`, `provider`, `path`, `isPublic`) —
 inline, `@file.json`, or `-`. Upload the image with `norbix files upload` first.
+
+`project create` is account-level: it needs no project. The primary region
+defaults to the region of the command (`--region`). The project prepares
+itself in the background, so run `project wait-active --project <id>` once
+before you build inside it. A dry run prints the connection string as `***`.
 
 The primary region is set once and never changes. `--additional` is the full
 new list; without it (and without `--clear-additional`) the command reads the
@@ -89,6 +100,21 @@ you pass `--remove-admin-portal-origin`.
 The server clears a document it does not get, so `legal set` with one file
 reads the other from the project and sends it back unchanged.
 
+## What the public sees
+
+The public project config (`project public-config`) is what an admin portal or
+a sign-in page reads before anyone signs in. Three switches decide what is in
+it: the legal documents (above), the brand (on by default) and the sign-in
+methods with the password policy (off by default).
+
+| command | what it does | endpoint |
+|---|---|---|
+| `norbix project brand expose` | show the name, colours, logo and icon to the public | `PATCH /settings/brand/expose` |
+| `norbix project brand hide` | stop showing them; the logo / icon addresses answer 404 | `PATCH /settings/brand/expose` |
+| `norbix project brand show <logo\|icon> [--output <file>]` | download the picture the way the public gets it | API host `GET /{version}/public/projects/{ProjectId}/brand/{Kind}` |
+| `norbix project auth expose` | show the sign-in methods and the password policy to the public | `PATCH /settings/auth/expose` |
+| `norbix project auth hide` | stop showing them | `PATCH /settings/auth/expose` |
+
 ## AI chat
 
 | command | what it does | endpoint |
@@ -99,6 +125,11 @@ reads the other from the project and sends it back unchanged.
 | `norbix project ai assistant update <id> [flags]` | change an assistant | `GET /ai/settings`, then `PUT /ai/assistants/{assistantId}` |
 | `norbix project ai assistant delete <id> [--yes]` | delete an assistant | `DELETE /ai/assistants/{assistantId}` |
 | `norbix project ai usage [--top <n>]` | this period's usage: totals, per assistant, per model, top users | `GET /ai/usage` |
+| `norbix project ai knowledge set --embed-files <true\|false>` | put uploaded text files into the AI knowledge, or stop | `PUT /ai/knowledge` |
+| `norbix project ai plans` | the end-user AI plans, the role → plan rows and the default plan | `GET /ai/plans` |
+| `norbix project ai plans set (--plan <json>... [--remove <id>... --yes] \| --file <json> --yes)` | add, change or remove plans | `GET /ai/plans`, then `PUT /ai/plans` (`--file`: the `PUT` only) |
+| `norbix project ai plans assign [--role <roleId>=<planId>]... [--clear-roles] [--default <planId> \| --clear-default]` | which plan a role gets, and the default | `GET /ai/plans` when one part is left out, then `PUT /ai/plans/assignments` |
+| `norbix project ai plans users` | the users that have their own plan | `GET /ai/plans/users` |
 
 Assistant flags: `--name`, `--welcome`, `--system-prompt` or
 `--system-prompt-file`, `--toolset` (repeat), `--llm`, `--model`,
@@ -108,17 +139,26 @@ Assistant flags: `--name`, `--welcome`, `--system-prompt` or
 only what you pass. The LLM integrations themselves are `norbix ai llm …`
 ([docs/ai.md](ai.md)).
 
+The plans and their assignments are replaced as a whole too: `plans set
+--plan` and `--remove` read the stored list first (a `--plan` with a stored id
+replaces that plan, one without an id is added), and `plans assign` keeps the
+part you do not pass. `--remove` and `--file` drop plans, so they ask first
+(`--yes`). `--dry-run` sends nothing, not even the read, so it shows only what
+you pass.
+
 ```bash
 norbix project ai settings set --enable --llm llm_123 --model gpt-4o-mini
 norbix project ai assistant create --name Support --system-prompt-file support.md --toolset ai:database-read
 norbix project ai assistant update ast_123 --no-memory
 ```
 
-## Not offered (yet)
+## No command on purpose
 
 - **`project list`** — the list is `norbix account projects`; one name per
   command.
-- **Expose brand / expose auth to the admin portal** — planned for the next
-  wave.
-- **AI plans, knowledge, credits** — internal, not for the CLI.
-- **Create a project, environments** — `norbix env …` and the portal.
+- **AI credit packs** (`POST /ai/credits/checkout`) — a purchase: the Stripe
+  checkout is started in the dashboard.
+- **A project on a Norbix-managed database** — created in the dashboard: it is
+  placed on a cluster of the account and counts against the plan.
+  `project create` takes your own MongoDB connection string.
+- **Environments** — `norbix env …` ([README](../README.md#environments)).

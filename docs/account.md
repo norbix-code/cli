@@ -9,7 +9,9 @@ paths below are under `/{version}/account` on the Hub host.
 `account discount apply`, `account trial availability` and
 `account trial waitlist join` are run through the
 real SDK with `fetch` replaced in `tests/account-routes.test.ts` (verb, path,
-query string, body); `tests/account.test.ts` checks the SDK method and fields.
+query string, body); `account projects`, `account usage` and
+`account billing-portal` in `tests/settings-routes.test.ts`;
+`tests/account.test.ts` checks the SDK method and fields.
 
 | command | what it does | endpoint |
 |---|---|---|
@@ -49,6 +51,12 @@ norbix account me --json
 norbix account me set-phone +37060000000
 norbix account me set-phone --clear
 ```
+
+Billing routes with no command on purpose: `POST /stripe/create-checkout-session`
+(the first purchase, in the dashboard); `POST /stripe/discount/check`,
+`POST /stripe/discount` and `POST /stripe/extra-regions` (the dashboard's
+discount code and extra regions: the `@norbix.ai/ts` the CLI is built on has no
+method for them yet).
 
 ## Bundles
 
