@@ -1,0 +1,48 @@
+import {Args, Flags} from '@oclif/core'
+
+import {AiChatCommand} from '../../../lib/ai-chat.js'
+import {usageError} from '../../../lib/cli-error.js'
+
+export default class AiToolCall extends AiChatCommand {
+  static description = `Call one AI tool by name, as the chat would
+
+The tool runs with your rights on the project that is set (the env rule
+applies; --account-level calls it at account level). Tools can change data, so the
+command asks first (--yes skips the question).`
+
+  static examples = [
+    '<%= config.bin %> ai tool call get_schemas --args \'{"take":5}\' --yes',
+    '<%= config.bin %> ai tool call get_schemas --dry-run',
+  ]
+
+  static args = {
+    name: Args.string({required: true, description: 'Tool name (ai tools)'}),
+  }
+
+  static flags = {
+    args: Flags.string({description: 'The arguments as a JSON object', default: '{}'}),
+    ...AiChatCommand.accountFlag,
+    ...AiChatCommand.mutatingFlags,
+  }
+
+  async run(): Promise<unknown> {
+    const {args, flags} = await this.parse(AiToolCall)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(flags.args)
+    } catch {
+      throw usageError('--args is not JSON.', 'Pass a JSON object, e.g. --args \'{"take":5}\'.', 'norbix ai tool call --help')
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw usageError('--args is not a JSON object.', 'Pass a JSON object, e.g. --args \'{"take":5}\'.', 'norbix ai tool call --help')
+    }
+
+    const {client} = this.scopedClient(flags)
+    await this.confirmOrFail(`Call AI tool ${args.name}?`, flags)
+
+    const res = await client.hub.account.invokeAiTool({toolName: args.name, argumentsJson: JSON.stringify(parsed)})
+
+    this.print(res)
+    return res
+  }
+}
