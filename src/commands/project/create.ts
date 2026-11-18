@@ -10,8 +10,8 @@ export default class ProjectCreate extends BaseCommand {
 The project keeps its data in the database of --connection-string (other
 fields of the database integration can come from --config: inline JSON,
 @file or -). --primary is the primary region (\`account regions\` lists
-them; the default is the region of the command, --region). A dry run prints
-the connection string as ***.
+them); it is required on the Managed Service (norbix.ai) and is set once, so
+the command never guesses it. A dry run prints the connection string as ***.
 
 The project prepares itself in the background: run \`project wait-active
 --project <id>\` once before you build inside it. A project on a
@@ -26,7 +26,7 @@ cluster of the account and counts against the plan.`
   static flags = {
     ...BaseCommand.dryRunFlags,
     name: Flags.string({description: 'Project name (unique in the account)', required: true}),
-    primary: Flags.string({description: 'Primary region code, e.g. nb-eu-germany (default: --region)'}),
+    primary: Flags.string({description: 'Primary region code, e.g. nb-eu-germany (required on norbix.ai; never changes)'}),
     additional: Flags.string({description: 'Another region for app data (repeatable)', multiple: true}),
     description: Flags.string({description: 'Short description'}),
     'connection-string': Flags.string({description: 'MongoDB connection string (mongodb:// or mongodb+srv://)'}),
@@ -50,12 +50,11 @@ cluster of the account and counts against the plan.`
       throw usageError('Pass --connection-string (or connectionString in --config).')
     }
 
-    // An account-level call: no project yet, so no project header and no env rule.
+    // An account-level call: it needs no project and skips the env rule.
     const client = this.client(flags, {requireProject: false, account: true})
-    const primaryRegion = flags.primary ?? this.resolveContext(flags).region
     const res = await client.hub.account.createProject({
       projectName: flags.name,
-      ...(primaryRegion ? {primaryRegion} : {}),
+      ...(flags.primary ? {primaryRegion: flags.primary} : {}),
       ...(flags.additional ? {additionalRegions: flags.additional} : {}),
       ...(flags.description ? {description: flags.description} : {}),
       // The provider fields are not on the generated base type: the server

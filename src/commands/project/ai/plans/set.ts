@@ -13,8 +13,10 @@ export default class ProjectAiPlansSet extends ProjectCommand {
 The Hub replaces the whole plan list in one call (a plan left out is
 removed), so --plan and --remove read the stored plans first and change only
 those:
-  --plan <json>   a plan with the id of a stored one replaces it; a plan
-                  without an id is added (the Hub gives it one). Repeatable.
+  --plan <json>   with the id of a stored plan: the fields you pass replace
+                  those fields, the rest of the plan is kept; an id that is
+                  not stored is refused. Without an id: a new plan (the Hub
+                  gives it one). Repeatable.
   --remove <id>   removes a plan (asks first: --yes). Repeatable.
   --file <json>   the complete list instead (a JSON array, or {"plans": […]}):
                   every stored plan not in it is removed, so it asks first.
@@ -57,7 +59,7 @@ ${READ_FIRST_DRY_RUN}`
         const read = (await client.hub.account.getProjectAiPlans({projectId})) as {result?: {plans?: Plan[]}}
         if (!read?.result) throw nothingRead('AI plans', 'Check the project and --env.')
         stored = read.result.plans ?? []
-        const unknown = [...removed].filter((id) => !stored.some((p) => p.id === id))
+        const unknown = [...removed, ...changes.flatMap((c) => (c.id ? [c.id] : []))].filter((id) => !stored.some((p) => p.id === id))
         if (unknown.length > 0) throw usageError(`No AI plan ${unknown.join(', ')} in the project; nothing was saved.`)
       }
 
@@ -65,7 +67,8 @@ ${READ_FIRST_DRY_RUN}`
       plans = stored.filter((p) => !removed.has(p.id ?? ''))
       for (const change of changes) {
         const at = change.id ? plans.findIndex((p) => p.id === change.id) : -1
-        if (at >= 0) plans[at] = change
+        // A stored plan keeps every field the change does not name.
+        if (at >= 0) plans[at] = {...plans[at], ...change}
         else plans.push(change)
       }
     }
