@@ -1345,6 +1345,58 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "schema:string",
+    ],
+    "id": "db aggregates delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "schema:string",
+    ],
+    "id": "db aggregates get",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "schema:string",
+      "id:string",
+      "name:string",
+      "description:string",
+      "clear-description:boolean",
+      "pipeline:string",
+    ],
+    "id": "db aggregates save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "collection",
+    ],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "pipeline:string",
+      "tokens:string",
+    ],
+    "id": "db aggregates test",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
       "collection",
       "id",
     ],
@@ -1482,6 +1534,58 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [
       "id",
     ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "db integration delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "db integration disable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "db integration enable",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+      "connection-string:string",
+      "database:string",
+      "keyless:boolean",
+      "audience:string",
+      "id:string",
+      "disabled:boolean",
+      "config:string",
+    ],
+    "id": "db integration save",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
     "destructive": false,
     "flags": [],
     "id": "db integration test",
@@ -1496,6 +1600,13 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "before:string",
     ],
     "id": "db integrations",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "db integrations flex-tiers",
     "supportsDryRun": false,
   },
   {
@@ -1593,8 +1704,70 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "destructive": false,
     "flags": [],
+    "id": "db schema embed",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "enabled:option",
+      "fields:string",
+      "embedding-integration:string",
+      "default-embedding-integration:boolean",
+      "per-user:option",
+    ],
+    "id": "db schema embed set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
     "id": "db schema index-status",
     "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db schema list-settings",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "columns:string",
+      "primary:string",
+      "sort:string",
+      "desc:boolean",
+      "filters:string",
+      "file:string",
+    ],
+    "id": "db schema list-settings set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "enable:string",
+    ],
+    "id": "db schema own-records",
+    "supportsDryRun": true,
   },
   {
     "args": [
@@ -1609,11 +1782,50 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "title:string",
+    ],
+    "id": "db schema rename",
+    "supportsDryRun": true,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [],
     "id": "db schema rules",
     "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "db schema settings",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "soft-delete:option",
+      "record-owner:option",
+      "own-records:option",
+      "description:string",
+      "clear-description:boolean",
+      "unique:string",
+      "clear-unique:boolean",
+    ],
+    "id": "db schema settings set",
+    "supportsDryRun": true,
   },
   {
     "args": [
@@ -1671,6 +1883,17 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "integration:string",
+      "include-terms:boolean",
+      "all-languages:boolean",
+    ],
+    "id": "db taxonomies tree",
+    "supportsDryRun": false,
+  },
+  {
     "args": [
       "id",
     ],
@@ -1678,6 +1901,38 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [],
     "id": "db taxonomy",
     "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "db taxonomy delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "id:string",
+      "name:string",
+      "description:string",
+      "clear-description:boolean",
+      "parent:string",
+      "clear-parent:boolean",
+      "depends-on:string",
+      "clear-depends-on:boolean",
+      "term-fields:string",
+      "term-form:string",
+      "clear-term-fields:boolean",
+    ],
+    "id": "db taxonomy save",
+    "supportsDryRun": true,
   },
   {
     "args": [
@@ -1716,6 +1971,21 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "integration:string",
     ],
     "id": "db term delete",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "taxonomy",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+      "integration:string",
+      "filter:string",
+      "all:boolean",
+    ],
+    "id": "db term delete-many",
     "supportsDryRun": true,
   },
   {
