@@ -52,11 +52,13 @@ norbix account me set-phone +37060000000
 norbix account me set-phone --clear
 ```
 
-Billing routes with no command on purpose: `POST /stripe/create-checkout-session`
-(the first purchase, in the dashboard); `POST /stripe/discount/check`,
-`POST /stripe/discount` and `POST /stripe/extra-regions` (the dashboard's
-discount code and extra regions: the `@norbix.ai/ts` the CLI is built on has no
-method for them yet).
+Purchases are not a CLI use case (the same rule as Membership's end-user
+browser flows), so these billing routes have no command on purpose:
+`POST /stripe/create-checkout-session` (the first purchase) and
+`POST /stripe/extra-regions` (buys extra regions); they are done in the
+dashboard. `POST /projects/{projectId}/ai/credits/checkout` (AI credit packs)
+follows the same rule. `account change-bundle` and `account discount apply`
+were added before the rule and stay.
 
 ## Bundles
 

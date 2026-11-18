@@ -155,6 +155,8 @@ const routes: Array<[string[], Route[]]> = [
   [['account', 'billing-portal', '--prod'], [['POST', '/v3/account/stripe/get-portal-url']]],
   [['account', 'bundles', '--prod'], [['GET', '/v3/account/stripe/bundles']]],
   [['account', 'change-bundle', '--bundle', 'growth', '--period', 'annual', '--yes', '--prod'], [['POST', '/v3/account/stripe/change-bundle']]],
+  [['account', 'discount', 'check', 'LAUNCH30', '--prod'], [['POST', '/v3/account/stripe/discount/check']]],
+  [['account', 'discount', 'apply', 'LAUNCH30', '--yes', '--prod'], [['POST', '/v3/account/stripe/discount']]],
 ]
 
 describe('every project settings command reaches its route', () => {
@@ -410,5 +412,17 @@ describe('ai settings', () => {
     const {error} = await runCommand(['project', 'ai', 'plans', 'assign', '--role', 'rl_a', '--prod', ...globalArgs])
     expect(error?.message).toMatch(/roleId=planId/)
     expect(sent(['project'])).toHaveLength(0)
+  })
+})
+
+describe('billing', () => {
+  it('discount check sends the code, and the bundle and period when given', async () => {
+    expect(await bodyOf(['account', 'discount', 'check', 'LAUNCH30', '--bundle', 'growth', '--period', 'annual', '--prod'])).toEqual({
+      code: 'LAUNCH30',
+      bundle: 'Growth',
+      billingPeriod: 'Annual',
+    })
+    calls = []
+    expect(await bodyOf(['account', 'discount', 'check', 'LAUNCH30', '--prod'])).toEqual({code: 'LAUNCH30'})
   })
 })
