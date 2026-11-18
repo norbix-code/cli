@@ -159,16 +159,28 @@
         "description": "Read and write the local CLI configuration"
       },
       "db": {
-        "description": "Database records, schemas, schema triggers, integrations, taxonomies and terms, test data",
+        "description": "Database records, schemas, saved aggregates, schema triggers, integrations, taxonomies and terms, test data",
         "subtopics": {
+          "aggregates": {
+            "description": "List, show, try, save or delete saved aggregation pipelines"
+          },
           "integration": {
-            "description": "Show, test or set the default database integration"
+            "description": "Show, connect, test, turn on/off, delete or set the default database integration"
+          },
+          "integrations": {
+            "description": "List the database integrations; the managed database tiers"
           },
           "schema": {
-            "description": "Show, create, change, publish or delete a database schema"
+            "description": "Show, create, change, rename, publish or delete a database schema; its settings, list layout, AI embed and own-records switch"
+          },
+          "taxonomies": {
+            "description": "List the taxonomies; show them as a tree"
+          },
+          "taxonomy": {
+            "description": "Show, create, change or delete a taxonomy"
           },
           "term": {
-            "description": "Show, create, change or delete a taxonomy term; show the term tree"
+            "description": "Show, create, change or delete taxonomy terms (one, or many by filter); show the term tree"
           },
           "trigger": {
             "description": "Show, create, turn on/off or delete a schema trigger"
