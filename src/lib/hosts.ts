@@ -50,6 +50,12 @@ export interface HostInfo {
   hubUrl: string
   /** The Api as /echo reports it, with its version: `https://api.finlo.space/v3`. */
   apiUrl: string
+  /**
+   * A project's own Api address, with the `{projectHostLabel}` placeholder:
+   * `https://{projectHostLabel}.api.finlo.space/v3`. Only an install that serves
+   * those hosts answers it (/echo → `apiUrlTemplate`).
+   */
+  apiUrlTemplate?: string
   hubVersion?: string
   apiVersion?: string
   regions: HubRegion[]
@@ -312,6 +318,20 @@ function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim().replace(/\/+$/, '') : undefined
 }
 
+/** The placeholder of an address template (/echo → `apiUrlTemplate`). */
+export const PROJECT_HOST_LABEL_PLACEHOLDER = '{projectHostLabel}'
+
+/**
+ * An address template the Hub returned: exactly one `{projectHostLabel}`, as
+ * the first label of the host, and a safe address once it is filled in.
+ */
+function safeTemplate(value: unknown): string | undefined {
+  const s = str(value)
+  if (!s || s.split(PROJECT_HOST_LABEL_PLACEHOLDER).length !== 2) return undefined
+  if (!/^https?:\/\/\{projectHostLabel\}\./.test(s)) return undefined
+  return safeUrl(s.replace(PROJECT_HOST_LABEL_PLACEHOLDER, 'pr-00000000000000000000000000000000')) ? s : undefined
+}
+
 /** An address the Hub returned: http(s) only, plain http only for this computer and *.test names. */
 function safeUrl(value: unknown): string | undefined {
   const s = str(value)
@@ -381,6 +401,7 @@ export async function discover(origin: string, deps: DiscoveryDeps = {}): Promis
     hubUrl: resolvedHub,
     // A Hub that does not name its Api (older than the field) serves both.
     apiUrl: safeUrl(body.apiUrl) ?? base,
+    ...(safeTemplate(body.apiUrlTemplate) ? {apiUrlTemplate: safeTemplate(body.apiUrlTemplate)} : {}),
     hubVersion: hubVersion ?? splitVersionedUrl(resolvedHub).version,
     apiVersion: apiVersion ?? splitVersionedUrl(safeUrl(body.apiUrl) ?? '').version,
     regions,
