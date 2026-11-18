@@ -171,3 +171,76 @@ export function explainDiscountRefusal(error: unknown, command: string): unknown
   const hint = typeof reason === 'string' ? DISCOUNT_REASONS[reason] : undefined
   return new CliError({...envelope, ...(hint ? {hint} : {})})
 }
+
+/** The waiting list is switched off on this installation. */
+export const TRIAL_WAITLIST_CLOSED_CODE = 'CM-ERRORS-ACCOUNT-044'
+
+/** A region code the installation does not know. */
+export const TRIAL_REGION_UNKNOWN_CODE = 'CM-ERRORS-ACCOUNT-043'
+
+/** The answer of `GET /account/trial-availability`. */
+export interface TrialAvailability {
+  limitsOn?: boolean
+  region?: string
+  trialsOpen?: boolean
+  waitlistOpen?: boolean
+  onWaitlist?: boolean
+  refusal?: string
+}
+
+/** Each `refusal` of a trial after checkout, in plain words. */
+const TRIAL_REFUSALS: Record<string, string> = {
+  CardAlreadyHadTrial: 'The trial was refused after checkout: this card already had a free trial on another account.',
+}
+
+/** Whether a free trial can start now, in a few plain lines. */
+export function formatTrialAvailability(res: unknown): string {
+  const a = (res ?? {}) as TrialAvailability
+  const where = a.region ? ` in ${a.region}` : ''
+  const lines: string[] = []
+  if (a.limitsOn === false) {
+    lines.push(`No trial limits on this installation: a free trial can start${where}.`)
+  } else if (a.trialsOpen) {
+    lines.push(`A free trial can start${where} now.`)
+  } else {
+    lines.push(`No free trial slot${where} now: the region is full. Buy a bundle without a trial${a.waitlistOpen ? ', or join the waiting list (`norbix account trial waitlist join --consent`)' : ''}.`)
+  }
+
+  if (a.onWaitlist) lines.push("The account owner's email is already on the waiting list.")
+  if (a.refusal) lines.push(TRIAL_REFUSALS[a.refusal] ?? `The trial was refused after checkout: ${a.refusal}.`)
+  return lines.join('\n')
+}
+
+/** The answer of `POST /account/trial-waitlist`, in one line. The server's message wins when it sends one. */
+export function formatTrialWaitlist(res: unknown): string {
+  const answer = (res ?? {}) as {status?: string; message?: string}
+  if (answer.message) return answer.message
+  switch (answer.status) {
+    case 'added':
+      return "The account owner's email is on the waiting list. Norbix emails an invitation link, valid a few days, when a trial slot frees."
+    case 'alreadyListed':
+      return "The account owner's email is already on the waiting list."
+    case 'alreadyCustomer':
+      return 'This email already had a Norbix trial or subscription; it was not added to the waiting list.'
+    default:
+      return `Waiting list: ${answer.status ?? 'no status'}.`
+  }
+}
+
+/**
+ * The trial-limit refusals as CLI errors, with a hint: the waiting list is
+ * switched off (-044), or the region is not known (-043). Any other error
+ * comes back unchanged.
+ */
+export function explainTrialRefusal(error: unknown, command: string): unknown {
+  const envelope = toEnvelope(error, {command})
+  if (envelope.code === TRIAL_WAITLIST_CLOSED_CODE) {
+    return new CliError({...envelope, hint: 'The trial waiting list is switched off on this installation. Buy a bundle without a trial instead.'})
+  }
+
+  if (envelope.code === TRIAL_REGION_UNKNOWN_CODE) {
+    return new CliError({...envelope, hint: 'Unknown region code. List the regions with `norbix account regions`.'})
+  }
+
+  return error
+}

@@ -9,6 +9,8 @@ import AccountDiscountCheck from '../src/commands/account/discount/check.js'
 import AccountMe from '../src/commands/account/me.js'
 import AccountMeSetPhone from '../src/commands/account/me/set-phone.js'
 import AccountTeam from '../src/commands/account/team.js'
+import AccountTrialAvailability from '../src/commands/account/trial/availability.js'
+import AccountTrialWaitlistJoin from '../src/commands/account/trial/waitlist/join.js'
 import {type RecordedCall, recordingNotifications, runCommand} from './_helpers.js'
 
 /**
@@ -139,6 +141,26 @@ describe('account discount check / apply', () => {
     await expect(runCommand(AccountDiscountApply, ['LAUNCH30'], {account: recordingNotifications(calls)})).rejects.toThrow(
       /Confirmation required: Put the discount code LAUNCH30/,
     )
+    expect(calls).toEqual([])
+  })
+})
+
+describe('account trial availability / waitlist join', () => {
+  it('availability sends no field without a region, and the region with one', async () => {
+    expect((await run(AccountTrialAvailability, [])).calls).toEqual([{method: 'getTrialAvailability', request: {}}])
+    expect((await run(AccountTrialAvailability, ['nb-eu-germany'])).calls).toEqual([
+      {method: 'getTrialAvailability', request: {region: 'nb-eu-germany'}},
+    ])
+  })
+
+  it('join sends consent (and the region and version when given), and calls nothing without --consent', async () => {
+    expect((await run(AccountTrialWaitlistJoin, ['--consent'])).calls).toEqual([{method: 'joinTrialWaitlist', request: {consent: true}}])
+    expect((await run(AccountTrialWaitlistJoin, ['nb-eu-germany', '--consent', '--consent-version', 'v2'])).calls).toEqual([
+      {method: 'joinTrialWaitlist', request: {region: 'nb-eu-germany', consent: true, consentVersion: 'v2'}},
+    ])
+
+    const calls: RecordedCall[] = []
+    await expect(runCommand(AccountTrialWaitlistJoin, ['nb-eu-germany'], {account: recordingNotifications(calls)})).rejects.toThrow(/Pass --consent/)
     expect(calls).toEqual([])
   })
 })

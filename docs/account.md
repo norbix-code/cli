@@ -5,8 +5,9 @@ paths below are under `/{version}/account` on the Hub host.
 
 `account team`, `account me`, `account me set-phone`, `account regions`,
 `account bundles`, `account change-bundle`, `account clusters`,
-`account clusters upgrade`, `account discount check` and
-`account discount apply` are run through the
+`account clusters upgrade`, `account discount check`,
+`account discount apply`, `account trial availability` and
+`account trial waitlist join` are run through the
 real SDK with `fetch` replaced in `tests/account-routes.test.ts` (verb, path,
 query string, body); `tests/account.test.ts` checks the SDK method and fields.
 
@@ -25,6 +26,8 @@ query string, body); `tests/account.test.ts` checks the SDK method and fields.
 | `norbix account change-bundle --bundle <starter\|growth\|scale> --period <monthly\|annual> [--yes] [--dry-run]` | move the account to another bundle or billing period | `POST /stripe/change-bundle` |
 | `norbix account discount check <code> [--bundle <starter\|growth\|scale>] [--period <monthly\|annual>]` | check a discount code and say what it gives; changes nothing | `POST /stripe/discount/check` |
 | `norbix account discount apply <code> [--yes] [--dry-run]` | put a discount code on the running bundle subscription | `POST /stripe/discount` |
+| `norbix account trial availability [region]` | say whether a free Managed Service trial can start in a region now; changes nothing | `GET /trial-availability` |
+| `norbix account trial waitlist join [region] --consent [--consent-version <v>] [--dry-run]` | put the account owner's email on the free-trial waiting list | `POST /trial-waitlist` |
 | `norbix account clusters` | list the account's Norbix-managed Atlas clusters | `GET /flex-clusters` |
 | `norbix account clusters upgrade <flexClusterId> [--tier <code>] [--yes] [--dry-run]` | queue the upgrade of one cluster one tier up (FLEX → M10 → M20 → M30 → M40, within the plan) | `POST /flex-clusters/{flexClusterId}/upgrade` |
 
@@ -114,6 +117,48 @@ The hint says what the reason means; with `--json` the reason is in
 norbix account discount check LAUNCH30 --bundle growth --period monthly
 norbix account discount apply LAUNCH30 --dry-run
 norbix account discount apply LAUNCH30 --yes
+```
+
+## Free trial limits
+
+A Managed Service installation can limit free trials per region. Both
+commands need sign-in and no project. `[region]` is a Norbix region code
+(`norbix account regions`). Without it, `availability` checks the
+installation's default region and `waitlist join` lists the email with no
+region. The global `--region` flag picks the Hub host and is not sent here.
+
+`account trial availability [region]` says whether a free trial can start now
+and changes nothing; `--json` prints the whole answer:
+
+- `limitsOn` false: no trial limits on this installation; a trial can start.
+- `trialsOpen` false: the region is full. Buy a bundle without a trial, or
+  join the waiting list when `waitlistOpen` is true.
+- `onWaitlist`: the account owner's email is already on the waiting list.
+- `refusal`: why this account's trial was refused after checkout
+  (`CardAlreadyHadTrial`: the card already had a trial on another account).
+
+`account trial waitlist join [region] --consent` puts the account owner's email
+on the waiting list. When a slot frees, Norbix emails an invitation link,
+valid a few days. `--consent` says the owner agrees to that email; without it
+the CLI refuses and sends nothing. `--consent-version` names the consent text
+agreed to. The answer's `status` is `added`, `alreadyListed` or
+`alreadyCustomer`, with a `message` the CLI prints as it is. It asks no
+confirmation (it changes nothing the account pays); `--dry-run` sends nothing.
+
+Errors: `CM-ERRORS-ACCOUNT-044` when the waiting list is switched off,
+`CM-ERRORS-ACCOUNT-043` when `waitlist join` gets an unknown region; each
+comes with a hint.
+
+No command on purpose: `POST /trial-waitlist/intake` is called by the website's
+server with a shared key header, never by a person.
+
+The CLI starts no checkout, so the checkout fields `region`, `withoutTrial` and
+`trialInvite` have no flag; Cloud's checkout sends them.
+
+```bash
+norbix account trial availability nb-eu-germany
+norbix account trial waitlist join nb-eu-germany --consent --dry-run
+norbix account trial waitlist join nb-eu-germany --consent
 ```
 
 ## Norbix-managed Atlas clusters

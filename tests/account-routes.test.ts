@@ -64,6 +64,8 @@ const routes: Array<[string[], string, string]> = [
   [['clusters', 'upgrade', CLUSTER, '--tier', 'M20', '--yes'], 'POST', `/v3/account/flex-clusters/${CLUSTER}/upgrade`],
   [['discount', 'check', 'LAUNCH30'], 'POST', '/v3/account/stripe/discount/check'],
   [['discount', 'apply', 'LAUNCH30', '--yes'], 'POST', '/v3/account/stripe/discount'],
+  [['trial', 'availability'], 'GET', '/v3/account/trial-availability'],
+  [['trial', 'waitlist', 'join', '--consent'], 'POST', '/v3/account/trial-waitlist'],
 ]
 
 describe('every account command of this round reaches its route', () => {
@@ -164,6 +166,8 @@ describe('account projects / status / bundles / clusters — no project needed',
     [['clusters', 'upgrade', CLUSTER, '--tier', 'M20', '--yes'], `/v3/account/flex-clusters/${CLUSTER}/upgrade`],
     [['discount', 'check', 'LAUNCH30'], '/v3/account/stripe/discount/check'],
     [['discount', 'apply', 'LAUNCH30', '--yes'], '/v3/account/stripe/discount'],
+    [['trial', 'availability'], '/v3/account/trial-availability'],
+    [['trial', 'waitlist', 'join', '--consent'], '/v3/account/trial-waitlist'],
   ] as const) {
     it(`account ${argv.join(' ')} runs with only an API key and sends no project header`, async () => {
       const {error} = await runCommand(['account', ...argv, '--api-key', 'nbsu_k', '--region', 'nb-eu-germany'])
@@ -629,4 +633,106 @@ describe('account discount check / apply — the body, the question, the refusal
     expect(refused?.context).toMatchObject({reason: 'something_new'})
     expect(refused?.hint ?? '').not.toContain('already used')
   })
+})
+
+describe('account trial availability / waitlist join — the query, the body, the consent, the refusals', () => {
+  const out = captureOutput()
+
+  it('availability sends the region as a query parameter and says a trial can start', async () => {
+    answer = {limitsOn: true, region: 'nb-eu-germany', trialsOpen: true, waitlistOpen: true, onWaitlist: false}
+    const {error} = await runCommand(['account', 'trial', 'availability', 'nb-eu-germany', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.method).toBe('GET')
+    expect(calls[0]?.query.get('region')).toBe('nb-eu-germany')
+    expect(out()).toContain('A free trial can start in nb-eu-germany now.')
+  })
+
+  it('availability without the argument sends no region, even with the global --region', async () => {
+    answer = {limitsOn: false, region: '', trialsOpen: true, waitlistOpen: false, onWaitlist: false}
+    const {error} = await runCommand(['account', 'trial', 'availability', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.query.get('region')).toBeNull()
+    expect(out()).toContain('No trial limits on this installation')
+  })
+
+  it('a full region points to the waiting list; owner on the list and a refusal are said in plain words', async () => {
+    answer = {limitsOn: true, region: 'nb-us-virginia', trialsOpen: false, waitlistOpen: true, onWaitlist: true, refusal: 'CardAlreadyHadTrial'}
+    const {error} = await runCommand(['account', 'trial', 'availability', 'nb-us-virginia', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(out()).toContain('the region is full')
+    expect(out()).toContain('norbix account trial waitlist join --consent')
+    expect(out()).toContain("The account owner's email is already on the waiting list.")
+    expect(out()).toContain('this card already had a free trial')
+  })
+
+  it('availability --json prints the whole answer', async () => {
+    const full = {limitsOn: true, region: 'nb-eu-germany', trialsOpen: false, waitlistOpen: false, onWaitlist: false}
+    answer = full
+    const {result} = await runCommand(['account', 'trial', 'availability', '--json', ...globalArgs])
+
+    expect(result).toEqual(full)
+  })
+
+  it('join sends consent, the region and the consent version, and prints the server message', async () => {
+    answer = {status: 'added', message: 'You are on the waiting list.'}
+    const {error} = await runCommand([
+      'account', 'trial', 'waitlist', 'join', 'nb-eu-germany', '--consent', '--consent-version', '2026-11', ...globalArgs,
+    ])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.body).toEqual({region: 'nb-eu-germany', consent: true, consentVersion: '2026-11'})
+    expect(out()).toContain('You are on the waiting list.')
+  })
+
+  it('join without the argument sends only consent, even with the global --region; a status without a message is worded', async () => {
+    answer = {status: 'alreadyListed'}
+    const {error} = await runCommand(['account', 'trial', 'waitlist', 'join', '--consent', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls[0]?.body).toEqual({consent: true})
+    expect(out()).toContain("The account owner's email is already on the waiting list.")
+  })
+
+  it('join without --consent is refused locally and sends nothing, --dry-run included', async () => {
+    const refused = await runCommand(['account', 'trial', 'waitlist', 'join', 'nb-eu-germany', ...globalArgs])
+    expect(refused.error?.message).toContain('Pass --consent')
+
+    const dry = await runCommand(['account', 'trial', 'waitlist', 'join', '--dry-run', ...globalArgs])
+    expect(dry.error?.message).toContain('Pass --consent')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('join --consent --dry-run sends nothing', async () => {
+    const {error} = await runCommand(['account', 'trial', 'waitlist', 'join', '--consent', '--dry-run', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(0)
+  })
+
+  const trialError = (code: string, message: string) => ({
+    responseStatus: {errorCode: code, message, errors: [{errorCode: code, message}]},
+  })
+
+  for (const [code, argv, hint] of [
+    ['CM-ERRORS-ACCOUNT-044', ['trial', 'waitlist', 'join', '--consent'], 'switched off'],
+    ['CM-ERRORS-ACCOUNT-043', ['trial', 'waitlist', 'join', 'nb-mars', '--consent'], 'norbix account regions'],
+    ['CM-ERRORS-ACCOUNT-043', ['trial', 'availability', 'nb-mars'], 'norbix account regions'],
+  ] as const) {
+    it(`${code} on ${argv.slice(0, 2).join(' ')}: the code, the server message and a hint`, async () => {
+      answer = trialError(code, 'Refused by the gateway.')
+      status = 400
+      const {error} = await runCommand(['account', ...argv, ...globalArgs])
+
+      const refused = error as {code?: string; status?: number; hint?: string; oclif?: {exit?: number}} | undefined
+      expect(calls).toHaveLength(1)
+      expect(refused?.code).toBe(code)
+      expect(refused?.status).toBe(400)
+      expect(refused?.oclif?.exit).toBe(6)
+      expect(error?.message).toBe('Refused by the gateway.')
+      expect(refused?.hint).toContain(hint)
+    })
+  }
 })
