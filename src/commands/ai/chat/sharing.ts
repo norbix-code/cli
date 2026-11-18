@@ -3,9 +3,10 @@ import {Args} from '@oclif/core'
 import {AiChatCommand} from '../../../lib/ai-chat.js'
 
 export default class AiChatSharing extends AiChatCommand {
-  static description = `Keep one chat out of the shared improvement data, or let it in again
+  static description = `Mark one chat do-not-share, or follow the account's sharing consent again
 
-private: the chat is not shared. shared: it may be used again (the default of a new chat).`
+private: the chat is never traced, whatever the account's sharing consent
+says. shared: it follows the account's consent (the default of a new chat).`
 
   static examples = [
     '<%= config.bin %> ai chat sharing aics_123 private',
@@ -15,7 +16,7 @@ private: the chat is not shared. shared: it may be used again (the default of a 
 
   static args = {
     session: Args.string({required: true, description: 'Chat id (aics_…)'}),
-    state: Args.string({required: true, options: ['private', 'shared'], description: 'private or shared'}),
+    state: Args.string({required: true, options: ['private', 'shared'], description: 'private (never traced) or shared (follow the account consent)'}),
   }
 
   static flags = {

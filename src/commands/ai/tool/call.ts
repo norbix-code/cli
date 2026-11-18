@@ -6,9 +6,11 @@ import {usageError} from '../../../lib/cli-error.js'
 export default class AiToolCall extends AiChatCommand {
   static description = `Call one AI tool by name, as the chat would
 
-The tool runs with your rights on the project that is set (the env rule
-applies; --account-level calls it at account level). Tools can change data, so the
-command asks first (--yes skips the question).`
+The tool runs under your identity and answers with its envelope ({ok, data} or
+{ok: false, errors}). The project that is set is sent as for any project
+command (the env rule applies; --account-level sends none). The env comes from
+an "env" argument, then the --env header; a PROD write needs "env":"PROD" in
+--args. Tools can change data, so the command asks first (--yes skips it).`
 
   static examples = [
     '<%= config.bin %> ai tool call get_schemas --args \'{"take":5}\' --yes',
