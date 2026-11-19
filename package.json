@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.2",
-    "@norbix.ai/ts": "^4.72.4",
+    "@norbix.ai/ts": "^4.72.5",
     "@oclif/core": "^5.0.0",
     "@oclif/plugin-autocomplete": "^4.0.0",
     "@oclif/plugin-help": "^7.0.0",
@@ -305,10 +305,7 @@
             }
           },
           "brand": {
-            "description": "What the public sees of the brand: expose, hide, download the logo / icon"
-          },
-          "auth": {
-            "description": "Show or hide the sign-in methods and password policy in the public config"
+            "description": "Download the project logo / icon the way the public gets it"
           }
         }
       },

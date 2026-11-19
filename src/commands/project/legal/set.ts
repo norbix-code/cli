@@ -7,8 +7,8 @@ export default class ProjectLegalSet extends ProjectCommand {
 
 The server stores both documents in one call and clears a document it does not
 get, so a document you leave out is read from the project and sent back
-unchanged. --clear-terms / --clear-privacy remove one on purpose. Show them to
-the public with \`project legal expose\`.`
+unchanged. --clear-terms / --clear-privacy remove one on purpose. A saved
+document is public at once.`
 
   static examples = [
     '<%= config.bin %> project legal set --terms-file terms.md --privacy-file privacy.md',

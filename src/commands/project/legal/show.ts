@@ -6,8 +6,7 @@ export default class ProjectLegalShow extends ProjectCommand {
   static description = `Show one legal document the way the public reads it
 
 Calls the public route on the API host, so it shows what visitors get:
-\`available: false\` until the document is saved and exposed
-(\`project legal expose\`).`
+\`available: false\` until the document is saved (\`project legal set\`).`
 
   static examples = ['<%= config.bin %> project legal show terms', '<%= config.bin %> project legal show privacy --json']
 

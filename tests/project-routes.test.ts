@@ -138,8 +138,6 @@ const routes: Array<[string[], Route[]]> = [
 
   // Legal + public config (the public reads go to the API host)
   [['project', 'legal', 'set', '--clear-terms', '--clear-privacy'], [['PATCH', `${S}/legal`]]],
-  [['project', 'legal', 'expose'], [['PATCH', `${S}/legal/expose`]]],
-  [['project', 'legal', 'hide'], [['PATCH', `${S}/legal/expose`]]],
   [['project', 'legal', 'show', 'terms'], [['GET', `/v3/public/projects/${PROJECT}/legal/terms`, API]]],
   [['project', 'public-config'], [['GET', `/v3/public/projects/${PROJECT}/config`, API]]],
 
@@ -197,14 +195,14 @@ describe('every project and ai command reaches its route', () => {
   }
 })
 
-it('covers all 49 project and ai routes', () => {
-  // 29 project routes (27 hub under /account/projects/{projectId}, 2 public on
+it('covers all 48 project and ai routes', () => {
+  // 28 project routes (26 hub under /account/projects/{projectId}, 2 public on
   // the API host) + 8 LLM + 7 MCP + 5 service-user routes, all named methods of
   // @norbix.ai/ts 4.4.0. Rows that read before they write share the GET with
   // `project` / `project ai settings`, so count distinct verb + path pairs.
   const distinct = new Set(routes.flatMap(([, reqs]) => reqs.map(([verb, path]) => `${verb} ${path}`)))
   distinct.delete('GET /v3/account/projects/other-project')
-  expect(distinct.size).toBe(49)
+  expect(distinct.size).toBe(48)
 })
 
 /** Run a command and return the body of its LAST request (the write). */
@@ -295,12 +293,6 @@ describe('project cors bodies', () => {
 describe('project admin portal and legal bodies', () => {
   it('set-service-user sends the service user id', async () => {
     expect(await bodyOf(['project', 'admin-portal', 'set-service-user', ID])).toEqual({serviceUserId: ID})
-  })
-
-  it('legal expose / hide send exposed true / false', async () => {
-    expect(await bodyOf(['project', 'legal', 'expose'])).toEqual({exposed: true})
-    calls = []
-    expect(await bodyOf(['project', 'legal', 'hide'])).toEqual({exposed: false})
   })
 
   it('legal set with one file keeps the other stored document', async () => {
