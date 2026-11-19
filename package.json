@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.2",
-    "@norbix.ai/ts": "^4.71.0",
+    "@norbix.ai/ts": "^4.72.4",
     "@oclif/core": "^5.0.0",
     "@oclif/plugin-autocomplete": "^4.0.0",
     "@oclif/plugin-help": "^7.0.0",
@@ -282,7 +282,7 @@
             "description": "Browser origins allowed to call the project's APIs"
           },
           "admin-portal": {
-            "description": "The end-user admin portal Norbix generates for the project"
+            "description": "The admin portal you run yourself from github.com/norbix-code/admin: its address, service user and structure"
           },
           "legal": {
             "description": "Terms & Conditions and Privacy Policy (Markdown)"

@@ -15,7 +15,7 @@ export interface EnvironmentAdminUrl {
   adminUrl?: string
   /** The base its password-reset / magic-link / invitation e-mails open. */
   effectiveAdminUrl?: string
-  /** environment / project / hosted / cloud / none */
+  /** environment / project / cloud / none */
   source: string
   /** Why a set value was skipped, or why the links cannot be opened. */
   note?: string
@@ -82,7 +82,6 @@ export function describeEnvAdminUrl(a: EnvironmentAdminUrl): string {
   const from: Record<string, string> = {
     environment: 'its own admin URL',
     project: 'the project admin URL (no URL of its own)',
-    hosted: 'the Norbix-hosted portal',
     cloud: 'the Cloud URL — the Cloud cannot open these links',
     none: 'nothing — the links are relative',
   }

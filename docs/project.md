@@ -83,11 +83,9 @@ you pass `--remove-admin-portal-origin`.
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix project admin-portal enable` | turn the admin portal on | `PUT /admin-portal/enabled` |
-| `norbix project admin-portal disable [--yes]` | turn it off | `PUT /admin-portal/enabled` |
 | `norbix project admin-portal structure` | show its layout (service user only) | `GET /admin-portal/structure` |
 | `norbix project admin-portal set-service-user <id>` | pick the service user it acts as | `PUT /settings/admin-portal/service-user` |
-| `norbix project admin-portal set-url (<url> \| --clear)` | use your own address, or the Norbix one again | `PATCH /settings/admin-url` |
+| `norbix project admin-portal set-url (<url> \| --clear)` | save the address where you run the portal (its origin joins CORS), or remove it | `PATCH /settings/admin-url` |
 
 ## Legal documents
 

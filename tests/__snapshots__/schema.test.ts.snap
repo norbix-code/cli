@@ -4114,25 +4114,6 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
-    "args": [],
-    "destructive": true,
-    "flags": [
-      "yes:boolean",
-      "dry-run:boolean",
-    ],
-    "id": "project admin-portal disable",
-    "supportsDryRun": true,
-  },
-  {
-    "args": [],
-    "destructive": false,
-    "flags": [
-      "dry-run:boolean",
-    ],
-    "id": "project admin-portal enable",
-    "supportsDryRun": true,
-  },
-  {
     "args": [
       "id",
     ],

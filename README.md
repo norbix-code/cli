@@ -389,11 +389,11 @@ norbix env admin-url set https://admin.example.com --prod
 norbix env admin-url set https://test-admin.example.com --env TEST
 norbix env admin-url show --env TEST     # TEST: e-mail links open https://test-admin.example.com — from its own admin URL
 norbix project --env TEST                # the project, plus environmentAdminUrl {adminUrl, effectiveAdminUrl, source}
-norbix env admin-url clear --env TEST    # back to the project admin URL, then the Norbix-hosted portal
+norbix env admin-url clear --env TEST    # back to the project admin URL
 ```
 
 An environment without its own address uses the project admin URL
-(`project admin-portal set-url`), then the Norbix-hosted portal. The address's
+(`project admin-portal set-url`). The address's
 origin is allowed through CORS automatically while it is set; promotion never
 copies it.
 

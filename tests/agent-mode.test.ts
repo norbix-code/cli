@@ -89,7 +89,6 @@ const DESTRUCTIVE: string[][] = [
   ['logs', 'clean'],
   ['project', 'delete'],
   ['project', 'disable'],
-  ['project', 'admin-portal', 'disable'],
   ['project', 'ai', 'assistant', 'delete', 'abc123'],
 ]
 
