@@ -113,8 +113,9 @@ new collection, then decide what to reuse. Reading creates nothing.
 - `--json` prints one document; a collection spec and an entity's
   intermediate-format document come as JSON objects.
 - The answers are files that ship with the gateway, the same for every account.
-- An installation whose gateway is older than these tools answers "unknown
-  tool"; the command says so and exits non-zero. Check with `norbix ai tools`.
+- An installation whose gateway is older than these tools does not have them
+  yet: the command says so (`AI_TOOL_NOT_AVAILABLE`) and exits 5, it never
+  shows an empty list. `norbix ai tools --json` lists what an installation has.
 
 ```bash
 norbix ai templates "hr portal"

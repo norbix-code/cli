@@ -178,17 +178,33 @@ describe('when a door fails', () => {
       5, 'CM-ERRORS-AI-TEMPLATES-001', 5, "There is no app template 'warehouse'. The app templates are: blog, crm, hr.",
     ])
     // The CLI's usual hint for a 404-like answer, not the "older gateway" one.
-    expect(error.hint ?? '').not.toContain('may not have the template read doors')
+    expect(error.hint ?? '').not.toContain('newer gateway release')
   })
 
-  it('a gateway older than the doors is said plainly, not shown as an empty list', async () => {
-    answer('get_app_templates', {ok: false, errors: [{code: 'UnknownTool', message: "Unknown tool 'get_app_templates'."}]})
+  it('a gateway older than the doors: the bridge refuses the tool name, and the CLI says "not there yet" (exit 5)', async () => {
+    // What the gateway's bridge sends for a name it does not know: a failed answer, not an envelope.
+    gatewayAnswers[`${TOOLS}/get_app_templates`] = {
+      __status: 400,
+      responseStatus: {isSuccess: false, errors: [{message: "No AI tool named 'get_app_templates'."}]},
+    }
 
     const r = await cli(home, ['ai', 'templates', '--json', '--profile', 'x'])
-    const error = (parseSingleJson(r.stdout) as {error: {message: string; hint: string}}).error
+    const error = (parseSingleJson(r.stdout) as {error: {code: string; exit: number; message: string; hint: string}}).error
+
+    expect([r.code, error.code, error.exit, error.message]).toEqual([
+      5, 'AI_TOOL_NOT_AVAILABLE', 5, 'This installation does not have the AI tool get_app_templates yet.',
+    ])
+    expect(error.hint).toContain('arrive with a newer gateway release')
+  })
+
+  it('another refusal (a permission, a scope) keeps the gateway\'s own words and gets no "not there yet" hint', async () => {
+    answer('search_schema_templates', {ok: false, errors: [{code: 'CM-ERRORS-PERMISSIONS-001', message: 'You may not call this tool.'}]})
+
+    const r = await cli(home, ['ai', 'schema-templates', '--json', '--profile', 'x'])
+    const error = (parseSingleJson(r.stdout) as {error: {code: string; message: string; hint?: string}}).error
 
     expect(r.code).not.toBe(0)
-    expect(error.message).toBe("Unknown tool 'get_app_templates'.")
-    expect(error.hint).toContain('may not have the template read doors yet')
+    expect([error.code, error.message]).toEqual(['CM-ERRORS-PERMISSIONS-001', 'You may not call this tool.'])
+    expect(error.hint ?? '').not.toContain('newer gateway release')
   })
 })
