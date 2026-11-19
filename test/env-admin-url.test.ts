@@ -139,11 +139,11 @@ describe('norbix env admin-url', () => {
     expect([
       describeEnvAdminUrl({env: 'TEST', adminUrl: 'https://test-admin.example.test', effectiveAdminUrl: 'https://test-admin.example.test', source: 'environment'}),
       describeEnvAdminUrl({env: 'STAGING', effectiveAdminUrl: 'https://admin.example.test', source: 'project'}),
-      describeEnvAdminUrl({env: 'TEST', adminUrl: 'https://test-admin.example.test', effectiveAdminUrl: 'https://pr-1.admin.norbix.ai', source: 'hosted', note: 'the Admin Portal is disabled'}),
+      describeEnvAdminUrl({env: 'PROD', effectiveAdminUrl: 'https://cloud.example.test', source: 'cloud', note: 'no admin URL saved'}),
     ]).toEqual([
       'TEST: e-mail links open https://test-admin.example.test — from its own admin URL',
       'STAGING: e-mail links open https://admin.example.test — from the project admin URL (no URL of its own)',
-      'TEST: e-mail links open https://pr-1.admin.norbix.ai — from the Norbix-hosted portal\n  note: the Admin Portal is disabled',
+      'PROD: e-mail links open https://cloud.example.test — from the Cloud URL — the Cloud cannot open these links\n  note: no admin URL saved',
     ])
   })
 

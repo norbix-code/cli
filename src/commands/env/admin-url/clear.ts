@@ -4,8 +4,8 @@ import {EnvAdminUrlCommand} from '../../../lib/env-admin-url-command.js'
 export default class EnvAdminUrlClear extends EnvAdminUrlCommand {
   static description = `Remove the --env environment's own admin portal address
 
-Its e-mail links then use the project admin URL (\`project admin-portal set-url\`),
-then the Norbix-hosted portal. Its origin leaves CORS again.`
+Its e-mail links then use the project admin URL (\`project admin-portal set-url\`).
+Its origin leaves CORS again.`
 
   static examples = [
     '<%= config.bin %> env admin-url clear --env TEST',

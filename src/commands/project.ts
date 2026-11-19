@@ -9,7 +9,7 @@ export default class Project extends ProjectCommand {
 Shows the configured project unless you pass another project ID. List every
 project of the account with \`account projects\`. With --env (or --prod) it also
 shows the admin portal address that environment's e-mail links open and where
-it came from (environmentAdminUrl: environment / project / hosted / cloud).`
+it came from (environmentAdminUrl: environment / project / cloud / none).`
 
   static examples = [
     '<%= config.bin %> project',

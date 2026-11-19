@@ -132,8 +132,6 @@ const routes: Array<[string[], Route[]]> = [
   [['project', 'cors', 'remove', 'https://app.example.com', '--yes'], [['GET', P], ['PATCH', `${S}/origins`]]],
 
   // Admin portal
-  [['project', 'admin-portal', 'enable'], [['PUT', `${P}/admin-portal/enabled`]]],
-  [['project', 'admin-portal', 'disable', '--yes'], [['PUT', `${P}/admin-portal/enabled`]]],
   [['project', 'admin-portal', 'structure'], [['GET', `${P}/admin-portal/structure`]]],
   [['project', 'admin-portal', 'set-service-user', ID], [['PUT', `${S}/admin-portal/service-user`]]],
   [['project', 'admin-portal', 'set-url', 'https://admin.example.com'], [['PATCH', `${S}/admin-url`]]],
@@ -199,14 +197,14 @@ describe('every project and ai command reaches its route', () => {
   }
 })
 
-it('covers all 50 project and ai routes', () => {
-  // 30 project routes (28 hub under /account/projects/{projectId}, 2 public on
+it('covers all 49 project and ai routes', () => {
+  // 29 project routes (27 hub under /account/projects/{projectId}, 2 public on
   // the API host) + 8 LLM + 7 MCP + 5 service-user routes, all named methods of
   // @norbix.ai/ts 4.4.0. Rows that read before they write share the GET with
   // `project` / `project ai settings`, so count distinct verb + path pairs.
   const distinct = new Set(routes.flatMap(([, reqs]) => reqs.map(([verb, path]) => `${verb} ${path}`)))
   distinct.delete('GET /v3/account/projects/other-project')
-  expect(distinct.size).toBe(50)
+  expect(distinct.size).toBe(49)
 })
 
 /** Run a command and return the body of its LAST request (the write). */
@@ -295,12 +293,6 @@ describe('project cors bodies', () => {
 })
 
 describe('project admin portal and legal bodies', () => {
-  it('admin-portal enable / disable send enabled true / false', async () => {
-    expect(await bodyOf(['project', 'admin-portal', 'enable'])).toEqual({enabled: true})
-    calls = []
-    expect(await bodyOf(['project', 'admin-portal', 'disable', '--yes'])).toEqual({enabled: false})
-  })
-
   it('set-service-user sends the service user id', async () => {
     expect(await bodyOf(['project', 'admin-portal', 'set-service-user', ID])).toEqual({serviceUserId: ID})
   })
