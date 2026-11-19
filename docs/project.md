@@ -92,8 +92,6 @@ you pass `--remove-admin-portal-origin`.
 | command | what it does | endpoint |
 |---|---|---|
 | `norbix project legal set [--terms-file <md>] [--privacy-file <md>] [--clear-terms] [--clear-privacy]` | save the Terms & Conditions and Privacy Policy | `PATCH /settings/legal` |
-| `norbix project legal expose` | show them to the public | `PATCH /settings/legal/expose` |
-| `norbix project legal hide` | stop showing them | `PATCH /settings/legal/expose` |
 | `norbix project legal show <terms\|privacy>` | read one the way the public does | API host `GET /{version}/public/projects/{ProjectId}/legal/{Kind}` |
 
 The server clears a document it does not get, so `legal set` with one file
@@ -102,17 +100,13 @@ reads the other from the project and sends it back unchanged.
 ## What the public sees
 
 The public project config (`project public-config`) is what an admin portal or
-a sign-in page reads before anyone signs in. Three switches decide what is in
-it: the legal documents (above), the brand (on by default) and the sign-in
-methods with the password policy (off by default).
+a sign-in page reads before anyone signs in. It always holds the brand, the
+sign-in methods and the password policy; saved legal documents are always
+public too.
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix project brand expose` | show the name, colours, logo and icon to the public | `PATCH /settings/brand/expose` |
-| `norbix project brand hide` | stop showing them; the logo / icon addresses answer 404 | `PATCH /settings/brand/expose` |
 | `norbix project brand show <logo\|icon> [--output <file>]` | download the picture the way the public gets it | API host `GET /{version}/public/projects/{ProjectId}/brand/{Kind}` |
-| `norbix project auth expose` | show the sign-in methods and the password policy to the public | `PATCH /settings/auth/expose` |
-| `norbix project auth hide` | stop showing them | `PATCH /settings/auth/expose` |
 
 ## AI chat
 

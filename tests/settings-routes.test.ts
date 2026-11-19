@@ -7,7 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 /**
  * Project settings (matrix section 21): every command of the General info,
- * Languages, Environments, Legal + expose, AI and Billing rows, run the way a
+ * Languages, Environments, Legal, AI and Billing rows, run the way a
  * user types it through oclif and the real `@norbix.ai/ts` transport. Each
  * row checks the host, the verb and the exact path of every request, in
  * order; the bodies, queries, confirmations and dry runs are checked below.
@@ -123,13 +123,8 @@ const routes: Array<[string[], Route[]]> = [
   [['env', 'admin-url', 'show', '--env', 'TEST'], [['GET', `${E}/TEST/admin-url`]]],
   [['env', 'admin-url', 'set', 'https://test-admin.example.com', '--env', 'TEST'], [['PATCH', `${E}/TEST/admin-url`], ['GET', `${E}/TEST/admin-url`]]],
 
-  // Legal + expose switches
+  // Legal
   [['project', 'legal', 'set', '--clear-terms', '--clear-privacy', '--prod'], [['PATCH', `${S}/legal`]]],
-  [['project', 'legal', 'expose', '--prod'], [['PATCH', `${S}/legal/expose`]]],
-  [['project', 'auth', 'expose', '--prod'], [['PATCH', `${S}/auth/expose`]]],
-  [['project', 'auth', 'hide', '--prod'], [['PATCH', `${S}/auth/expose`]]],
-  [['project', 'brand', 'expose', '--prod'], [['PATCH', `${S}/brand/expose`]]],
-  [['project', 'brand', 'hide', '--prod'], [['PATCH', `${S}/brand/expose`]]],
 
   // AI settings tab
   [['project', 'ai', 'settings', '--prod'], [['GET', `${P}/ai/settings`]]],
@@ -286,23 +281,7 @@ describe('environments', () => {
   })
 })
 
-describe('legal + expose switches', () => {
-  it('auth / brand expose and hide send exposed true / false', async () => {
-    expect(await bodyOf(['project', 'auth', 'expose', '--prod'])).toEqual({exposed: true})
-    calls = []
-    expect(await bodyOf(['project', 'auth', 'hide', '--prod'])).toEqual({exposed: false})
-    calls = []
-    expect(await bodyOf(['project', 'brand', 'expose', '--prod'])).toEqual({exposed: true})
-    calls = []
-    expect(await bodyOf(['project', 'brand', 'hide', '--prod'])).toEqual({exposed: false})
-  })
-
-  it('brand hide --dry-run sends nothing', async () => {
-    const {error} = await runCommand(['project', 'brand', 'hide', '--prod', '--dry-run', ...globalArgs])
-    expect(error).toBeUndefined()
-    expect(sent(['project'])).toHaveLength(0)
-  })
-
+describe('legal and brand', () => {
   it('brand show --output saves the bytes the API host answered', async () => {
     const out = join(mkdtempSync(join(tmpdir(), 'norbix-brand-')), 'logo.png')
     const {error} = await runCommand(['project', 'brand', 'show', 'logo', '--output', out, '--prod', ...globalArgs])

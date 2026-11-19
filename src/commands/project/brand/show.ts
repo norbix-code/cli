@@ -8,9 +8,8 @@ export default class ProjectBrandShow extends ProjectCommand {
   static description = `Download the project logo or icon the way the public gets it
 
 Calls the public route on the API host (no sign-in), the address the public
-project config hands out as branding.logoUrl / iconUrl. It answers only while
-the brand is public (\`project brand expose\`) and a logo / icon is set;
-every other case is the same 404. --output saves the picture; without it the
+project config hands out as branding.logoUrl / iconUrl. It answers when a
+logo / icon is set; every other case is the same 404. --output saves the picture; without it the
 command prints its size.`
 
   static examples = [
