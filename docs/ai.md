@@ -94,6 +94,35 @@ norbix ai service-user create --name "Claude Code on my laptop" --project-role r
 norbix ai service-user rotate-key su_123 --revoke key_old
 ```
 
+## Templates to read before you design
+
+What Norbix already has as a worked example: the app templates (a whole
+backend: blog, CRM, HR …) and the schema registry (reviewed collection shapes:
+employees, blog_posts, orders …). Read them before you design a new app or a
+new collection, then decide what to reuse. Reading creates nothing.
+
+| Command | What it does | AI tool it calls |
+|---|---|---|
+| `norbix ai templates [words]` | the app template cards: id, version, tags, collections, summary; templates whose tags match the words come first | `get_app_templates` |
+| `norbix ai template <id> [--specs]` | one template's guide (Markdown): modules, collections, roles, automations, build order; `--specs` adds the collection specs | `get_app_template` |
+| `norbix ai schema-templates [words] [--take <n>]` | search the registry by keyword; each hit says where it matched, what it uses and what is related | `search_schema_templates` |
+| `norbix ai schema-template <ids> [--depth <0-3>]` | the full shape of the named entities and their related ones (10 at most) | `get_entity_graph` |
+
+- Each command sends one request, `POST /{version}/account/ai/tools/{ToolName}`,
+  on the account-level client. The four tools only read, so nothing asks first.
+- `--json` prints one document; a collection spec and an entity's
+  intermediate-format document come as JSON objects.
+- The answers are files that ship with the gateway, the same for every account.
+- An installation whose gateway is older than these tools answers "unknown
+  tool"; the command says so and exits non-zero. Check with `norbix ai tools`.
+
+```bash
+norbix ai templates "hr portal"
+norbix ai template hr
+norbix ai schema-templates employee
+norbix ai schema-template employees,departments --depth 0 --json
+```
+
 ## AI tools
 
 The AI tool inventory on the Hub: the tools an external agent can call. The
