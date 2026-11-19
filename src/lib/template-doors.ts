@@ -77,29 +77,51 @@ export function parseJsonText(text: string): unknown {
   }
 }
 
+/** The bridge's answer for a tool name it does not know (gateway `AiToolsBridge.cs`). */
+const NO_SUCH_TOOL = /No AI tool named/i
+
+/** True when a thrown SDK error carries that answer, in its message or in one of its error items. */
+export function isNoSuchTool(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const {message, fieldErrors} = error as {message?: unknown; fieldErrors?: Array<{message?: unknown}>}
+  return [message, ...(Array.isArray(fieldErrors) ? fieldErrors.map((e) => e?.message) : [])].some(
+    (text) => typeof text === 'string' && NO_SUCH_TOOL.test(text),
+  )
+}
+
 export abstract class TemplateDoorCommand extends AiToolsCommand {
   /**
    * Calls one door and returns its `data`. A failed envelope becomes the CLI's
    * error with the gateway's own code. An installation whose gateway is older
-   * than the doors answers "unknown tool": that is said plainly.
+   * than the doors has no such tool: the bridge refuses the call itself
+   * ("No AI tool named '…'", a failed answer, so the SDK throws) — that is
+   * said plainly, as "not there yet", never shown as an empty list.
    */
   protected async door<T>(flags: GlobalFlags, tool: string, args: Record<string, unknown>, docs: string): Promise<T> {
     const sent = Object.fromEntries(Object.entries(args).filter(([, value]) => value !== undefined && value !== ''))
-    const res = await this.accountClient(flags).hub.account.invokeAiTool({toolName: tool, argumentsJson: JSON.stringify(sent)})
+    let res: Awaited<ReturnType<ReturnType<TemplateDoorCommand['accountClient']>['hub']['account']['invokeAiTool']>>
+    try {
+      res = await this.accountClient(flags).hub.account.invokeAiTool({toolName: tool, argumentsJson: JSON.stringify(sent)})
+    } catch (error) {
+      if (!isNoSuchTool(error)) throw error
+      throw new CliError({
+        exit: EXIT.NOT_FOUND,
+        code: 'AI_TOOL_NOT_AVAILABLE',
+        message: `This installation does not have the AI tool ${tool} yet.`,
+        hint: 'The template read doors arrive with a newer gateway release. `norbix ai tools --json` lists the tools this installation has.',
+        docs,
+      })
+    }
 
     const envelope = (typeof res.result === 'string' ? parseJsonText(res.result) : res.result) as ToolEnvelope | undefined
     if (envelope && typeof envelope === 'object' && envelope.ok === true) return (envelope.data ?? {}) as T
 
     const first = envelope?.errors?.[0]
-    const unknownTool = !first?.code?.startsWith('CM-ERRORS-AI-TEMPLATES-')
     throw new CliError({
       exit: (first?.code && EXIT_BY_CODE[first.code]) || EXIT.VALIDATION,
       code: first?.code ?? 'TEMPLATE_DOOR_FAILED',
       message: first?.message ?? `The AI tool ${tool} did not answer.`,
       errors: envelope?.errors,
-      hint: unknownTool
-        ? `This installation may not have the template read doors yet (the AI tool ${tool}). Check with \`norbix ai tools --json\`.`
-        : undefined,
       docs,
     })
   }
