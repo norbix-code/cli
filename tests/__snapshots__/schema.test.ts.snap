@@ -373,6 +373,28 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "names",
+    ],
+    "destructive": false,
+    "flags": [
+      "depth:string",
+    ],
+    "id": "ai schema-template",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[query]",
+    ],
+    "destructive": false,
+    "flags": [
+      "take:string",
+    ],
+    "id": "ai schema-templates",
+    "supportsDryRun": false,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [
@@ -426,6 +448,26 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [],
     "id": "ai service-users",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "id",
+    ],
+    "destructive": false,
+    "flags": [
+      "specs:boolean",
+    ],
+    "id": "ai template",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "[query]",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "ai templates",
     "supportsDryRun": false,
   },
   {

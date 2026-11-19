@@ -90,6 +90,8 @@ norbix scheduler list
 | `norbix ai init` | Set up a project for Claude Code / Cursor / AGENTS.md agents |
 | `norbix ai context` | Print what an agent needs: what to build on, your projects, modules, integrations |
 | `norbix ai check` | Find what was added beside Norbix (for CI and agent hooks) |
+| `norbix ai templates [words]` · `norbix ai template <id>` | Read the app templates (blog, CRM, HR …) before designing a new app — see [docs/ai.md](docs/ai.md) |
+| `norbix ai schema-templates [words]` · `norbix ai schema-template <ids>` | Search and read the schema registry: reviewed collection shapes to build from |
 | `norbix ai context` | The project context for an AI agent: your projects, environments, modules, integrations — no secrets |
 
 ### Plain-word access to every endpoint
