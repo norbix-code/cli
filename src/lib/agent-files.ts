@@ -10,7 +10,7 @@ export const MARKER_START = '<!-- norbix-cli:start -->'
 export const MARKER_END = '<!-- norbix-cli:end -->'
 
 /** Raise it when the text below changes: `norbix ai init --update` compares it. */
-export const AGENT_FILES_VERSION = 4
+export const AGENT_FILES_VERSION = 5
 const VERSION_LINE = `<!-- norbix-cli:version ${AGENT_FILES_VERSION} -->`
 
 /** The version a file was written with; 0 when it has no version line (older CLI). */
@@ -50,6 +50,8 @@ function buildContract(): string[] {
     'App code uses an official Norbix SDK (TypeScript: `@norbix.ai/ts`), never raw HTTP. The `norbix` CLI sets the project up; it is not an app runtime.',
     'Unsure whether Norbix can do something? Check `norbix ai context` and `norbix schema --json`. Do not guess, and do not write down a guess as a fact.',
     `Norbix really lacks it? Name the gap and ask the user before adding anything from the last column; the reason then goes into \`norbix.boundaries.json\`. Run \`norbix ai check\` before you finish.`,
+    // The same rule as gateway NorbixBuildContract.ReportIssueRule and the MCP server's instructions — change all three together.
+    'Clear evidence that Norbix itself failed — a Norbix error code or a 5xx answer for a valid request, not your own input, a validation error or a missing permission? Report it once: `norbix support report --automatic --subject "…" --message "…" --evidence errorCode=… --evidence endpoint=… --evidence httpStatus=… --evidence correlationId=…` (never a secret in it). It is free and does not count against any support allowance; Norbix reads every report but does not promise an immediate fix. Tell the user you reported it and give them the case id.',
     '',
   ]
 }
