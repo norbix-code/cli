@@ -5627,6 +5627,47 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": true,
   },
   {
+    "args": [],
+    "destructive": false,
+    "flags": [],
+    "id": "support list",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "caseId",
+    ],
+    "destructive": false,
+    "flags": [
+      "message:string",
+    ],
+    "id": "support reply",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "subject:string",
+      "message:string",
+      "kind:option",
+      "severity:option",
+      "evidence:string",
+      "automatic:boolean",
+    ],
+    "id": "support report",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "caseId",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "support show",
+    "supportsDryRun": false,
+  },
+  {
     "args": [
       "triggerType",
     ],
