@@ -58,6 +58,9 @@ norbix scheduler list
 | `norbix membership settings email-bindings <e-mail>` (+ `set`) · `membership settings welcome-email set` | The tokens of a membership e-mail template (Auto / NeedsValue / NotAvailable) and their values; the welcome e-mail of the environment — see [docs/email.md](docs/email.md) |
 | `norbix membership passkeys` | The passkeys of the signed-in project user (run with that user's token) |
 | `norbix membership password reset request <email>` | Admin: send a test password-reset e-mail in `--env`; says whether a login was found, which integration sends it, which template and language the hub will use (or `fallback: <reason>`, e.g. `mjml-render-failed (401)`), the MJML renderer's state, and (from the hub's project-log entry) whether it went out, through which integration and template |
+| `norbix membership settings email-verification set` | Turn e-mail verification of password sign-ups on / off: `--on`, `--expiration <min>`, `--template <tmpl_…>`, `--callback <https://your app page>`, `--require` / `--no-require` (block password sign-in until the e-mail is verified; needs `--callback`), `--off` |
+| `norbix membership email-verification confirm <token>` | Confirm an e-mail address with the token from a verification link (public; as the app's page does) |
+| `norbix membership email-verification resend <email>` | Send the verification link again (public; always answers OK) |
 | `norbix env list/use/create/delete/rank/promote/rollback`, `norbix env built-ins repair` | Manage project environments (add one on your own MongoDB, move it on the promotion ladder) and move content TEST → PROD (see *Environments* below) |
 | `norbix env admin-url set/clear/show` | The admin portal address one environment's reset / magic-link / invitation e-mails open (gateway N49); `norbix project --env <ENV>` shows it too, with its source |
 | `norbix logs list/trail/get` | Read project logs, follow one correlation ID, show one entry |

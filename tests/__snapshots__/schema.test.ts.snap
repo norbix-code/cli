@@ -3495,6 +3495,28 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "token",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "membership email-verification confirm",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "email",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+    ],
+    "id": "membership email-verification resend",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
       "id",
     ],
     "destructive": false,
@@ -3643,6 +3665,21 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "bindings:string",
     ],
     "id": "membership settings email-bindings set",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "on:boolean",
+      "off:boolean",
+      "template:string",
+      "expiration:string",
+      "callback:string",
+      "require:boolean",
+    ],
+    "id": "membership settings email-verification set",
     "supportsDryRun": true,
   },
   {
