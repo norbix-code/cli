@@ -485,3 +485,37 @@ export function formatWorkflowUsage(res: unknown): string {
 function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`
 }
+
+/** The workflow is not (yet) on the read side: CM-ERRORS-WORKFLOWS-002, HTTP 404. */
+const WORKFLOW_NOT_FOUND = 'CM-ERRORS-WORKFLOWS-002'
+
+/**
+ * Reads a new workflow's draft until the read side holds it. The gateway
+ * answers a save or an install before its projection writes Redis (a short
+ * delay, accepted by design), so a run started at once can answer -002. True
+ * when the draft was read within `timeoutMs`; false when it was still missing.
+ * Any other error is thrown.
+ */
+export async function waitForWorkflowDraft(
+  read: () => Promise<unknown>,
+  {timeoutMs, pollMs = 250, sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)), now = Date.now}: {
+    timeoutMs: number
+    pollMs?: number
+    sleep?: (ms: number) => Promise<void>
+    now?: () => number
+  },
+): Promise<boolean> {
+  const until = now() + timeoutMs
+  for (;;) {
+    try {
+      await read()
+      return true
+    } catch (error) {
+      const e = error as {status?: number; code?: string}
+      if (e?.status !== 404 && e?.code !== WORKFLOW_NOT_FOUND) throw error
+    }
+
+    if (now() + pollMs > until) return false
+    await sleep(pollMs)
+  }
+}

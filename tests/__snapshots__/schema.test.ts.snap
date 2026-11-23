@@ -1040,6 +1040,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "ref:string",
       "name:string",
       "identity:string",
+      "wait:string",
     ],
     "id": "code marketplace install-workflow",
     "supportsDryRun": true,
