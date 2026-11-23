@@ -50,6 +50,7 @@ const LISTED_ROUTES: Record<string, string> = {
   'hub.cleanLogs': 'POST /logs/clean',
   'hub.revokeAccountPasskey': 'POST /account/userauth/passkeys/{CredentialId}/revoke',
   'api.revokePasskey': 'POST /membership/userauth/passkeys/{CredentialId}/revoke',
+  'hub.removeIntegrationSecrets': 'POST /integrations/{IntegrationId}/secrets/remove',
 }
 
 describe('the two explicit lists', () => {

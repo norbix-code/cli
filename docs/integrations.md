@@ -5,8 +5,8 @@ Push, SMS, Payments, Database and AI modules have had their commands for a
 while ([docs/email.md](email.md), [docs/push.md](push.md), [docs/sms.md](sms.md),
 [docs/payments.md](payments.md), [docs/database.md](database.md),
 [docs/ai.md](ai.md)). This page covers the rest — Files, Code, Logs and
-Membership — and the two cross-module pieces: keyless cloud setup and quick
-connect.
+Membership — and the cross-module pieces: keyless cloud setup, saved secrets
+and quick connect.
 
 Every module reads the same way: `norbix <module> integrations` lists,
 `norbix <module> integration <id>` shows one, `norbix <module> integration
@@ -131,6 +131,19 @@ subject and the audience the cloud must trust, whether keyless works on this
 gateway (with the reason when not), the setup script and the ready template
 files; `--template cloudformation|bicep|terraform` prints one file for piping.
 Covered by `tests/integrations-keyless-setup.test.ts`.
+
+## Saved secrets (every module)
+
+| command | what it does | endpoint |
+|---|---|---|
+| `norbix integrations secrets <integrationId> [--env <env>]` | which secrets are saved: KEY, SET yes/no, OPTIONAL yes/no — never a value | `GET /{version}/integrations/{IntegrationId}/secrets` |
+| `norbix integrations secrets remove <integrationId> <key…> [--env <env>] [--yes]` | remove saved optional secrets (asks first) | `POST /{version}/integrations/{IntegrationId}/secrets/remove` |
+
+A needed secret cannot be removed (`CM-ERRORS-SECRETS-012`, nothing changes);
+replace it by saving the integration with a new value. To keep a saved secret
+when you save an integration again, leave that secret empty. Keyless,
+Norbix-owned, MCP, Marketplace and Webhook integrations show no rows here.
+Covered by `tests/integrations-secrets.test.ts`.
 
 ## Quick connect (one-click OAuth) — payments
 
