@@ -109,6 +109,8 @@ describe('the rule for a resolved SDK method', () => {
       'api.membership.redirectToLinkIdentity',
       'api.membership.startLinkIdentity',
       'hub.code.getMarketplaceFunctionRunDetails',
+      // sdk-ts 4.75.0: builds a multipart body (one file part), no request DTO.
+      'hub.support.addSupportCaseAttachment',
     ])
   })
 

@@ -91,6 +91,7 @@ of `--json` as well.
 | `norbix payments integration <id>` | show one integration | `GET /integrations/{id}` |
 | `norbix payments integration save --provider <p> [--name <n>] [--id <id>] [--disabled] [--config <json>]` | create or update an integration | `POST /integrations` |
 | `norbix payments integration test --integration <id>` | check the credentials with the provider | `POST /integrations/test` |
+| `norbix payments integrations test-payment <id> [--return-url <https url>]` | Neopay and Montonio: open a real 0.01 test payment and print the link to pay it yourself | `POST /integrations/test-payment` |
 | `norbix payments integration confirm-delivery <id>` | confirm you checked the test result | `POST /integrations/confirm-human-delivery` |
 | `norbix payments integration enable <id>` | turn it on | `PUT /integrations/{Id}/enable` |
 | `norbix payments integration disable <id> [--yes]` | turn it off | `PUT /integrations/{Id}/disable` |
@@ -125,6 +126,8 @@ norbix payments integration save --provider Stripe --name Stripe --config @strip
 norbix payments integration test --integration int_123
 norbix payments integration confirm-delivery int_123
 ```
+
+Saving an integration again (`--id`) with an empty secret keeps the saved one.
 
 For Montonio (the checkout provider of payment orders), the keys of a Montonio
 **sandbox** store — production stays off until the owner turns it on:
