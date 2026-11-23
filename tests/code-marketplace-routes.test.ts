@@ -86,12 +86,15 @@ describe('norbix code marketplace install-workflow', () => {
   const SEED = 'ml_workflow_order_thanks_v1'
   const REFS = ['--ref', 'orders=orders', '--ref', 'thanks=tmpl_1', '--ref', 'emailIntegration=int_1']
 
-  it('→ POST /listings/{id}/install-workflow, one call, and says nothing ran', async () => {
+  it('→ POST /listings/{id}/install-workflow, then reads the new draft once, and says nothing ran', async () => {
     answer = {workflow: {workflowId: 'wf_1', version: 0, hasDraft: true, isEnabled: true, definition: {name: 'Thanks'}}}
     const {error} = await runCommand(['code', 'marketplace', 'install-workflow', SEED, ...REFS, '--name', 'Thanks', '--identity', 'usr_1', ...globalArgs])
 
     expect(error).toBeUndefined()
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`POST ${M}/listings/${SEED}/install-workflow`])
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      `POST ${M}/listings/${SEED}/install-workflow`,
+      'GET /v3/code/workflows/wf_1/draft',
+    ])
     expect(calls[0]?.body).toMatchObject({
       name: 'Thanks',
       executionIdentityId: 'usr_1',
@@ -100,6 +103,54 @@ describe('norbix code marketplace install-workflow', () => {
     expect(out()).toContain('Workflow wf_1 (Thanks) installed as a draft.')
     expect(out()).toContain('version: none published  draft: yes')
     expect(out()).toContain('Nothing ran. When it is ready: norbix code workflows publish wf_1')
+  })
+
+  /** The install answers wf_1; the draft read answers 404 -002 `missing` times, then the draft. */
+  const readSideLags = (missing: number) => {
+    let drafts = 0
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const envList = envListAnswer(input, init)
+      if (envList) return envList
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      calls.push({method: init?.method ?? 'GET', path: url.pathname, query: url.searchParams})
+      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json'}})
+      if (init?.method === 'POST') return json({workflow: {workflowId: 'wf_1', definition: {name: 'Thanks'}}})
+      drafts += 1
+      return drafts <= missing
+        ? json({responseStatus: {errors: [{errorCode: 'CM-ERRORS-WORKFLOWS-002', message: "Workflow 'wf_1' was not found in environment PROD."}]}}, 404)
+        : json({workflow: {workflowId: 'wf_1', hasDraft: true}})
+    }) as typeof globalThis.fetch
+  }
+
+  it('waits while the read side does not hold the draft yet (404 -002), then ends', async () => {
+    readSideLags(2)
+    const {error} = await runCommand(['code', 'marketplace', 'install-workflow', SEED, ...REFS, ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      `POST ${M}/listings/${SEED}/install-workflow`,
+      'GET /v3/code/workflows/wf_1/draft',
+      'GET /v3/code/workflows/wf_1/draft',
+      'GET /v3/code/workflows/wf_1/draft',
+    ])
+    expect(out()).toContain('Workflow wf_1 (Thanks) installed as a draft.')
+  })
+
+  it('--wait 0 reads nothing after the install', async () => {
+    readSideLags(99)
+    const {error} = await runCommand(['code', 'marketplace', 'install-workflow', SEED, ...REFS, '--wait', '0', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`POST ${M}/listings/${SEED}/install-workflow`])
+  })
+
+  it('a draft still missing after --wait is a warning, not a failure: the install happened', async () => {
+    readSideLags(99)
+    const {error, stderr} = await runCommand(['code', 'marketplace', 'install-workflow', SEED, ...REFS, '--wait', '1', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(stderr).toContain('Warning: the draft wf_1 is installed but not readable yet after 1 s')
+    expect(out()).toContain('Workflow wf_1 (Thanks) installed as a draft.')
   })
 
   it('the value keeps every = after the first', async () => {

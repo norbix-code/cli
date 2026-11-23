@@ -3,12 +3,14 @@ import {Args, Flags} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 import {CliError, toEnvelope} from '../../../lib/cli-error.js'
 import {parseReferences, REFERENCE_REFUSED, wantedReferences} from '../../../lib/marketplace.js'
-import {formatWorkflow} from '../../../lib/workflows.js'
+import {formatWorkflow, waitForWorkflowDraft} from '../../../lib/workflows.js'
 
 export default class CodeMarketplaceInstallWorkflow extends BaseCommand {
   static description = `Beta: install a workflow listing as a draft
 
-Fills the listing's references and saves a new workflow's draft in the current environment: nothing runs and nothing is published. Give one --ref key=value for every reference the listing declares (read them with code marketplace listings <ml_…>): a collection name, a template id, an integration id. A --ref that is not key=value is refused before anything is sent. When the gateway refuses a missing or undeclared reference (CM-ERRORS-MARKETPLACE-036) the listing is read once and the hint names what it wants. A connector listing is CM-ERRORS-MARKETPLACE-035: enable it instead.`
+Fills the listing's references and saves a new workflow's draft in the current environment: nothing runs and nothing is published. Give one --ref key=value for every reference the listing declares (read them with code marketplace listings <ml_…>): a collection name, a template id, an integration id. A --ref that is not key=value is refused before anything is sent. When the gateway refuses a missing or undeclared reference (CM-ERRORS-MARKETPLACE-036) the listing is read once and the hint names what it wants. A connector listing is CM-ERRORS-MARKETPLACE-035: enable it instead.
+
+The command ends when the new draft can be read and run (up to --wait seconds, default 15): the gateway answers before its read side has the workflow, so a run started at once could answer CM-ERRORS-WORKFLOWS-002.`
 
   static examples = [
     '<%= config.bin %> code marketplace install-workflow ml_workflow_order_thanks_v1 --ref orders=orders --ref thanks=tmpl_3TKDGIwDEpWXROwKr2PBut --ref emailIntegration=int_1R5izfi0g6MuSGs4VnUMnp',
@@ -24,6 +26,7 @@ Fills the listing's references and saves a new workflow's draft in the current e
     ref: Flags.string({description: 'A reference the listing declares: key=value (repeat for each)', multiple: true}),
     name: Flags.string({description: "The new workflow's name; default: the listing's"}),
     identity: Flags.string({description: "The execution identity (usr_…); default: the environment's"}),
+    wait: Flags.integer({description: 'Seconds to wait until the new draft can be run; 0 = do not wait', default: 15, min: 0}),
   }
 
   async run(): Promise<unknown> {
@@ -40,6 +43,11 @@ Fills the listing's references and saves a new workflow's draft in the current e
       } as Parameters<typeof client.hub.code.installMarketplaceWorkflow>[0])
 
       const id = res?.workflow?.workflowId
+      if (id && flags.wait > 0) {
+        const ready = await waitForWorkflowDraft(() => client.hub.code.getCodeWorkflowDraft({id}), {timeoutMs: flags.wait * 1000})
+        if (!ready) process.stderr.write(`Warning: the draft ${id} is installed but not readable yet after ${flags.wait} s; wait a moment before you run it.\n`)
+      }
+
       this.print(`${formatWorkflow('installed as a draft', res)}\nNothing ran. When it is ready: norbix code workflows publish ${id}`)
       return res
     } catch (error) {
