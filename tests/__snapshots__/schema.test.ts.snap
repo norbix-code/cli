@@ -3979,6 +3979,18 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "integrationId",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "return-url:string",
+    ],
+    "id": "payments integrations test-payment",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
       "id",
     ],
     "destructive": false,
@@ -5662,6 +5674,53 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     ],
     "id": "sms unarchive",
     "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "caseId",
+      "file",
+    ],
+    "destructive": false,
+    "flags": [
+      "dry-run:boolean",
+      "name:string",
+    ],
+    "id": "support attach",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "caseId",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "support attachments",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "caseId",
+      "attachmentId",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "support detach",
+    "supportsDryRun": true,
+  },
+  {
+    "args": [
+      "caseId",
+      "attachmentId",
+    ],
+    "destructive": false,
+    "flags": [
+      "out:string",
+    ],
+    "id": "support download",
+    "supportsDryRun": false,
   },
   {
     "args": [],

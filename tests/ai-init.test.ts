@@ -128,9 +128,10 @@ describe('norbix ai init', () => {
     expect(skill).not.toMatch(/--api-key|nbk_/)
     // Owner round 2026-11-05 (items 73 + 78): the skill carries the build checklist and two tiny
     // examples (~30 lines), so its budget grew from 75; the short block only points at it.
-    expect(skill.split('\n').length).toBeLessThanOrEqual(105)
+    // Review batch 3: one more checklist line (a new schema comes with its form and list columns).
+    expect(skill.split('\n').length).toBeLessThanOrEqual(106)
     expect(skill).toContain('## Build checklist')
-    expect(skill).toContain('`@Model.Cmf.RenderProjectLogo("logo")`')
+    expect(skill).toContain('`@Model.Nbf.RenderProjectLogo("logo")`')
     expect(skill).toContain('{"source":"user","displayField":"displayName","multiple":false}')
     expect(skill).toContain('"meta":{"translateOptions":{"translatable":true}}')
     expect(skill).toContain('Never build your own users, sessions or auth tables')

@@ -87,12 +87,23 @@ export function methodsOf(block, label = 'module') {
   const problems = []
   const forwarders = new Set()
   let sendsInMethods = 0
+  let handWrittenSends = 0
   for (const m of block.matchAll(SIGNATURE_RE)) {
     const name = m[1]
     const where = `${label}.${name}`
     const afterSig = block.slice(m.index + m[0].length)
     const body = afterSig.match(/^\s*return this\.transport\.send\(\{([\s\S]*?)\}\);/)
     if (!body) {
+      // A hand-written helper with the request shape (sdk-ts 4.75.0
+      // hub.support.addSupportCaseAttachment builds a multipart body first):
+      // its doc says "Hand-written", it has no request DTO, and like the
+      // `async` helpers it is not an endpoint method — its send is not counted.
+      if (/Hand-written/.test(docBefore(block, m.index) ?? '')) {
+        const next = afterSig.search(/^ {2}\w+ = /m)
+        handWrittenSends += (next === -1 ? afterSig : afterSig.slice(0, next)).split(SEND).length - 1
+        continue
+      }
+
       problems.push(`${where}: the method body is not \`return this.transport.send({...})\``)
       continue
     }
@@ -137,7 +148,7 @@ export function methodsOf(block, label = 'module') {
 
   // A hand-written `name = async (...)` (sign-in, sign-out, 4.44.0) is not an
   // endpoint method: it has no request DTO, so its send calls are not counted.
-  const sends = block.split(SEND).length - 1 - sendsInHandWritten(block)
+  const sends = block.split(SEND).length - 1 - sendsInHandWritten(block) - handWrittenSends
   if (sends !== sendsInMethods) {
     problems.push(`${label}: ${sends - sendsInMethods} send call(s) outside a method of the shape \`name = (request = {}, options = {}) => {\``)
   }
