@@ -3316,6 +3316,28 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "supportsDryRun": false,
   },
   {
+    "args": [
+      "integrationId",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "integrations secrets",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
+      "integrationId",
+      "key",
+    ],
+    "destructive": true,
+    "flags": [
+      "yes:boolean",
+      "dry-run:boolean",
+    ],
+    "id": "integrations secrets remove",
+    "supportsDryRun": true,
+  },
+  {
     "args": [],
     "destructive": false,
     "flags": [

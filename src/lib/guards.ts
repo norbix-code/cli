@@ -61,6 +61,8 @@ export const DELETES_WITH_ANOTHER_VERB: readonly GuardedCall[] = [
   {surface: 'hub', method: 'revokeAccountPasskey'},
   // POST /membership/userauth/passkeys/{CredentialId}/revoke: the same for a project user's passkey.
   {surface: 'api', method: 'revokePasskey'},
+  // POST /integrations/{IntegrationId}/secrets/remove: removes saved optional secrets of an integration for good.
+  {surface: 'hub', method: 'removeIntegrationSecrets'},
 ]
 
 /**
