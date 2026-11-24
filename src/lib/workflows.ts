@@ -104,8 +104,57 @@ export function formatIssue(issue: WorkflowIssue): string {
 }
 
 /** The readable `validate` report: a verdict line, then the errors and the warnings. */
+/** What leaves a step or the start (`ports` of validate, Code.Workflows.md §3.7a): a format, and the collection of a record. */
+export interface WorkflowPort {
+  format?: string
+  collection?: string
+}
+
+/** The `ports` of a validate answer: what the start hands over, and what each step takes and gives. */
+export interface WorkflowPorts {
+  start?: WorkflowPort
+  steps?: {
+    stepId?: string
+    inputs?: (WorkflowPort & {from?: string; exit?: string})[]
+    output?: WorkflowPort
+    uses?: (WorkflowPort & {stepId?: string})[]
+    takes?: {field?: string; accepts?: string[]}[]
+  }[]
+}
+
+/** "record of ads", "json". */
+const formatPort = (port: WorkflowPort | undefined): string =>
+  port?.format ? `${port.format}${port.collection ? ` of ${port.collection}` : ''}` : '?'
+
+/**
+ * What each step takes and gives, one line a step — the same thing the Visual Builder shows on a step:
+ *   checkAd: takes record of ads (from the start) → gives json
+ *   approve: takes boolean (from decide, then); also uses checkAd: json → gives json
+ * A field that takes the whole input says which formats fit it. Nothing when the answer has no ports.
+ */
+export function formatPorts(ports: WorkflowPorts | undefined): string[] {
+  const steps = ports?.steps ?? []
+  if (steps.length === 0) return []
+  const lines = ['Data (what each step takes and gives):', `  start → gives ${formatPort(ports?.start)}`]
+  for (const step of steps) {
+    const inputs = (step.inputs ?? []).map((i) => {
+      const from = i.from === 'start' ? 'from the start' : `from ${i.from ?? '?'}${i.exit && i.exit !== 'next' ? `, ${i.exit}` : ''}`
+      return `${formatPort(i)} (${from})`
+    })
+    const uses = (step.uses ?? []).map((u) => `${u.stepId ?? '?'}: ${formatPort(u)}`)
+    const takes = (step.takes ?? []).map((t) => `${(t.field ?? '').replace(/^config\./, '')} takes ${(t.accepts ?? []).join(' | ')}`)
+    lines.push(
+      `  ${step.stepId ?? '?'}: takes ${inputs.length > 0 ? inputs.join(' or ') : 'nothing (no step leads to it)'}` +
+        `${uses.length > 0 ? `; also uses ${uses.join(', ')}` : ''} → gives ${formatPort(step.output)}` +
+        `${takes.length > 0 ? `  [${takes.join('; ')}]` : ''}`,
+    )
+  }
+
+  return lines
+}
+
 export function formatValidation(res: unknown): string {
-  const r = (res ?? {}) as {isValid?: boolean; errors?: WorkflowIssue[]; warnings?: WorkflowIssue[]}
+  const r = (res ?? {}) as {isValid?: boolean; errors?: WorkflowIssue[]; warnings?: WorkflowIssue[]; ports?: WorkflowPorts}
   const errors = r.errors ?? []
   const warnings = r.warnings ?? []
   const lines = [
@@ -115,6 +164,8 @@ export function formatValidation(res: unknown): string {
   ]
   if (errors.length > 0) lines.push('', 'Errors:', ...errors.map((e) => `  ${formatIssue(e)}`))
   if (warnings.length > 0) lines.push('', 'Warnings:', ...warnings.map((w) => `  ${formatIssue(w)}`))
+  const data = formatPorts(r.ports)
+  if (data.length > 0) lines.push('', ...data)
   return lines.join('\n')
 }
 

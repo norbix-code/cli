@@ -184,7 +184,7 @@ as everywhere; workflows live per environment.
 | `norbix code workflows list [--enabled\|--disabled] [--limit <n>] [--after\|--before <cursor>]` | the workflows: id, name, published version, `hasDraft`, `isEnabled` (`disabledReason`), last run, waiting runs | `GET /` |
 | `norbix code workflows get <wf_…> [--version <n>] [--format json\|yaml]` | one workflow — the latest published definition or version `n` (`pinnedVersion`); `--format yaml` prints the definition alone as YAML, ready to edit and `save` | `GET /{id}` |
 | `norbix code workflows save --file <flow.yaml\|flow.json\|->` | saves the file as the **draft**: a new workflow without `workflowId`, that workflow's draft with it; YAML or JSON by extension, by content for stdin; prints id, version, draft, warnings | `PUT /` |
-| `norbix code workflows validate --file <…>` | every save check, nothing written: `Valid.` or `NOT valid`, then each error and warning (code, step, message, path, line:column); **exits 6** when not valid (also with `--json`) | `POST /validate` |
+| `norbix code workflows validate --file <…>` | every save check, nothing written: `Valid.` or `NOT valid`, then each error and warning (code, step, message, path, line:column), then **what each step takes and gives** (`checkAd: takes record of ads (from the start) → gives json`; the steps it also `uses`; what a field that takes the whole input can take) — from the answer's `ports`; **exits 6** when not valid (also with `--json`) | `POST /validate` |
 | `norbix code workflows publish <wf_…> [--yes]` | the draft becomes published version N+1 | `POST /{id}/publish` |
 | `norbix code workflows start-event <wf_…> --source database\|membership\|files\|payments\|ai --event <event> [--schema <collection>] [--condition '<code>'\|--condition-file <f>]` | saves the event that starts the workflow into the **draft** (made from the latest published version when there is none); publishing it writes that module's trigger, linked to the workflow — the trigger commands cannot change it (`CM-ERRORS-WORKFLOWS-052`). `--schema` only for database. The condition reads `Old`, `New` and `Event` (`return New.status == "review";`) and is compiled on save (`-051`). The same start again saves nothing; a different start is refused (`-054`). `save`, `publish`, `enable` and `disable` print the start as `starts on: …` | `PUT /{id}/start-event` |
 | `norbix code workflows draft <wf_…> [--format json\|yaml]` | the draft (`--format yaml`: its definition as YAML) | `GET /{id}/draft` |
@@ -275,3 +275,116 @@ norbix code workflows retry wfr_5nB2xQ7wLk9RmT3vYc1HdP --yes
 norbix code workflows waiting --mine
 norbix code workflows resume wfr_5nB2xQ7wLk9RmT3vYc1HdP --decision approved --yes
 ```
+
+### Recipe: check a new record with the AI, with built-in steps only
+
+A record starts the workflow, the AI looks at the record and its photos, a condition reads the
+answer, and one guarded update writes the outcome. No Code function: every step is built in.
+
+How the data moves:
+
+- **A step reads what the step before gives** as `@Model.Input` (in a `condition` or a
+  `transform`: `Input`). For the first step that is the record that started the run, so no step
+  reads the record again.
+- **Ask AI takes the record itself**: `context: "@Model.Input"`. Its file fields go to the model
+  as files (read as the workflow's identity, which needs `files:read`), the other fields as data
+  beside the prompt. `contextExclude` names the fields that must not be sent. The prompt only
+  says what to do.
+- **The answer is checked** against `jsonSchema`. `reask: 1` asks once more, at once, when the
+  answer is not that JSON (0 = never, the default; at most 3). A wrong answer after that fails
+  the step — here the error exit sends the ad to a person.
+- **After a condition the input is true / false.** A later step names the earlier step in `uses`
+  and reads it by name: `@Model.Steps.checkAd.Output.json.reason`.
+
+```yaml
+# ad-check.yaml — put your own collection and field names in place of ads / status / ownerPhone
+schemaVersion: "1"
+name: Ad check
+description: Check every new ad with the AI, then approve it, deny it or leave it for a person.
+trigger:
+  source: database
+  event: database.record.inserted
+  schema: ads
+  condition: return New.status == "pending";
+steps:
+  - id: checkAd
+    kind: ai.invoke
+    name: Ask the AI about the ad and its photos
+    next: decide
+    onError:
+      action: goto
+      goto: needsReview
+    config:
+      prompt: |-
+        Check this ad for a motorcycle marketplace. The ad is the data that comes with this message;
+        its photos are attached. textOk: the text offers one clear item that fits the marketplace.
+        imagesOk: every photo shows that item and has no contact details on it.
+        Give a confidence from 0 to 1 and a short reason.
+      context: "@Model.Input"
+      contextExclude: [ownerPhone, ownerEmail]
+      jsonSchema:
+        type: object
+        properties:
+          textOk: { type: boolean }
+          imagesOk: { type: boolean }
+          confidence: { type: number, minimum: 0, maximum: 1 }
+          reason: { type: string, maxLength: 1000 }
+        required: [textOk, imagesOk, confidence, reason]
+        additionalProperties: false
+      reask: 1
+      temperature: 0
+  - id: decide
+    kind: condition
+    name: Is the answer good enough to decide without a person?
+    then: approve
+    else: deny
+    config:
+      expression: return Input.textOk == true && Input.imagesOk == true && Input.confidence > 0.8;
+  - id: approve
+    kind: database.update
+    uses: [checkAd]
+    config:
+      collection: ads
+      id: "@Model.Trigger.New._id"
+      filter: { status: pending }
+      update:
+        status: approved
+        reviewReason: "@Model.Steps.checkAd.Output.json.reason"
+  - id: deny
+    kind: database.update
+    uses: [checkAd]
+    config:
+      collection: ads
+      id: "@Model.Trigger.New._id"
+      filter: { status: pending }
+      update:
+        status: denied
+        reviewReason: "@Model.Steps.checkAd.Output.json.reason"
+  - id: needsReview
+    kind: database.update
+    config:
+      collection: ads
+      id: "@Model.Trigger.New._id"
+      filter: { status: pending }
+      update: { status: manual }
+```
+
+```bash
+norbix code workflows validate --file ad-check.yaml
+#   Valid — 2 warnings.
+#   …
+#   Data (what each step takes and gives):
+#     start → gives record of ads
+#     checkAd: takes record of ads (from the start) → gives json  [context takes text | json | record | records | event]
+#     decide: takes json (from checkAd) → gives boolean
+#     approve: takes boolean (from decide, then); also uses checkAd: json → gives json
+#     deny: takes boolean (from decide, else); also uses checkAd: json → gives json
+#     needsReview: takes json (from checkAd, onError.goto) → gives json
+norbix code workflows save --file ad-check.yaml
+norbix code workflows publish wf_… --yes        # writes the trigger on ads
+```
+
+The two warnings say that `Output.json.reason` is read from an AI answer, whose fields are
+checked when the run reads them. A connection that carries a format the next step cannot take
+is an error, not a warning (`CM-ERRORS-WORKFLOWS-055`) — for example a true / false into a
+field that takes the whole input as a document.
