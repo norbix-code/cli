@@ -301,6 +301,7 @@ How the data moves:
 schemaVersion: "1"
 name: Ad check
 description: Check every new ad with the AI, then approve it, deny it or leave it for a person.
+executionIdentityId: usr_46m4OEbNR81EzbdHWWQ6sA   # a service user of the project — see the rights below
 trigger:
   source: database
   event: database.record.inserted
@@ -383,6 +384,14 @@ norbix code workflows validate --file ad-check.yaml
 norbix code workflows save --file ad-check.yaml
 norbix code workflows publish wf_… --yes        # writes the trigger on ads
 ```
+
+The workflow runs as its **execution identity**, a service user (`norbix membership users …`, or
+Cloud → Membership). For this workflow it needs `ai:read` on the LLM integration, `files:read`
+(the photos of the record are read as this user) and `database:update` on the collection.
+`validate` and `save` say which right is missing, per step (`CM-ERRORS-TRIGGERS-014`). With no
+`executionIdentityId` the environment's default identity runs it, and must hold the same rights.
+The project also needs the Scheduler module on and an LLM integration — a default one, or
+`llmIntegrationId: int_…` on the step.
 
 The two warnings say that `Output.json.reason` is read from an AI answer, whose fields are
 checked when the run reads them. A connection that carries a format the next step cannot take
