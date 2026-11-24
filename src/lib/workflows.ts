@@ -125,14 +125,28 @@ export function formatWarnings(warnings: WorkflowIssue[] | undefined): string[] 
 }
 
 /** A workflow after save / publish / enable / disable: id, version, draft, on/off, warnings. */
+/** The event that starts a workflow (the definition's `trigger`, Code.Workflows.md §3.0b). */
+export interface StartEvent {
+  source?: string
+  event?: string
+  schema?: string
+  condition?: string
+}
+
+/** "database.record.inserted on moto_listings (with a condition)". */
+export function formatStartEvent(start: StartEvent): string {
+  return `${start.event ?? start.source ?? '?'}${start.schema ? ` on ${start.schema}` : ''}${start.condition ? ' (with a condition)' : ''}`
+}
+
 export function formatWorkflow(verb: string, res: unknown): string {
   const wf = (res as {workflow?: Record<string, unknown>} | undefined)?.workflow
   if (!wf) return JSON.stringify(res, null, 2)
-  const definition = (wf.definition ?? {}) as {name?: string}
+  const definition = (wf.definition ?? {}) as {name?: string; trigger?: StartEvent}
   const version = wf.version === undefined || wf.version === null || wf.version === 0 ? 'none published' : `v${wf.version}`
   const lines = [
     `Workflow ${wf.workflowId as string}${definition.name ? ` (${definition.name})` : ''} ${verb}.`,
     `  version: ${version}  draft: ${wf.hasDraft ? 'yes' : 'no'}  enabled: ${wf.isEnabled ? 'yes' : 'no'}${wf.disabledReason ? ` (${wf.disabledReason as string})` : ''}`,
+    ...(definition.trigger ? [`  starts on: ${formatStartEvent(definition.trigger)}`] : []),
     ...formatWarnings(wf.warnings as WorkflowIssue[] | undefined),
   ]
   return lines.join('\n')

@@ -186,6 +186,7 @@ as everywhere; workflows live per environment.
 | `norbix code workflows save --file <flow.yaml\|flow.json\|->` | saves the file as the **draft**: a new workflow without `workflowId`, that workflow's draft with it; YAML or JSON by extension, by content for stdin; prints id, version, draft, warnings | `PUT /` |
 | `norbix code workflows validate --file <…>` | every save check, nothing written: `Valid.` or `NOT valid`, then each error and warning (code, step, message, path, line:column); **exits 6** when not valid (also with `--json`) | `POST /validate` |
 | `norbix code workflows publish <wf_…> [--yes]` | the draft becomes published version N+1 | `POST /{id}/publish` |
+| `norbix code workflows start-event <wf_…> --source database\|membership\|files\|payments\|ai --event <event> [--schema <collection>] [--condition '<code>'\|--condition-file <f>]` | saves the event that starts the workflow into the **draft** (made from the latest published version when there is none); publishing it writes that module's trigger, linked to the workflow — the trigger commands cannot change it (`CM-ERRORS-WORKFLOWS-052`). `--schema` only for database. The condition reads `Old`, `New` and `Event` (`return New.status == "review";`) and is compiled on save (`-051`). The same start again saves nothing; a different start is refused (`-054`). `save`, `publish`, `enable` and `disable` print the start as `starts on: …` | `PUT /{id}/start-event` |
 | `norbix code workflows draft <wf_…> [--format json\|yaml]` | the draft (`--format yaml`: its definition as YAML) | `GET /{id}/draft` |
 | `norbix code workflows draft <wf_…> --discard [--yes]` | deletes the draft; the published version stays | `DELETE /{id}/draft` |
 | `norbix code workflows versions <wf_…>` | the published versions: number, when, by whom, name, step count | `GET /{id}/versions` |
@@ -194,6 +195,7 @@ as everywhere; workflows live per environment.
 | `norbix code workflows enable <wf_…>` | turns it on (and resets the runaway counters) | `PUT /{id}/enable` |
 | `norbix code workflows disable <wf_…> [--yes]` | turns it off: no new run; runs in flight continue | `PUT /{id}/disable` |
 | `norbix code workflows invoke <wf_…> [--payload '<json>'\|--payload-file <f>] [--wait <0-30>] [--version draft\|<n>] [--follow [--timeout <s>]]` | starts a run (`waitSeconds`, `runVersion`); finished within the wait: status, output, duration, error; not finished: the run id and `running` / `waiting`. `--follow` polls the run (`workflows.waitForRun`) until it finishes or parks on a wait and prints it like `run`; past `--timeout` (default 60 s) it exits 7 with the run id | `POST /{id}/invoke` (+ `GET /runs/{runId}`) |
+| `norbix code workflows test <wf_…> --source database\|membership\|manual [--event <e>] [--collection <c> --record <id>] [--user <usr_…>] [--edits '<json>'\|--edits-file <f>] [--payload '<json>'\|--payload-file <f>] [--version draft\|<n>] [--follow [--timeout <s>]]` | starts a **real** run as the event would: a database record (`--edits` laid over it for an update), a Membership user, or a manual payload; runs the draft when there is one. Answers like `invoke`; `--follow` the same | `POST /{id}/test` (+ `GET /runs/{runId}`) |
 | `norbix code workflows runs <wf_…> [--status <s>] [--from <iso>] [--to <iso>] [--limit <n>]` | the workflow's runs, newest first | `GET /{id}/runs` |
 | `norbix code workflows run <wfr_…>` | one run: status, version, source, timing, what it waits on (a group approval on its own line: `approve: group approval — 1 of 2 approvals, waiting for usr_…`), its error, then a step table — step, kind, status (approval decision), attempt, pass, item (the element of a foreach, `#0` first, empty for a plain step), duration — and the output; `--json` the whole run with every step's input and output | `GET /runs/{runId}` |
 | `norbix code workflows logs <wfr_…> [--step <stepId>] [--level Information\|Warning\|Error]` | the run's log lines (needs the Logs module on and `logs:read`) | `GET /runs/{runId}/logs` |
@@ -254,6 +256,14 @@ norbix code workflows invoke wf_3kQ9mZ2vXc8LpR4wT7yH1n --version draft \
 
 # 6. Publish (version 1); later edits: get --format yaml > flow.yaml, edit, save, diff, publish
 norbix code workflows publish wf_3kQ9mZ2vXc8LpR4wT7yH1n --yes
+
+# 6b. Start it on an event: every new moto_listings record with status "review"
+norbix code workflows start-event wf_3kQ9mZ2vXc8LpR4wT7yH1n --source database \
+  --event database.record.inserted --schema moto_listings \
+  --condition 'return New.status == "review";'
+norbix code workflows test wf_3kQ9mZ2vXc8LpR4wT7yH1n --source database \
+  --collection moto_listings --record 6ac54a59212c29912eaddd81 --follow
+norbix code workflows publish wf_3kQ9mZ2vXc8LpR4wT7yH1n --yes   # writes the trigger
 
 # 7. Read a run, its steps and its log lines
 norbix code workflows runs wf_3kQ9mZ2vXc8LpR4wT7yH1n --status failed

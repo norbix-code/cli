@@ -305,6 +305,65 @@ describe('norbix code workflows — definitions', () => {
     expect(out()).toContain('published.')
   })
 
+  it('start-event → PUT /code/workflows/{id}/start-event on hub with the start; prints it and how to publish', async () => {
+    const start = {source: 'database', event: 'database.record.inserted', schema: 'moto_listings', condition: 'return New.status == "review";'}
+    answer = {workflow: {...WORKFLOW.workflow, hasDraft: true, definition: {...WORKFLOW.workflow.definition, trigger: start}}}
+    const {error} = await wf('start-event', WF, '--source', 'database', '--event', 'database.record.inserted', '--schema', 'moto_listings', '--condition-file', tempFile('start.cs', start.condition))
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({method: 'PUT', path: `${W}/${WF}/start-event`})
+    expect(calls[0]?.host).not.toMatch(/\.api\./)
+    expect(calls[0]?.body).toEqual({start})
+    expect(out()).toContain(`Workflow ${WF} (Approve big orders) start event saved in the draft.`)
+    expect(out()).toContain('  starts on: database.record.inserted on moto_listings (with a condition)')
+    expect(out()).toContain(`Publish it to write the trigger: norbix code workflows publish ${WF} --yes`)
+  })
+
+  it('start-event --condition-file reads the condition; a membership start sends no schema', async () => {
+    await wf('start-event', WF, '--source', 'database', '--event', 'database.record.updated', '--schema', 'orders', '--condition-file', tempFile('start.cs', 'return New.total > 100;'))
+    expect(calls[0]?.body).toEqual({start: {source: 'database', event: 'database.record.updated', schema: 'orders', condition: 'return New.total > 100;'}})
+
+    calls = []
+    await wf('start-event', WF, '--source', 'membership', '--event', 'membership.user.registered')
+    expect(calls[0]?.body).toEqual({start: {source: 'membership', event: 'membership.user.registered'}})
+  })
+
+  it('start-event refuses a database start without --schema, a schema on another source, and --dry-run sends nothing', async () => {
+    expect((await wf('start-event', WF, '--source', 'database', '--event', 'database.record.inserted')).error?.message).toBe('--schema is needed for a database start.')
+    expect((await wf('start-event', WF, '--source', 'files', '--event', 'files.file.uploaded', '--schema', 'x')).error?.message).toBe('--schema is only for a database start.')
+    expect((await wf('start-event', WF, '--source', 'web', '--event', 'x')).error?.message).toMatch(/Expected --source=web to be one of: database, membership, files, payments, ai/)
+    await wf('start-event', WF, '--source', 'database', '--event', 'database.record.inserted', '--schema', 'moto_listings', '--dry-run')
+    expect(calls).toHaveLength(0)
+    expect(out()).toContain('Would call: hub.code.setCodeWorkflowStartEvent')
+  })
+
+  it('test → POST /code/workflows/{id}/test on hub with the test record, edits and version', async () => {
+    answer = {runId: RUN, status: 'running'}
+    const {error} = await wf('test', WF, '--source', 'database', '--event', 'database.record.updated', '--collection', 'moto_listings', '--record', 'rec_1', '--edits', '{"status":"review"}', '--version', 'draft')
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({method: 'POST', path: `${W}/${WF}/test`})
+    expect(calls[0]?.host).not.toMatch(/\.api\./)
+    expect(calls[0]?.body).toEqual({source: 'database', event: 'database.record.updated', collection: 'moto_listings', recordId: 'rec_1', edits: {status: 'review'}, runVersion: 'draft'})
+  })
+
+  it('test sends a membership user and a manual payload; refuses a database test without a record, and --dry-run sends nothing', async () => {
+    await wf('test', WF, '--source', 'membership', '--user', 'usr_2R5So1Lbfc7MNr5lkY522S')
+    expect(calls[0]?.body).toEqual({source: 'membership', userId: 'usr_2R5So1Lbfc7MNr5lkY522S'})
+
+    calls = []
+    await wf('test', WF, '--source', 'manual', '--payload', '{"orderId":"o1"}')
+    expect(calls[0]?.body).toEqual({source: 'manual', payload: {orderId: 'o1'}})
+
+    calls = []
+    expect((await wf('test', WF, '--source', 'database', '--collection', 'moto_listings')).error?.message).toBe('A database test needs --collection and --record.')
+    expect((await wf('test', WF, '--source', 'membership')).error?.message).toBe('A membership test needs --user.')
+    await wf('test', WF, '--source', 'manual', '--dry-run')
+    expect(calls).toHaveLength(0)
+  })
+
   it('draft → GET /code/workflows/{id}/draft; --format yaml prints the draft definition', async () => {
     answer = WORKFLOW
     await wf('draft', WF, '--format', 'yaml')
