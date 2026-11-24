@@ -129,7 +129,10 @@ describe('norbix ai init', () => {
     // Owner round 2026-11-05 (items 73 + 78): the skill carries the build checklist and two tiny
     // examples (~30 lines), so its budget grew from 75; the short block only points at it.
     // Review batch 3: one more checklist line (a new schema comes with its form and list columns).
-    expect(skill.split('\n').length).toBeLessThanOrEqual(106)
+    // 2026-11-24: one more checklist line (workflow steps: built-in first, then an existing function).
+    expect(skill.split('\n').length).toBeLessThanOrEqual(107)
+    expect(skill).toContain('Workflow steps: built-in first, then an existing function, then your own.')
+    expect(skill).toContain('a function that does what a built-in step does')
     expect(skill).toContain('## Build checklist')
     expect(skill).toContain('`@Model.Nbf.RenderProjectLogo("logo")`')
     expect(skill).toContain('{"source":"user","displayField":"displayName","multiple":false}')
