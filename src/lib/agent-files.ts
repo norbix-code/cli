@@ -10,7 +10,7 @@ export const MARKER_START = '<!-- norbix-cli:start -->'
 export const MARKER_END = '<!-- norbix-cli:end -->'
 
 /** Raise it when the text below changes: `norbix ai init --update` compares it. */
-export const AGENT_FILES_VERSION = 7
+export const AGENT_FILES_VERSION = 8
 const VERSION_LINE = `<!-- norbix-cli:version ${AGENT_FILES_VERSION} -->`
 
 /** The version a file was written with; 0 when it has no version line (older CLI). */
@@ -77,7 +77,7 @@ export function buildChecklist(): string[] {
     '- [ ] Never build your own users, sessions or auth tables: Membership has native cookie sessions, password reset and email verification.',
     '- [ ] Recurring or delayed work is a Scheduler task or a Workflow (`norbix scheduler save`, `norbix code workflows list`), never a polling job or a loop that checks the database.',
     '- [ ] A Workflow is for a process with steps, waits or approvals. It is never the app\'s request / response API: a screen load or a button press is not a workflow run.',
-    '- [ ] Workflow steps: built-in first, then an existing function, then your own. Read the step kinds (`norbix code workflows schema`) and the functions the project already has (`norbix code marketplace functions list`, `norbix code functions --integration <id>`) before you write a Code function. A workflow that starts on an event (`norbix code workflows start-event`) already has the record as `@Model.Trigger.New` (no step reads it again); `ai.invoke` takes the prompt, the record\'s file field as `files` and a `jsonSchema` (the answer is checked); a `condition` reads `Steps.<id>.Output.json`; `database.update` with `id` and `filter` writes one record safely.',
+    '- [ ] Workflow steps: built-in first, then an existing function, then your own. Read the step kinds (`norbix code workflows schema`) and the functions the project already has (`norbix code marketplace functions list`, `norbix code functions --integration <id>`) before you write a Code function. Data moves along the arrows: a step reads what the step before gives as `@Model.Input` (in code `Input`) — for the first step the record or event that started the run (`norbix code workflows start-event`), so no step reads the record again. `ai.invoke` takes the prompt, the record as `context: "@Model.Input"` (its file fields go to the model as files; `contextExclude` names the fields that must not be sent) and a `jsonSchema` (the answer is checked; `reask` asks again on a wrong one); the `condition` after it reads `Input.ok`. After a condition the input is true / false: a later step names the earlier step in `uses` and reads `Steps.<id>.Output.json`. `database.update` with `id` and `filter` writes one record safely. Validate before you save (`norbix code workflows validate`): the answer says what each step takes and gives and refuses a connection that does not fit.',
     '',
     '```html',
     "<mj-section background-color='@Model.Nbf.BrandMainColorOrDefault(\"#003E6B\")'>",

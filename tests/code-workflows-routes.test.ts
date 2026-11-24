@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {parse as parseYaml} from 'yaml'
 
-import {BETA_NOTE, formatGroupApproval, formatIssue, formatOf, formatRun, formatSlots, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
+import {BETA_NOTE, formatGroupApproval, formatIssue, formatOf, formatPorts, formatRun, formatSlots, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
 import {envListAnswer} from './_env.js'
 
 /**
@@ -703,6 +703,50 @@ describe('workflows helpers', () => {
     expect(formatOf('a.YML', '{}')).toBe('yaml')
     expect(formatOf('-', '{"a":1}')).toBe('json')
     expect(formatOf('-', 'a: 1')).toBe('yaml')
+  })
+
+  it('formatPorts says what each step takes and gives, the steps it also uses and what a whole-input field can take', () => {
+    const ports = {
+      start: {format: 'record', collection: 'ads'},
+      steps: [
+        {
+          stepId: 'checkAd',
+          inputs: [{from: 'start', exit: 'start', format: 'record', collection: 'ads'}],
+          output: {format: 'json'},
+          takes: [{field: 'config.context', accepts: ['text', 'json', 'record', 'records', 'event']}],
+        },
+        {stepId: 'decide', inputs: [{from: 'checkAd', exit: 'next', format: 'json'}], output: {format: 'boolean'}},
+        {
+          stepId: 'approve',
+          inputs: [{from: 'decide', exit: 'then', format: 'boolean'}],
+          output: {format: 'json'},
+          uses: [{stepId: 'checkAd', format: 'json'}],
+        },
+        {
+          stepId: 'needsReview',
+          inputs: [
+            {from: 'checkAd', exit: 'onError.goto', format: 'json'},
+            {from: 'decide', exit: 'else', format: 'boolean'},
+          ],
+          output: {format: 'json'},
+        },
+        {stepId: 'orphan', inputs: [], output: {format: 'records', collection: 'orders'}},
+      ],
+    }
+    expect(formatPorts(ports)).toEqual([
+      'Data (what each step takes and gives):',
+      '  start → gives record of ads',
+      '  checkAd: takes record of ads (from the start) → gives json  [context takes text | json | record | records | event]',
+      '  decide: takes json (from checkAd) → gives boolean',
+      '  approve: takes boolean (from decide, then); also uses checkAd: json → gives json',
+      '  needsReview: takes json (from checkAd, onError.goto) or boolean (from decide, else) → gives json',
+      '  orphan: takes nothing (no step leads to it) → gives records of orders',
+    ])
+    // No ports in the answer (an older gateway): nothing is printed, the report is as before.
+    expect(formatPorts(undefined)).toEqual([])
+    expect(formatValidation({isValid: true, errors: [], warnings: [], ports: {start: {format: 'json'}, steps: [{stepId: 'only', inputs: [{from: 'start', format: 'json'}], output: {format: 'text'}}]}})).toBe(
+      'Valid.\n\nData (what each step takes and gives):\n  start → gives json\n  only: takes json (from the start) → gives text',
+    )
   })
 
   it('formatIssue and formatValidation read well with and without the optional parts', () => {
