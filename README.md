@@ -542,7 +542,7 @@ Or pass `--integration <id>` (env var: `NORBIX_FILES_INTEGRATION_ID`).
 
 | Command | What it does |
 | --- | --- |
-| `norbix files list [path]` | List the files and folders under a path. No path lists the root. |
+| `norbix files list [path] [--page-size <n>] [--after <cursor>] [--all]` | List the files and folders under a path. No path lists the root. One call is one page (50 entries unless `--page-size` says otherwise); `--after` takes `list.startingAfter` of the page before, and `--all` reads every page and prints one merged list. |
 | `norbix files info <path>` | Show one file's details: size, type, when it changed. |
 | `norbix files get-by-id <id>` | Show one file by its stable id — the value a file field of a record stores (`db find --expand` returns it as the reference's `id`). |
 | `norbix files sign <path> [--expires <seconds>]` | Get a temporary web address for the file that anyone with the link can open. |

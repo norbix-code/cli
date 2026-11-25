@@ -3164,6 +3164,9 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [
       "integration:string",
+      "page-size:string",
+      "after:string",
+      "all:boolean",
     ],
     "id": "files list",
     "supportsDryRun": false,

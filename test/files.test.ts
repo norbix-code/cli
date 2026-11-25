@@ -102,6 +102,78 @@ describe('norbix files list', () => {
     expect(calls[0].url).toContain('path=invoices')
   })
 
+  it('sends nothing about paging unless asked', async () => {
+    fakeFetch([[`/files/${INTEGRATION}`, {list: {items: []}}]])
+
+    await runCommand(['files', 'list', ...globalArgs])
+
+    expect(calls[0].url).not.toContain('pageSize')
+    expect(calls[0].url).not.toContain('startingAfter')
+  })
+
+  it('sends --page-size and --after as the paging fields', async () => {
+    fakeFetch([[`/files/${INTEGRATION}`, {list: {items: []}}]])
+
+    const {error} = await runCommand([
+      'files', 'list', 'originals', '--page-size', '200', '--after', 'tok-1', ...globalArgs,
+    ])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(1)
+    const query = new URL(calls[0].url).searchParams
+    expect(query.get('pageSize')).toBe('200')
+    expect(query.get('startingAfter')).toBe('tok-1')
+    expect(query.get('path')).toBe('originals')
+  })
+
+  it('--all follows the cursor and prints one merged list', async () => {
+    // Most specific fragment first: fakeFetch answers with the first match.
+    fakeFetch([
+      ['startingAfter=tok-2', {
+        list: {items: [{path: 'originals/c.jpg'}], hasMore: false},
+        folders: ['originals/thumbs/', 'originals/raw/'],
+      }],
+      ['startingAfter=tok-1', {
+        list: {items: [{path: 'originals/b.jpg'}], hasMore: true, startingAfter: 'tok-2'},
+        folders: ['originals/raw/'],
+      }],
+      [`/files/${INTEGRATION}`, {
+        list: {items: [{path: 'originals/a.jpg'}], hasMore: true, startingAfter: 'tok-1'},
+        folders: [],
+      }],
+    ])
+
+    const {error, result} = await runCommand(['files', 'list', 'originals', '--all', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls.map((c) => new URL(c.url).searchParams.get('startingAfter'))).toEqual([null, 'tok-1', 'tok-2'])
+    expect(result).toEqual({
+      folders: ['originals/raw/', 'originals/thumbs/'],
+      list: {
+        hasMore: false,
+        items: [{path: 'originals/a.jpg'}, {path: 'originals/b.jpg'}, {path: 'originals/c.jpg'}],
+        startingAfter: undefined,
+      },
+      publicFolders: [],
+    })
+  })
+
+  it('--all stops when the server hands back a cursor it already gave', async () => {
+    fakeFetch([
+      ['startingAfter=tok-1', {list: {items: [{path: 'b'}], hasMore: true, startingAfter: 'tok-1'}}],
+      [`/files/${INTEGRATION}`, {list: {items: [{path: 'a'}], hasMore: true, startingAfter: 'tok-1'}}],
+    ])
+
+    const {error, result} = await runCommand(['files', 'list', '--all', ...globalArgs])
+
+    expect(error).toBeUndefined()
+    expect(calls).toHaveLength(2)
+    // Not the end of the folder: the answer says so and carries the cursor to go on from.
+    expect(result).toMatchObject({
+      list: {hasMore: true, items: [{path: 'a'}, {path: 'b'}], startingAfter: 'tok-1'},
+    })
+  })
+
   it('fails with a clear message when no integration is given', async () => {
     fakeFetch()
 
