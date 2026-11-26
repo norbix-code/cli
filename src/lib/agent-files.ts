@@ -10,7 +10,7 @@ export const MARKER_START = '<!-- norbix-cli:start -->'
 export const MARKER_END = '<!-- norbix-cli:end -->'
 
 /** Raise it when the text below changes: `norbix ai init --update` compares it. */
-export const AGENT_FILES_VERSION = 8
+export const AGENT_FILES_VERSION = 9
 const VERSION_LINE = `<!-- norbix-cli:version ${AGENT_FILES_VERSION} -->`
 
 /** The version a file was written with; 0 when it has no version line (older CLI). */
@@ -50,6 +50,8 @@ function buildContract(): string[] {
     'App code uses an official Norbix SDK (TypeScript: `@norbix.ai/ts`), never raw HTTP. The `norbix` CLI sets the project up; it is not an app runtime.',
     'Unsure whether Norbix can do something? Check `norbix ai context` and `norbix schema --json`. Do not guess, and do not write down a guess as a fact.',
     `Norbix really lacks it? Name the gap and ask the user before adding anything from the last column; the reason then goes into \`norbix.boundaries.json\`. Run \`norbix ai check\` before you finish.`,
+    // The same rule as gateway NorbixBuildContract.NamingRule and the MCP server's instructions — change all three together.
+    'Names: never put the project name or the environment (PROD, TEST, …) in a name — promotion copies names between environments. Collections and taxonomies are short plural snake_case nouns (`institutions`, `listing_categories`). Functions, workflows, triggers and templates are a few words of what they do (`send-invoice`, "Invoice paid").',
     // The same rule as gateway NorbixBuildContract.ReportIssueRule and the MCP server's instructions — change all three together.
     'Clear evidence that Norbix itself failed — a Norbix error code or a 5xx answer for a valid request, not your own input, a validation error or a missing permission? Report it once: `norbix support report --automatic --subject "…" --message "…" --evidence errorCode=… --evidence endpoint=… --evidence httpStatus=… --evidence correlationId=…` (never a secret in it). It is free and does not count against any support allowance; Norbix reads every report but does not promise an immediate fix. Tell the user you reported it and give them the case id.',
     '',
@@ -111,7 +113,7 @@ export function recipeBlock(): string {
     '',
     'Change the backend with the `norbix` CLI from the shell; never edit it by hand.',
     '',
-    '- Start with `norbix whoami --json`. `"auth": "none"` there (or exit code 4 from any other command) means not signed in. Sign in yourself in two steps: run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode` (they open it, check the code and pick the roles you get — an AI service user, removable under Account → AI service users), then run `norbix login --wait --json` until it exits 0. Exit 4 with `AUTHORIZATION_PENDING` means not approved yet: run `--wait` again; `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over. Their Norbix is not norbix.ai? Add `--host <their dashboard address>` to both steps.',
+    '- Start with `norbix whoami --json`. `"auth": "none"` there (or exit code 4 from any other command) means not signed in. Sign in yourself in two steps: run `norbix login --no-browser --json`, show the user the `verificationUriComplete` link and the `userCode` (they open it, check the code and pick the roles you get — an AI service user, removable under Account → AI service users), then run `norbix login --wait --json` until it exits 0. When you run `norbix login` for the person, show them the sign-in link from its output in the chat — a browser may not open. Exit 4 with `AUTHORIZATION_PENDING` means not approved yet: run `--wait` again; `ACCESS_DENIED` / `EXPIRED_TOKEN`: start over. Their Norbix is not norbix.ai? Add `--host <their dashboard address>` to both steps.',
     '- Pass `--json` to every command whose output you read: stdout is then exactly one JSON document (a result, or `{"error": {code, message, exit, fieldErrors, hint, docs}}`).',
     '- Project context (your projects, environments, regions, modules, integrations, CORS, languages — never secrets): read `.norbix-ai/context.md` when it is there; run `norbix ai context --write` at the start of a task and again after your context was compressed or summarized (`norbix login` refreshes it too). Follow its **Build checklist** before you write templates or schemas: brand first, Nbf helpers in email templates, start from a system template, tokens instead of stored copy, user picker / email / translatable fields, a form layout and list columns for every new schema, Membership sessions, Scheduler or Workflows instead of polling.',
     '- Discover, do not guess: `norbix schema --json` (every command, `destructive`, `supportsDryRun`), then `norbix <command> --help`. No named command? `norbix hub <module> --json` lists the SDK methods and their fields.',
@@ -145,7 +147,7 @@ export function claudeSkill(): string {
     '## Steps',
     '',
     '1. `norbix whoami --json` — the host and Hub, who you are (with a browser sign-in: an AI service user and its expiry), the project, environment and region. `"auth": "none"` (or exit 4 from any other command) means not signed in: sign in in two steps (your shell commands time out; the code lives 10 minutes):',
-    '   - `norbix login --no-browser --json` → `{userCode, verificationUriComplete, expiresIn}`. Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself.',
+    '   - `norbix login --no-browser --json` → `{userCode, verificationUriComplete, expiresIn}`. Show the user the link and the code: they open it, check the code, pick the roles you get, and press Allow. Never open the link yourself. When you run `norbix login` for the person, show them the sign-in link from its output in the chat — a browser may not open.',
     '   - `norbix login --wait --json` — waits up to 90 s. Exit 0: signed in. Exit 4 `AUTHORIZATION_PENDING`: not approved yet, run it again. `ACCESS_DENIED` or `EXPIRED_TOKEN`: start over with step one.',
     '   - Not on norbix.ai? Add `--host <their dashboard or Hub address>` (or `--profile <name>`) to both steps.',
     '   Environments: `whoami` lists the project\'s `environments`. With only PROD, pass no env. With more than one (e.g. PROD, TEST), every project command needs `--env <name>` (`--prod` = `--env PROD`): ask the user which one, never assume PROD. Exit 2 `ENV_REQUIRED` lists them. `norbix env list --json` shows them too.',

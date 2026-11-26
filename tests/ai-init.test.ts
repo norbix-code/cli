@@ -130,7 +130,8 @@ describe('norbix ai init', () => {
     // examples (~30 lines), so its budget grew from 75; the short block only points at it.
     // Review batch 3: one more checklist line (a new schema comes with its form and list columns).
     // 2026-11-24: one more checklist line (workflow steps: built-in first, then an existing function).
-    expect(skill.split('\n').length).toBeLessThanOrEqual(107)
+    // Review batch 4: one more build-contract line (the naming rule).
+    expect(skill.split('\n').length).toBeLessThanOrEqual(108)
     expect(skill).toContain('Workflow steps: built-in first, then an existing function, then your own.')
     expect(skill).toContain('a function that does what a built-in step does')
     expect(skill).toContain('## Build checklist')
@@ -201,6 +202,31 @@ describe('the agent rules: sign in in two steps, CI with a key', () => {
     expect(skill).toContain('Exit 4 `AUTHORIZATION_PENDING`: not approved yet, run it again.')
     expect(skill).toContain('`ACCESS_DENIED` or `EXPIRED_TOKEN`: start over with step one.')
     expect(skill).toContain('Context flags on every command: `--host`, `--profile`')
+  })
+
+  // Review batch 4: a browser may not open on the person's machine, so the agent shows the link itself.
+  it('the block and the skill tell the agent to show the sign-in link in the chat', () => {
+    const rule = 'When you run `norbix login` for the person, show them the sign-in link from its output in the chat — a browser may not open.'
+    expect(recipeBlock()).toContain(rule)
+    expect(claudeSkill()).toContain(rule)
+  })
+})
+
+describe('the naming rule (review batch 4, D8)', () => {
+  // The same words as gateway NorbixBuildContract.NamingRule and the MCP server's instructions.
+  const NAMING_RULE =
+    'Names: never put the project name or the environment (PROD, TEST, …) in a name — promotion copies names between environments. Collections and taxonomies are short plural snake_case nouns (`institutions`, `listing_categories`). Functions, workflows, triggers and templates are a few words of what they do (`send-invoice`, "Invoice paid").'
+
+  it('the block and the skill carry it word for word, in the build contract', () => {
+    for (const text of [recipeBlock(), claudeSkill()]) {
+      expect(text).toContain(NAMING_RULE)
+      expect(text.indexOf(NAMING_RULE)).toBeLessThan(text.indexOf('`norbix whoami --json`'))
+    }
+  })
+
+  it('the agent files version went up for it', () => {
+    expect(AGENT_FILES_VERSION).toBe(9)
+    expect(recipeBlock()).toContain('<!-- norbix-cli:version 9 -->')
   })
 })
 
