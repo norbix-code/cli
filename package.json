@@ -84,6 +84,9 @@
           "me": {
             "description": "Your own team-member record and phone number"
           },
+          "team": {
+            "description": "One team member: their roles, phone and push devices"
+          },
           "clusters": {
             "description": "The account's Norbix-managed Atlas clusters: list, upgrade one to M10"
           },
