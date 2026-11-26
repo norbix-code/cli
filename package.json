@@ -303,7 +303,7 @@
                 "description": "Put uploaded files into the project's AI knowledge, or stop"
               },
               "plans": {
-                "description": "End-user AI plans: list, add / change / remove, assign to roles, users with their own plan"
+                "description": "End-user AI plans: list, add / change / remove, assign to roles"
               }
             }
           },

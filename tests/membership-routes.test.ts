@@ -144,7 +144,7 @@ const routes: Array<[string[], Route[]]> = [
     ['users', 'contacts', 'tag', CT, 'Marketing', 'Email', 'newsletter', '--subscribed', 'false'],
     [['PUT', `${M}/users/${CT}/marketing-state/Marketing/Email/tags/newsletter`, API]],
   ],
-  [['users', 'contacts', 'ai-plan', CT, '--plan', 'aip_pro'], [['PUT', `${M}/users/${CT}/ai-plan`]]],
+  [['users', 'contacts', 'ai-plan', CT], [['GET', `${M}/users/${CT}/ai-plan`]]],
 
   // Roles and Policies
   [['users', 'roles'], [['GET', `${M}/roles`]]],
@@ -418,9 +418,12 @@ describe('users contacts', () => {
     expect((await send(['users', 'contacts', 'tag', CT, 'Marketing', 'Email', 'news', '--subscribed', 'true'])).body).toEqual({subscribed: true})
   })
 
-  it('ai-plan sends planId; none clears it', async () => {
-    expect((await send(['users', 'contacts', 'ai-plan', CT, '--plan', 'aip_pro'])).body).toEqual({planId: 'aip_pro'})
-    expect((await send(['users', 'contacts', 'ai-plan', CT])).body ?? {}).toEqual({})
+  it('ai-plan reads the plan with no body; --plan is gone (plans are given by role)', async () => {
+    const call = await send(['users', 'contacts', 'ai-plan', CT])
+    expect(call.method).toBe('GET')
+    expect(call.body).toBeUndefined()
+    const {error} = await runCommand(['users', 'contacts', 'ai-plan', CT, '--plan', 'aip_pro', ...globalArgs])
+    expect(error?.message).toMatch(/Nonexistent flag: --plan/)
   })
 })
 

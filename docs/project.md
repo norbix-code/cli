@@ -122,7 +122,7 @@ public too.
 | `norbix project ai plans` | the end-user AI plans, the role → plan rows and the default plan | `GET /ai/plans` |
 | `norbix project ai plans set (--plan <json>... [--remove <id>... --yes] \| --file <json> --yes)` | add, change or remove plans | `GET /ai/plans`, then `PUT /ai/plans` (`--file`: the `PUT` only) |
 | `norbix project ai plans assign [--role <roleId>=<planId>]... [--clear-roles] [--default <planId> \| --clear-default]` | which plan a role gets, and the default | `GET /ai/plans` when one part is left out, then `PUT /ai/plans/assignments` |
-| `norbix project ai plans users` | the users that have their own plan | `GET /ai/plans/users` |
+| `norbix users contacts ai-plan <ct_…>` | the plan one user gets, the reason and the role it comes from | `GET /membership/users/{userId}/ai-plan` |
 
 Assistant flags: `--name`, `--welcome`, `--system-prompt` or
 `--system-prompt-file`, `--toolset` (repeat), `--llm`, `--model`,
