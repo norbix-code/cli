@@ -182,6 +182,20 @@ describe('general info', () => {
     expect(call!.body).toBeUndefined()
   })
 
+  it('health sends --severity, --module, --page and --page-size as query values', async () => {
+    await bodyOf(['project', 'health', '--severity', 'Error', '--module', 'Email', '--page', '1', '--page-size', '20', '--prod'])
+    const [call] = sent(['project'])
+    expect(call).toMatchObject({method: 'GET'})
+    expect(Object.fromEntries(call!.query)).toEqual({severity: 'Error', module: 'Email', pageNumber: '1', pageSize: '20'})
+    expect(call!.body).toBeUndefined()
+  })
+
+  it('health refuses a page size over 100 and sends nothing', async () => {
+    const {error} = await runCommand(['project', 'health', '--page-size', '101', '--prod', ...globalArgs])
+    expect(error?.message).toMatch(/100/)
+    expect(sent(['project'])).toHaveLength(0)
+  })
+
   it('wait-active sends --timeout as timeoutSeconds', async () => {
     await bodyOf(['project', 'wait-active', '--timeout', '60', '--prod'])
     expect(Object.fromEntries(sent(['project'])[0]!.query)).toEqual({timeoutSeconds: '60'})
