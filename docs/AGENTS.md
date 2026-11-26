@@ -25,9 +25,10 @@ token in the chat.
 - **On a developer's machine:** the agent signs in itself, in two steps
   (its shell commands time out; the code lives 10 minutes):
   1. `norbix login --no-browser --json` → `{status: "pending", userCode,
-     verificationUriComplete, expiresIn, next}`. Show the user the link and
-     the code. They open it, check the code, pick the roles the agent gets
-     and press Allow. Never open the link yourself.
+     verificationUriComplete, signInText, expiresIn, next}`. Show the user
+     the link in the chat (a browser may not open) and the code. They open
+     it, check the code, pick the roles the agent gets and press Allow.
+     Never open the link yourself.
   2. `norbix login --wait --json` — waits up to 90 s. Exit 0: signed in as
      the AI service user `Norbix CLI (<computer>)` (removable under
      Account → AI service users; `norbix whoami --json` shows it under

@@ -148,9 +148,9 @@ describe('norbix login (browser sign-in)', () => {
     expect(typeof startBody.deviceName).toBe('string')
     expect(hits[3].body).toEqual({deviceCode: 'dc-1'})
 
-    // The code is shown on its own line, the browser opens the complete link.
+    // The code is shown on its own line; the link too (a browser may not open), and the browser opens it.
     expect(output).toContain('  Your one-time code:  BCDF-GHJK')
-    expect(output).toContain('Approve this sign-in on the Norbix dashboard: https://cloud.example.com/device?code=BCDF-GHJK')
+    expect(output).toContain('Open this link to sign in:\nhttps://cloud.example.com/device?code=BCDF-GHJK')
     expect(opened).toEqual(['https://cloud.example.com/device?code=BCDF-GHJK'])
     const done = output.at(-1)!.split('\n')
     expect(done[0]).toBe('Signed in to hub.example.com as Norbix CLI (mac) (norbix-cli-mac) — an AI service user with the roles you picked.')
@@ -362,6 +362,43 @@ describe('norbix login (browser sign-in)', () => {
     expect(existsSync(HUB_SESSION())).toBe(false)
   })
 
+  it('the Hub\'s signInText is printed as it is, the link on its own line, before the browser opens', async () => {
+    const text = 'Open this link to sign in:\nhttps://cloud.example.com/device?code=BCDF-GHJK&from=hub'
+    stubNetwork({
+      '/v3/echo': [{body: ECHO}],
+      '/v3/auth/device/start': [{body: {...START, signInText: text}}],
+      '/v3/auth/device/token': [{body: SUCCESS}],
+    })
+    await runLogin()
+
+    expect(output).toContain(text)
+    expect(output.join('\n').split('\n')).toContain('https://cloud.example.com/device?code=BCDF-GHJK&from=hub')
+    expect(opened).toEqual(['https://cloud.example.com/device?code=BCDF-GHJK'])
+  })
+
+  it('a Hub without signInText: the words and the link on its own line, even when the browser opens', async () => {
+    stubNetwork({
+      '/v3/echo': [{body: ECHO}],
+      '/v3/auth/device/start': [{body: START}],
+      '/v3/auth/device/token': [{body: SUCCESS}],
+    })
+    await runLogin()
+
+    const lines = output.join('\n').split('\n')
+    const at = lines.indexOf('Open this link to sign in:')
+    expect(at).toBeGreaterThan(-1)
+    expect(lines[at + 1]).toBe('https://cloud.example.com/device?code=BCDF-GHJK')
+    expect(opened).toEqual(['https://cloud.example.com/device?code=BCDF-GHJK'])
+  })
+
+  it('step 1 --json passes the Hub\'s signInText on as it is', async () => {
+    interactive = false
+    const text = 'Open this link to sign in:\nhttps://cloud.example.com/device?code=BCDF-GHJK'
+    stubNetwork({'/v3/echo': [{body: ECHO}], '/v3/auth/device/start': [{body: {...START, signInText: text}}]})
+    const result = (await runLogin(['--no-browser', '--json'])) as {signInText: string}
+    expect(result.signInText).toBe(text)
+  })
+
   it('a machine without a desktop (or over SSH): no ENTER prompt, no browser, the link is printed and the CLI keeps waiting', async () => {
     machine.desktop = false
     const prompts = await import('@inquirer/prompts')
@@ -375,7 +412,7 @@ describe('norbix login (browser sign-in)', () => {
 
     expect(opened).toEqual([])
     expect(prompts.input).not.toHaveBeenCalled()
-    expect(output).toContain('Approve this sign-in on the Norbix dashboard: https://cloud.example.com/device?code=BCDF-GHJK')
+    expect(output).toContain('Open this link to sign in:\nhttps://cloud.example.com/device?code=BCDF-GHJK')
     expect(output).toContain('No browser is opened here: open the link on any device.')
     expect(readJson(HUB_SESSION()).bearerToken).toBe('access-1')
   })
@@ -458,6 +495,7 @@ describe('agent sign-in in two steps: --no-browser --json, then --wait', () => {
       userCode: 'BCDF-GHJK',
       verificationUri: 'https://cloud.example.com/device',
       verificationUriComplete: 'https://cloud.example.com/device?code=BCDF-GHJK',
+      signInText: 'Open this link to sign in:\nhttps://cloud.example.com/device?code=BCDF-GHJK',
       expiresIn: 600,
       next: 'norbix login --wait',
     })

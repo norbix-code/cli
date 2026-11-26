@@ -38,8 +38,9 @@ export const WAIT_SLICE_MS = 90_000
 export default class Login extends BaseCommand {
   static description = `Log in to Norbix.
 
-Default: browser sign-in. The CLI shows a one-time code and opens the
-Norbix dashboard; you sign in there, pick the roles the CLI gets, and press
+Default: browser sign-in. The CLI shows a one-time code, prints "Open this
+link to sign in:" with the link on its own line, and opens the Norbix
+dashboard (if no browser opens, open the link yourself); you sign in there, pick the roles the CLI gets, and press
 Allow. The CLI then works as an AI service user named "Norbix CLI
 (<this computer>)" with exactly those roles — never more than you have. You
 can remove it any time in the dashboard under Account → AI service users.
@@ -67,7 +68,8 @@ Coding agents (their shell commands time out after ~2 minutes; the code
 lives 10 minutes) sign in in two steps:
   norbix login --no-browser --json   starts the sign-in, prints
                                      {userCode, verificationUriComplete,
-                                     expiresIn} and exits at once
+                                     signInText, expiresIn} and exits
+                                     at once
   norbix login --wait                waits up to 90 s for the approval;
                                      run it again until it is approved
                                      (exit 0), denied or expired (exit 4)
@@ -280,6 +282,7 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
         userCode: start.userCode,
         verificationUri: start.verificationUri,
         verificationUriComplete: start.verificationUriComplete ?? start.verificationUri,
+        signInText: signInText(start),
         expiresIn,
         next: `norbix login --wait${hostArgs(ctx, flags)}`,
       }
@@ -289,7 +292,8 @@ A shell with no terminal (scripts, CI, agents) without --api-key,
     this.log('')
     this.log(`  Your one-time code:  ${start.userCode}`)
     this.log('')
-    this.log(`Approve this sign-in on the Norbix dashboard: ${link}`)
+    // The link stays on its own line even when a browser opens: a coding agent shows it in the chat.
+    this.log(signInText(start))
     this.log('Check that the dashboard shows the same code, then pick the roles the CLI gets.')
     if (flags['no-browser'] || !canOpenBrowser()) {
       this.log('No browser is opened here: open the link on any device.')
@@ -473,6 +477,15 @@ function describeTarget(ctx: ResolvedContext, flags: {project?: string}): string
   return project
     ? `Signing in to ${host} (${profile}) for project ${project} (from ${source}).`
     : `Signing in to ${host} (${profile}) with no project named — pass --project <id> to sign in for one; with one project in the account it is picked by itself.`
+}
+
+/**
+ * What the person reads to sign in: the Hub's `signInText` as it is ("Open this link to sign in:" and the
+ * link on the next line), or the same words with the link when the Hub does not send it (older gateway).
+ */
+export function signInText(start: {signInText?: string; verificationUri: string; verificationUriComplete?: string}): string {
+  if (start.signInText?.trim()) return start.signInText
+  return `Open this link to sign in:\n${start.verificationUriComplete ?? start.verificationUri}`
 }
 
 /** ` --host x` / ` --profile p` / ` --project id` so a printed next step reaches the same Hub and project. */

@@ -488,7 +488,7 @@ The agent signs in by itself, in two steps (its shell commands time out
 after ~2 minutes; the code lives 10 minutes):
 
 ```sh
-norbix login --no-browser --json   # → {"status":"pending","userCode":"BCDF-GHJK","verificationUriComplete":"https://…/device?code=…","expiresIn":600,…}
+norbix login --no-browser --json   # → {"status":"pending","userCode":"BCDF-GHJK","verificationUriComplete":"https://…/device?code=…","signInText":"Open this link to sign in:\nhttps://…","expiresIn":600,…}
 norbix login --wait --json         # waits up to 90 s; exit 4 AUTHORIZATION_PENDING → run it again
 ```
 

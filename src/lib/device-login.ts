@@ -12,7 +12,7 @@ import {hubRoute, type HubEndpoint} from './hub-version.js'
  *   POST {hub}/{v}/auth/device/start          (anonymous)
  *     body:     { clientName: "norbix-cli", deviceName?, projectId? }
  *     response: { deviceCode, userCode, verificationUri,
- *                 verificationUriComplete, expiresIn: 600, interval: 5 }
+ *                 verificationUriComplete, signInText?, expiresIn: 600, interval: 5 }
  *
  *   POST {hub}/{v}/auth/device/token          (anonymous)
  *     body:     { deviceCode }
@@ -41,6 +41,8 @@ export interface DeviceStartResponse {
   userCode: string
   verificationUri: string
   verificationUriComplete?: string
+  /** "Open this link to sign in:" + "\n" + the link — print it as it is (newer gateways only). */
+  signInText?: string
   expiresIn?: number
   interval?: number
 }
