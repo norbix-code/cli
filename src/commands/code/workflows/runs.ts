@@ -6,11 +6,12 @@ import {RUN_STATUSES} from '../../../lib/workflows.js'
 export default class CodeWorkflowsRuns extends BaseCommand {
   static description = `Beta: the runs of a workflow, newest first
 
-One row per run: runId, version (or draft), status, source (trigger, scheduler, invoke, workflow), started / finished, duration, the steps running now, what it waits on, the error. Read one with \`code workflows run <runId>\`.`
+One row per run: runId, version (or draft), status, source (trigger, scheduler, invoke, workflow), started / finished, duration, the steps running now, what it waits on, the error. --version keeps the runs of one published version. Read one with \`code workflows run <runId>\`.`
 
   static examples = [
     '<%= config.bin %> code workflows runs wf_3kQ9mZ2vXc8LpR4wT7yH1n',
     '<%= config.bin %> code workflows runs wf_3kQ9mZ2vXc8LpR4wT7yH1n --status failed --from 2026-10-01T00:00:00Z --to 2026-10-27T00:00:00Z --limit 50 --json',
+    '<%= config.bin %> code workflows runs wf_3kQ9mZ2vXc8LpR4wT7yH1n --version 3',
   ]
 
   static args = {
@@ -19,6 +20,7 @@ One row per run: runId, version (or draft), status, source (trigger, scheduler, 
 
   static flags = {
     status: Flags.string({description: 'Only runs in this state', options: RUN_STATUSES}),
+    version: Flags.integer({description: 'Only runs of this published version (1, 2, …)', min: 1}),
     from: Flags.string({description: 'Only runs started at or after this time (ISO 8601)'}),
     to: Flags.string({description: 'Only runs started before this time (ISO 8601)'}),
     limit: Flags.integer({description: 'Page size (rows per page)', min: 1}),
@@ -33,6 +35,7 @@ One row per run: runId, version (or draft), status, source (trigger, scheduler, 
     const res = await client.api.code.getCodeWorkflowRuns({
       id: args.id,
       ...(flags.status ? {status: flags.status} : {}),
+      ...(flags.version === undefined ? {} : {workflowVersion: flags.version}),
       ...(flags.from ? {from: flags.from} : {}),
       ...(flags.to ? {to: flags.to} : {}),
       ...(flags.limit ? {pageSize: flags.limit} : {}),

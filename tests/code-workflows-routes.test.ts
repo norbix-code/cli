@@ -186,6 +186,12 @@ describe('norbix code workflows — definitions', () => {
     expect(calls[0]?.query.get('startingAfter')).toBe('wf_a')
   })
 
+  it('list --search → search on the query string', async () => {
+    await wf('list', '--search', 'invoice')
+    expect(calls[0]).toMatchObject({method: 'GET', path: W})
+    expect(calls[0]?.query.get('search')).toBe('invoice')
+  })
+
   it('list --enabled → isEnabled=true; --enabled with --disabled is refused', async () => {
     await wf('list', '--enabled')
     expect(calls[0]?.query.get('isEnabled')).toBe('true')
@@ -507,6 +513,12 @@ describe('norbix code workflows — runs', () => {
     expect(calls[0]?.query.get('from')).toBe('2026-10-01T00:00:00Z')
     expect(calls[0]?.query.get('to')).toBe('2026-10-27T00:00:00Z')
     expect(calls[0]?.query.get('pageSize')).toBe('50')
+  })
+
+  it('runs --version → workflowVersion on the query string', async () => {
+    await wf('runs', WF, '--version', '3')
+    expect(calls[0]).toMatchObject({method: 'GET', path: `${W}/${WF}/runs`})
+    expect(calls[0]?.query.get('workflowVersion')).toBe('3')
   })
 
   it('run → GET /code/workflows/runs/{runId}, printed as a step table; --json prints the run', async () => {

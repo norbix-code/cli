@@ -37,7 +37,7 @@ All hub paths below are under `/{version}/account/projects/{projectId}`.
 | `norbix project public-config [id]` | show the public config apps read before sign-in | API host `GET /{version}/public/projects/{ProjectId}/config` |
 | `norbix project create --name <n> --connection-string <cs> [--database <db>] [--primary <region>] [--additional <region>]... [--description <text>] [--config <json>]` | create a project on your own MongoDB database | `POST /{version}/account/projects` |
 | `norbix project wait-active [--timeout <s>]` | wait until a new project is ready (at most 90 s; a timeout answers `isActive: false`) | `GET /wait-active` |
-| `norbix project health [--refresh] [--period 7\|30\|90]` | what is wrong with the project and the Cloud page that fixes each, plus user / e-mail / API call numbers | `GET /health` |
+| `norbix project health [--refresh] [--period 7\|30\|90] [--severity Error\|Warning] [--module <name>] [--page-size <n>] [--page <n>]` | what is wrong with the project (errors first) and the Cloud page that fixes each, plus user / e-mail / API call numbers; `warningsTotal` says how many problems match | `GET /health` |
 | `norbix project check-languages [<lang>...] [--default <lang>]` | the e-mail / push / SMS templates that miss a language of a proposed list; changes nothing | `POST /settings/languages/check` |
 
 `--file-resource` is the stored file, as the files module describes it (a JSON
