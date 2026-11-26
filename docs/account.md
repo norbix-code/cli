@@ -3,7 +3,7 @@
 Account-level commands: the organisation, its projects and its team. All
 paths below are under `/{version}/account` on the Hub host.
 
-`account team`, `account me`, `account me set-phone`, `account regions`,
+`account team`, `account team member`, `account me`, `account me set-phone`, `account regions`,
 `account bundles`, `account change-bundle`, `account clusters`,
 `account clusters upgrade`, `account discount check`,
 `account discount apply`, `account trial availability` and
@@ -22,6 +22,7 @@ query string, body); `account projects`, `account usage` and
 | `norbix account regions` | list the regions the account may use — needs no login and no project | `GET /regions` |
 | `norbix account billing-portal` | get the billing portal link | `POST /stripe/get-portal-url` |
 | `norbix account team [--in-project <id>] [--include-owner] [--page-size <n>] [--after <cursor>] [--before <cursor>]` | list the team members (collaborators) | `GET /collaborators` |
+| `norbix account team member <usr_…>` | one team member: name, email, roles, phone, push devices | `GET /team/member/{memberId}` |
 | `norbix account me` | show your own team-member record (owner or member) — not the organisation's profile | `GET /me` |
 | `norbix account me set-phone <phone>` / `--clear` | save (E.164, `+37060000000`) or clear your own phone | `PUT /me/phone` |
 | `norbix account bundles` | list the Managed Service bundles: name, project limit, monthly and annual price | `GET /stripe/bundles` |

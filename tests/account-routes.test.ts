@@ -54,6 +54,7 @@ const CLUSTER = 'fxc_2ToIiRM03X63TZaJ2dJdv2'
 /** [argv, verb, path] — argv without the leading `account`. */
 const routes: Array<[string[], string, string]> = [
   [['team'], 'GET', '/v3/account/collaborators'],
+  [['team', 'member', 'usr_3kQ9mZ2vXc8LpR4wT7yH1n'], 'GET', '/v3/account/team/member/usr_3kQ9mZ2vXc8LpR4wT7yH1n'],
   [['me'], 'GET', '/v3/account/me'],
   [['me', 'set-phone', PHONE], 'PUT', '/v3/account/me/phone'],
   [['me', 'set-phone', '--clear'], 'PUT', '/v3/account/me/phone'],
@@ -103,6 +104,22 @@ describe('account team — flat paging and filters on the query string', () => {
     for (const key of ['pageSize', 'startingAfter', 'endingBefore', 'projectId', 'includeAccountOwner']) {
       expect(calls[0]?.query.has(key)).toBe(false)
     }
+  })
+})
+
+describe('account team member — the id in the path', () => {
+  it('sends the member id only in the path: no query, no body', async () => {
+    const {error} = await runCommand(['account', 'team', 'member', 'usr_3kQ9mZ2vXc8LpR4wT7yH1n', ...globalArgs])
+    expect(error).toBeUndefined()
+    expect(calls[0]?.path).toBe('/v3/account/team/member/usr_3kQ9mZ2vXc8LpR4wT7yH1n')
+    expect(calls[0]?.query.has('memberId')).toBe(false)
+    expect(calls[0]?.body).toBeUndefined()
+  })
+
+  it('needs the member id', async () => {
+    const {error} = await runCommand(['account', 'team', 'member', ...globalArgs])
+    expect(error?.message).toMatch(/memberId/)
+    expect(calls).toHaveLength(0)
   })
 })
 
