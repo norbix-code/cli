@@ -14,7 +14,7 @@ export default class ProjectAiPlansAssign extends ProjectCommand {
 
 --role <roleId>=<planId> (repeatable, in order) replaces the role rows: a
 user with several mapped roles gets the plan of the first row. --default is
-the plan of users with no own plan and no mapped role. The Hub replaces the
+the plan of users with no mapped role. The Hub replaces the
 rows and the default together, so when you pass only one of them the
 command reads the other first and keeps it.
 
@@ -30,7 +30,7 @@ ${READ_FIRST_DRY_RUN}`
     ...ProjectCommand.dryRunFlags,
     role: Flags.string({description: 'roleId=planId (repeatable, in order)', multiple: true, exclusive: ['clear-roles']}),
     'clear-roles': Flags.boolean({description: 'Remove every role row', default: false}),
-    default: Flags.string({description: 'Plan id of users with no own plan and no mapped role', exclusive: ['clear-default']}),
+    default: Flags.string({description: 'Plan id of users with no mapped role', exclusive: ['clear-default']}),
     'clear-default': Flags.boolean({description: 'No default plan', default: false}),
   }
 

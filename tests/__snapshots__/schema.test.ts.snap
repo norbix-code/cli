@@ -137,6 +137,15 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
   },
   {
     "args": [
+      "memberId",
+    ],
+    "destructive": false,
+    "flags": [],
+    "id": "account team member",
+    "supportsDryRun": false,
+  },
+  {
+    "args": [
       "[region]",
     ],
     "destructive": false,
@@ -1227,6 +1236,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [
       "enabled:boolean",
       "disabled:boolean",
+      "search:string",
       "limit:string",
       "after:string",
       "before:string",
@@ -1323,6 +1333,7 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "destructive": false,
     "flags": [
       "status:option",
+      "version:string",
       "from:string",
       "to:string",
       "limit:string",
@@ -4356,13 +4367,6 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "args": [],
     "destructive": false,
     "flags": [],
-    "id": "project ai plans users",
-    "supportsDryRun": false,
-  },
-  {
-    "args": [],
-    "destructive": false,
-    "flags": [],
     "id": "project ai settings",
     "supportsDryRun": false,
   },
@@ -4505,6 +4509,10 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
     "flags": [
       "refresh:boolean",
       "period:option",
+      "severity:option",
+      "module:option",
+      "page:string",
+      "page-size:string",
     ],
     "id": "project health",
     "supportsDryRun": false,
@@ -5955,12 +5963,9 @@ exports[`norbix schema > is stable (snapshot of ids, flags and markers) 1`] = `
       "id",
     ],
     "destructive": false,
-    "flags": [
-      "dry-run:boolean",
-      "plan:string",
-    ],
+    "flags": [],
     "id": "users contacts ai-plan",
-    "supportsDryRun": true,
+    "supportsDryRun": false,
   },
   {
     "args": [

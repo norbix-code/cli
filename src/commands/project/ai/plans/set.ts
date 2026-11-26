@@ -22,7 +22,7 @@ those:
                   every stored plan not in it is removed, so it asks first.
 A plan: {"name", "quotaUnit": None|Credits|Tokens, "monthlyQuota",
 "allowedAssistantIds", "allowedModels": [{"llmIntegrationId","model"}],
-"features": {"attachments","rag","memory"}, "quotaReachedMessage"}.
+"features": {"attachments","memory"}, "quotaReachedMessage"}.
 JSON values: inline, @file or -.
 
 ${READ_FIRST_DRY_RUN}`

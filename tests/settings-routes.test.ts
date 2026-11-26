@@ -40,7 +40,7 @@ const STORED_PLANS = {
       {id: 'aip_free', name: 'Free', quotaUnit: 'Credits', monthlyQuota: 100},
       {
         id: 'aip_pro', name: 'Pro', quotaUnit: 'Credits', monthlyQuota: 5000,
-        allowedModels: [{llmIntegrationId: 'int_llm', model: 'gpt-4o'}], features: {attachments: true, rag: true, memory: false},
+        allowedModels: [{llmIntegrationId: 'int_llm', model: 'gpt-4o'}], features: {attachments: true, memory: false},
       },
     ],
     roles: [{roleId: 'rl_pro', planId: 'aip_pro'}],
@@ -132,7 +132,6 @@ const routes: Array<[string[], Route[]]> = [
   [['project', 'ai', 'plans', '--prod'], [['GET', PLANS]]],
   [['project', 'ai', 'plans', 'set', '--plan', '{"name":"Team"}', '--prod'], [['GET', PLANS], ['PUT', PLANS]]],
   [['project', 'ai', 'plans', 'assign', '--default', 'aip_pro', '--prod'], [['GET', PLANS], ['PUT', `${PLANS}/assignments`]]],
-  [['project', 'ai', 'plans', 'users', '--prod'], [['GET', `${PLANS}/users`]]],
   [['project', 'ai', 'usage', '--prod'], [['GET', `${P}/ai/usage`]]],
 
   // Public config + legal + brand asset (the public reads go to the API host)
@@ -325,7 +324,7 @@ describe('ai settings', () => {
         {id: 'aip_free', name: 'Free', quotaUnit: 'Credits', monthlyQuota: 100},
         {
           id: 'aip_pro', name: 'Pro', quotaUnit: 'Credits', monthlyQuota: 9000,
-          allowedModels: [{llmIntegrationId: 'int_llm', model: 'gpt-4o'}], features: {attachments: true, rag: true, memory: false},
+          allowedModels: [{llmIntegrationId: 'int_llm', model: 'gpt-4o'}], features: {attachments: true, memory: false},
         },
         {name: 'Team', quotaUnit: 'None'},
       ],
