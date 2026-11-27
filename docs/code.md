@@ -207,7 +207,7 @@ as everywhere; workflows live per environment.
 | `norbix code workflows resume-link <link\|token>` | what a signed resume link from a notification will do — workflow, run, step, decision, assignee, expiry; changes nothing; no sign-in needed (Api host) | `GET /resume/{token}` |
 | `norbix code workflows resume-link <link\|token> --use [--yes]` | answers the wait with the link, as its assignee; prints the run (a group approval may still be `waiting`) | `POST /resume/{token}` |
 | `norbix code workflows schema [--format json\|yaml]` | the definition's JSON Schema, every step kind (config / output schema, permissions it needs), the binding families | `GET /schema` |
-| `norbix module enable workflows` | turns the workflows switch on in this environment (on by default) | `PUT /enable` |
+| `norbix module enable workflows` | turns the workflows switch on for the whole project, every environment at once (one switch per project; on by default) | `PUT /enable` |
 | `norbix module disable workflows [--yes]` | refused since 2026-11-17 (`CM-ERRORS-WORKFLOWS-045`) — workflows are part of every project and cannot be switched off; stop one workflow with `code workflows disable <id>` | `PUT /disable` |
 
 Notes:
