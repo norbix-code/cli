@@ -25,15 +25,20 @@ const MODULES: Record<string, {enable?: Switch; disable?: Switch}> = {
   push: {enable: (c) => c.hub.notifications.enablePush({}), disable: (c) => c.hub.notifications.disablePush({})},
   scheduler: {enable: (c) => c.hub.scheduler.enableScheduler({}), disable: (c) => c.hub.scheduler.disableScheduler({})},
   sms: {enable: (c) => c.hub.notifications.enableSms({}), disable: (c) => c.hub.notifications.disableSms({})},
+  // The workflows switch of the Code module (PUT /code/workflows/enable|disable). On by default;
+  // since 2026-11-17 the gateway refuses disable (CM-ERRORS-WORKFLOWS-045). Stop one workflow
+  // with `code workflows disable <id>`.
+  workflows: {enable: (c) => c.hub.code.enableCodeWorkflows(), disable: (c) => c.hub.code.disableCodeWorkflows()},
 }
 
 export default class Module extends BaseCommand {
-  static description = 'Enable or disable a whole project module (Membership and Database are always on: no switch)'
+  static description = 'Enable or disable a whole project module (Membership and Database are always on: no switch). `workflows` is the switch of all workflows: on by default, the gateway refuses to turn it off'
 
   static examples = [
     '<%= config.bin %> module enable sms',
     '<%= config.bin %> module disable sms --yes',
     '<%= config.bin %> module enable files --dry-run',
+    '<%= config.bin %> module enable workflows',
   ]
 
   static args = {

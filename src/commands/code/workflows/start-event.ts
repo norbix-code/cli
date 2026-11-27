@@ -6,7 +6,7 @@ import {usageError} from '../../../lib/cli-error.js'
 import {formatWorkflow} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsStartEvent extends BaseCommand {
-  static description = `Beta: set the event that starts a workflow
+  static description = `Set the event that starts a workflow
 
 Saves the start event into the workflow's draft (the draft is made from the latest published version when there is none). Nothing starts yet: check the draft and publish it with \`code workflows publish <id>\` — publishing writes the trigger of that module, linked to the workflow. That trigger cannot be changed from the trigger commands (CM-ERRORS-WORKFLOWS-052); disabling, enabling or deleting the workflow does the same to it.
 

@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {FORMATS, formatAs} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsGet extends BaseCommand {
-  static description = `Beta: one workflow — the latest published definition, or a pinned version
+  static description = `One workflow — the latest published definition, or a pinned version
 
 Prints the workflow (definition, version, hasDraft, isEnabled, the versions list, warnings). A workflow with only a draft answers with the draft and no version. --format yaml prints the definition alone as YAML: change it and send it back with \`code workflows save --file\` (it becomes the draft).`
 

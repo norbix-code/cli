@@ -3,7 +3,7 @@ import {Args} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class CodeWorkflowsVersions extends BaseCommand {
-  static description = `Beta: the published versions of a workflow
+  static description = `The published versions of a workflow
 
 One row per version: the number, when and by whom it was published, its name and step count. Compare two with \`code workflows diff\`; read one with \`code workflows get <id> --version N\`.`
 

@@ -5,11 +5,11 @@ import {join} from 'node:path'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {parse as parseYaml} from 'yaml'
 
-import {BETA_NOTE, formatGroupApproval, formatIssue, formatOf, formatPorts, formatRun, formatSlots, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
+import {formatGroupApproval, formatIssue, formatOf, formatPorts, formatRun, formatSlots, formatValidation, formatWaitingRuns} from '../src/lib/workflows.js'
 import {envListAnswer} from './_env.js'
 
 /**
- * Every `norbix code workflows` command (Workflows beta), run the way a user
+ * Every `norbix code workflows` command, run the way a user
  * types it, through oclif and the real `@norbix.ai/ts` transport, with `fetch`
  * replaced: the verb, the path, the query and the body it sends. Nothing
  * leaves the process.
@@ -166,11 +166,13 @@ function tempFile(name: string, text: string): string {
 const wf = (...args: string[]) => runCommand(['code', 'workflows', ...args, ...globalArgs])
 
 describe('norbix code workflows — the topic', () => {
-  it('says once in the topic help that workflows are in beta', () => {
+  it('the topic help no longer calls workflows a beta', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
-      oclif: {topics: {code: {subtopics: {workflows: {description: string}}}}}
+      oclif: {topics: {code: {description: string; subtopics: {workflows: {description: string; subtopics?: unknown}}}}}
     }
-    expect(pkg.oclif.topics.code.subtopics.workflows.description).toContain(BETA_NOTE)
+    expect(pkg.oclif.topics.code.description).not.toMatch(/beta/i)
+    expect(pkg.oclif.topics.code.subtopics.workflows.description).not.toMatch(/beta/i)
+    expect(pkg.oclif.topics.code.subtopics.workflows.subtopics).toBeUndefined()
   })
 })
 
@@ -433,20 +435,26 @@ describe('norbix code workflows — definitions', () => {
     expect(parseYaml(out())).toEqual((answer as {schema: unknown}).schema)
   })
 
-  it('beta enable → PUT /code/workflows/enable; beta disable → PUT /code/workflows/disable with --yes', async () => {
-    await runCommand(['code', 'workflows', 'beta', 'enable', ...globalArgs])
+  it('module enable workflows → PUT /code/workflows/enable; module disable workflows asks first, then PUT /code/workflows/disable', async () => {
+    await runCommand(['module', 'enable', 'workflows', ...globalArgs])
     expect(calls[0]).toMatchObject({method: 'PUT', path: `${W}/enable`})
 
     calls = []
-    const refused = await runCommand(['code', 'workflows', 'beta', 'disable', ...globalArgs])
+    const refused = await runCommand(['module', 'disable', 'workflows', ...globalArgs])
     expect((refused.error as {code?: string} | undefined)?.code).toBe('CONFIRMATION_REQUIRED')
     expect(calls).toHaveLength(0)
 
-    await runCommand(['code', 'workflows', 'beta', 'disable', '--dry-run', ...globalArgs])
+    await runCommand(['module', 'disable', 'workflows', '--dry-run', ...globalArgs])
     expect(calls).toHaveLength(0)
 
-    await runCommand(['code', 'workflows', 'beta', 'disable', '--yes', ...globalArgs])
+    await runCommand(['module', 'disable', 'workflows', '--yes', ...globalArgs])
     expect(calls[0]).toMatchObject({method: 'PUT', path: `${W}/disable`})
+  })
+
+  it('the old beta switch is gone (no hidden alias)', async () => {
+    const {error} = await runCommand(['code', 'workflows', 'beta', 'enable', ...globalArgs])
+    expect(error).toBeDefined()
+    expect(calls).toHaveLength(0)
   })
 })
 

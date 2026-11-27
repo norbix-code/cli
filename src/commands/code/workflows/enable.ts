@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {formatWorkflow} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsEnable extends BaseCommand {
-  static description = `Beta: turn a workflow on
+  static description = `Turn a workflow on
 
 Triggers, scheduler tasks and invoke may start new runs again. Also resets the runaway counters of a workflow that was turned off as a runaway.`
 

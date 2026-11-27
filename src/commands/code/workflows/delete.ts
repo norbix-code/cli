@@ -3,7 +3,7 @@ import {Args} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class CodeWorkflowsDelete extends BaseCommand {
-  static description = `Beta: delete a workflow
+  static description = `Delete a workflow
 
 Every version and the draft go. Runs in flight finish on their snapshot; runs waiting on a delay, an event or an approval are cancelled (reason workflow-deleted). Triggers and scheduler tasks that start it fail from then on.`
 

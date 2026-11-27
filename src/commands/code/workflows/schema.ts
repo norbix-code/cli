@@ -4,9 +4,9 @@ import {BaseCommand} from '../../../base.js'
 import {FORMATS, formatAs} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsSchema extends BaseCommand {
-  static description = `Beta: the workflow definition format — JSON Schema, step kinds, bindings
+  static description = `The workflow definition format — JSON Schema, step kinds, bindings
 
-The JSON Schema of a definition, every step kind with its config schema, output schema (when known) and the permissions it needs, and the binding families usable in expressions. Works with the beta switch off. --format yaml prints the same document as YAML.`
+The JSON Schema of a definition, every step kind with its config schema, output schema (when known) and the permissions it needs, and the binding families usable in expressions. --format yaml prints the same document as YAML.`
 
   static examples = [
     '<%= config.bin %> code workflows schema',

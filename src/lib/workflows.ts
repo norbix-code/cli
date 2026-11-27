@@ -6,14 +6,11 @@ import {parse as parseYaml, stringify as stringifyYaml} from 'yaml'
 import {usageError} from './cli-error.js'
 
 /**
- * Helpers shared by the `norbix code workflows` commands (Workflows beta,
- * Code.Workflows.md §15): the definition file (YAML or JSON) in and out, the
+ * Helpers shared by the `norbix code workflows` commands
+ * (Code.Workflows.md §15): the definition file (YAML or JSON) in and out, the
  * validation report, and a run as a readable step table. YAML exists only at
  * the edge — the gateway takes and returns JSON.
  */
-
-/** The one sentence every workflows command and the topic help carry. */
-export const BETA_NOTE = 'Workflows are in beta; bugs may occur.'
 
 /** The run states `runs --status` and `waiting --status` take (§8.1). */
 export const RUN_STATUSES = ['running', 'waiting', 'succeeded', 'failed', 'cancelled']

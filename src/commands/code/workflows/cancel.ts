@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {formatRun} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsCancel extends BaseCommand {
-  static description = `Beta: stop a running or waiting run
+  static description = `Stop a running or waiting run
 
 Queued steps are not started, a running step finishes and keeps its output, waiting steps are cancelled; child runs are not touched. A finished run cannot be stopped. Prints the run.`
 

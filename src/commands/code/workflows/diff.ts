@@ -3,7 +3,7 @@ import {Args, Flags} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class CodeWorkflowsDiff extends BaseCommand {
-  static description = `Beta: what changed between two published versions of a workflow
+  static description = `What changed between two published versions of a workflow
 
 The added and removed step ids, the changed steps with the paths that changed, and the changed top-level fields.`
 

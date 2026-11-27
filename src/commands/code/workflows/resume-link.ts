@@ -47,7 +47,7 @@ export function formatResumeLink(res: ResumeLinkAnswer): string {
 }
 
 export default class CodeWorkflowsResumeLink extends BaseCommand {
-  static description = `Beta: check or use a signed resume link
+  static description = `Check or use a signed resume link
 
 A wait step's notification carries signed links (@Model.Wait.ApproveUrl, RejectUrl, ResumeUrl). Without --use this shows what the link will do — the workflow, the run, the step, the decision and when it expires — and changes nothing (GET). With --use it answers the wait as the link's assignee and prints the run (POST); a group approval counts the answer and the run may still wait. The link is the key: no sign-in is needed. Pass the whole link or only the token. Calls the Api host.`
 

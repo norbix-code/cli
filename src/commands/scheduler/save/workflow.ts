@@ -6,11 +6,11 @@ import {CRON_FIELDS, parseCron, taskFlags, taskRequest} from '../../../lib/sched
 import {EXECUTION_IDENTITY_HELP} from '../../../lib/triggers.js'
 
 export default class SchedulerSaveWorkflow extends BaseCommand {
-  static description = `Beta: create or update a "Workflow call" task: start a workflow on a cron
+  static description = `Create or update a "Workflow call" task: start a workflow on a cron
 
 Each time --cron fires (5 fields: ${CRON_FIELDS}, UTC) the task starts a run of --workflow (wf_…; \`norbix code workflows list\`), with source "scheduler". --payload key=value fills the run's @Model.Request.* values (strings; repeat for several). The run acts as the workflow's own execution identity; the task's initiator only has to be allowed to start it (code:execute on the workflow, else CM-ERRORS-SCHEDULER-012). The workflow must exist in the task's environment (CM-ERRORS-WORKFLOWS-002).
 
-Without --id a new task is created; with --id that task is replaced (send every field again). --execution-identity: ${EXECUTION_IDENTITY_HELP}. Workflows are in beta; bugs may occur. Prints the task ID.`
+Without --id a new task is created; with --id that task is replaced (send every field again). --execution-identity: ${EXECUTION_IDENTITY_HELP}. Prints the task ID.`
 
   static examples = [
     '<%= config.bin %> scheduler save workflow --name "Nightly onboarding sweep" --cron "0 3 * * *" --workflow wf_3kQ9mZ2vXc8LpR4wT7yH1n --yes',

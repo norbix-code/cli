@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {RUN_STATUSES} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsRuns extends BaseCommand {
-  static description = `Beta: the runs of a workflow, newest first
+  static description = `The runs of a workflow, newest first
 
 One row per run: runId, version (or draft), status, source (trigger, scheduler, invoke, workflow), started / finished, duration, the steps running now, what it waits on, the error. --version keeps the runs of one published version. Read one with \`code workflows run <runId>\`.`
 

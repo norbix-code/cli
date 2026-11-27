@@ -9,7 +9,7 @@ import {formatRun, readObjectFlag} from '../../../lib/workflows.js'
 const SETTLED = new Set(['succeeded', 'failed', 'cancelled', 'waiting'])
 
 export default class CodeWorkflowsTest extends BaseCommand {
-  static description = `Beta: start a test run of a workflow with a test event
+  static description = `Start a test run of a workflow with a test event
 
 Starts the workflow as the event would: a database record (--source database --collection --record; --edits lays fields over it for an update), a Membership user (--source membership --user) or a manual start (--source manual --payload, checked against the inputs). It runs the draft when there is one, else the latest published version (--version picks another). The run is REAL: its steps send, write and call like any run. --follow polls the run until it finishes or parks on a wait.`
 
