@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {formatWorkflow} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsPublish extends BaseCommand {
-  static description = `Beta: publish the draft of a workflow
+  static description = `Publish the draft of a workflow
 
 The draft becomes published version N+1 and is cleared; every save check runs again. New runs use it from now on; runs in flight finish on their own version. Check the change first with \`code workflows draft <id>\` or \`code workflows diff\`.`
 

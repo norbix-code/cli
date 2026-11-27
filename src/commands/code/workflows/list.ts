@@ -3,7 +3,7 @@ import {Flags} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class CodeWorkflowsList extends BaseCommand {
-  static description = `Beta: the workflows of the project in this environment
+  static description = `The workflows of the project in this environment
 
 Newest first. One row per workflow: workflowId, name, the published version, hasDraft, isEnabled (and disabledReason, e.g. runaway), the last run and how many runs wait. --search keeps the workflows whose name has that text (any case). Pages with --limit and the --after / --before cursors of the answer.`
 

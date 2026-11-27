@@ -58,6 +58,7 @@ const MODULES: Record<string, string> = {
   push: '/v3/notifications/push',
   scheduler: '/v3/scheduler',
   sms: '/v3/notifications/sms',
+  workflows: '/v3/code/workflows',
 }
 
 /** Modules with no enable or disable route on the gateway. */

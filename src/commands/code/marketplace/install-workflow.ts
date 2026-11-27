@@ -6,7 +6,7 @@ import {parseReferences, REFERENCE_REFUSED, wantedReferences} from '../../../lib
 import {formatWorkflow, waitForWorkflowDraft} from '../../../lib/workflows.js'
 
 export default class CodeMarketplaceInstallWorkflow extends BaseCommand {
-  static description = `Beta: install a workflow listing as a draft
+  static description = `Install a workflow listing as a draft
 
 Fills the listing's references and saves a new workflow's draft in the current environment: nothing runs and nothing is published. Give one --ref key=value for every reference the listing declares (read them with code marketplace listings <ml_…>): a collection name, a template id, an integration id. A --ref that is not key=value is refused before anything is sent. When the gateway refuses a missing or undeclared reference (CM-ERRORS-MARKETPLACE-036) the listing is read once and the hint names what it wants. A connector listing is CM-ERRORS-MARKETPLACE-035: enable it instead.
 

@@ -60,10 +60,10 @@ All paths below are under `/{version}/code/marketplace`.
 
 | command | what it does | endpoint |
 |---|---|---|
-| `norbix code marketplace listings [--search <text>] [--tags <tag>]… [--category <Category>]… [--transport <Rest\|Mcp\|Code\|Internal\|Sdk>]… [--official] [--kind Connector\|Workflow]` | the catalog this host shows; `--kind Workflow` lists the curated workflows (beta) | `GET /listings` |
+| `norbix code marketplace listings [--search <text>] [--tags <tag>]… [--category <Category>]… [--transport <Rest\|Mcp\|Code\|Internal\|Sdk>]… [--official] [--kind Connector\|Workflow]` | the catalog this host shows; `--kind Workflow` lists the curated workflows | `GET /listings` |
 | `norbix code marketplace listings <ml_…>` | one listing in full: install form (config and secret fields), validation steps, functions with key, form kind, parameters and inputs | `GET /listings/{id}` |
 | `norbix code marketplace listings <ml_…> --tokens <function key>` | the `@Model.X` tokens that function of the listing reads, one per line — before it is added to a connection | `GET /listings/{id}/functions/{key}/tokens` |
-| `norbix code marketplace install-workflow <ml_…> [--ref <key=value>]… [--name <text>] [--identity <usr_…>] [--wait <seconds>]` | beta: fills a workflow listing's references and saves a new workflow's draft in the current environment; nothing runs and nothing is published. A malformed `--ref` is refused locally. After `CM-ERRORS-MARKETPLACE-036` the listing is read once and the hint names what it wants. The command ends when the draft can be read and run (`--wait`, default 15 s, 0 = do not wait); still missing after that is a warning on stderr, not a failure | `POST /listings/{id}/install-workflow`, then `GET /code/workflows/{id}/draft` until it answers |
+| `norbix code marketplace install-workflow <ml_…> [--ref <key=value>]… [--name <text>] [--identity <usr_…>] [--wait <seconds>]` | fills a workflow listing's references and saves a new workflow's draft in the current environment; nothing runs and nothing is published. A malformed `--ref` is refused locally. After `CM-ERRORS-MARKETPLACE-036` the listing is read once and the hint names what it wants. The command ends when the draft can be read and run (`--wait`, default 15 s, 0 = do not wait); still missing after that is a warning on stderr, not a failure | `POST /listings/{id}/install-workflow`, then `GET /code/workflows/{id}/draft` until it answers |
 | `norbix code marketplace connections list` | the project's connections in the current environment | `GET /integrations` |
 | `norbix code marketplace connections get <int_…>` | one connection: listing, config, on/off, `lastValidationSteps` (never secrets) | `GET /integrations/{id}` |
 | `norbix code marketplace connections enable --listing <ml_…> [--name <text>] [--config k=v]… [--secret k=v]… [--id <int_…>]` | enables the listing as a new connection and prints the minted id; `--id` saves an existing one again (no `--secret` keeps the stored secrets) | `POST /integrations` |
@@ -167,9 +167,9 @@ The function runs as the caller: a manual `invoke` as you, a trigger or a
 scheduler task as its run-as user. That user's roles decide which collections
 `db.find` may read.
 
-## `norbix code workflows` (beta)
+## `norbix code workflows`
 
-**Workflows are in beta; bugs may occur.** A workflow is a definition of steps
+A workflow is a definition of steps
 (actions, database and AI steps, branches, loops, waits for a delay, an event
 or an approval) that runs as its execution identity. The definition is JSON on
 the wire; the CLI also reads and writes YAML (`yaml` package, at the edge
@@ -206,9 +206,9 @@ as everywhere; workflows live per environment.
 | `norbix code workflows cancel <wfr_…> [--reason <text>] [--yes]` | stops a running or waiting run | `POST /runs/{runId}/cancel` |
 | `norbix code workflows resume-link <link\|token>` | what a signed resume link from a notification will do — workflow, run, step, decision, assignee, expiry; changes nothing; no sign-in needed (Api host) | `GET /resume/{token}` |
 | `norbix code workflows resume-link <link\|token> --use [--yes]` | answers the wait with the link, as its assignee; prints the run (a group approval may still be `waiting`) | `POST /resume/{token}` |
-| `norbix code workflows schema [--format json\|yaml]` | the definition's JSON Schema, every step kind (config / output schema, permissions it needs), the binding families; works with the beta switch off | `GET /schema` |
-| `norbix code workflows beta enable` | turns the Workflows beta on in this environment (on by default) | `PUT /enable` |
-| `norbix code workflows beta disable [--yes]` | deprecated: refused since 2026-11-17 (`CM-ERRORS-WORKFLOWS-045`) — workflows are part of every project and cannot be switched off; stop one workflow with `code workflows disable <id>` | `PUT /disable` |
+| `norbix code workflows schema [--format json\|yaml]` | the definition's JSON Schema, every step kind (config / output schema, permissions it needs), the binding families | `GET /schema` |
+| `norbix module enable workflows` | turns the workflows switch on in this environment (on by default) | `PUT /enable` |
+| `norbix module disable workflows [--yes]` | refused since 2026-11-17 (`CM-ERRORS-WORKFLOWS-045`) — workflows are part of every project and cannot be switched off; stop one workflow with `code workflows disable <id>` | `PUT /disable` |
 
 Notes:
 
@@ -230,7 +230,7 @@ Notes:
   browser; `resume-link` checks one (or, with `--use`, answers it) from the
   terminal — pass the whole link or only the token.
 - `publish`, `draft --discard`, `delete`, `disable`, `resume`, `resume-link
-  --use`, `retry`, `cancel` and `beta disable` ask first; pass `--yes` in a script (without it
+  --use`, `retry`, `cancel` and `module disable workflows` ask first; pass `--yes` in a script (without it
   they exit 3 and send nothing). Every command that changes something takes
   `--dry-run`. `--json` prints the raw answer.
 

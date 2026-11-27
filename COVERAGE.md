@@ -54,7 +54,7 @@ out of reach.
 | ai/triggers | 6/6 | list, get, save, enable, disable, delete — `docs/triggers.md`, each run through the real transport in `tests/ai-trigger-routes.test.ts` |
 | triggers (shared, any host) | 6/6 | runs, run, attention, definition, pre-execute-code test, execution-identity check — `docs/triggers.md`; `tests/trigger-runs-routes.test.ts` and `tests/trigger-shared-routes.test.ts`. (The manifest misses these routes — emitter bug; they are in the gateway's `[Route]` list) |
 | apikeys | 2/2 | list + regenerate |
-| code/workflows (beta) | 26/30 | every route a person calls (24 Hub + the Api host's waiting list and resume) — see `docs/code.md`; each command is run through the real transport in `tests/code-workflows-routes.test.ts`. Not commands: the four signed resume-link routes (`GET`/`POST /code/workflows/resume/{token}`, Hub and Api), opened by an approver's browser from an e-mail |
+| code/workflows | 26/30 | every route a person calls (24 Hub + the Api host's waiting list and resume) — see `docs/code.md`; each command is run through the real transport in `tests/code-workflows-routes.test.ts`. Not commands: the four signed resume-link routes (`GET`/`POST /code/workflows/resume/{token}`, Hub and Api), opened by an approver's browser from an e-mail |
 
 Cross-cutting commands: `norbix integrations <module>` lists integrations for
 9 modules; `norbix module enable|disable <name>` toggles 8 modules

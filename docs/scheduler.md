@@ -30,7 +30,7 @@ which the gateway refuses — update the CLI.
 | `norbix scheduler runs <id> [--take <1-50>]` | the task's latest runs, newest first: when, outcome (`Fired` / `Failed` / `Skipped`), reason code, who it ran as, the detail of a failure | `GET /tasks/{id}/runs` |
 | `norbix scheduler save --name <n> --cron <cron> [--execution-identity <id\|default>] [--initiator <usr_…>] --template <id> --integration <id> --audience <a> [--id <id>] [...]` | create a task, or update it with `--id` | `POST /tasks` |
 | `norbix scheduler save code --name <n> --cron <cron> --integration <int_…> --function <name> [--qualifier <q>] [--async] [--config <json>] [--token k=v]… [--id <id>] [...]` | a "Code call" task: call a cloud function on the cron | `POST /tasks` |
-| `norbix scheduler save workflow --name <n> --cron <cron> --workflow <wf_…> [--payload k=v]… [--id <id>] [...]` | a "Workflow call" task (beta): start a workflow on the cron | `POST /tasks` |
+| `norbix scheduler save workflow --name <n> --cron <cron> --workflow <wf_…> [--payload k=v]… [--id <id>] [...]` | a "Workflow call" task: start a workflow on the cron | `POST /tasks` |
 | `norbix scheduler enable <id> [--yes]` | switch it on — it fires on its next cron tick | `PUT /tasks/{Id}/enable` |
 | `norbix scheduler disable <id> [--yes]` | switch it off | `PUT /tasks/{Id}/disable` |
 | `norbix scheduler delete <id> [--yes]` | delete it | `DELETE /tasks/{Id}` |
@@ -153,7 +153,7 @@ is handed to the function as JSON text; map each `@Model.X` binding in it with
 or the save is refused (`CM-ERRORS-SCHEDULER-012`). `norbix code functions
 --integration <id>` lists what an integration may call.
 
-## A "Workflow call" task (beta)
+## A "Workflow call" task
 
 ```bash
 # Every Monday at 08:00 UTC, start the weekly report workflow with two request values.

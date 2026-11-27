@@ -5,7 +5,7 @@ import {EXIT} from '../../../lib/exit-codes.js'
 import {formatValidation, readDefinition} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsValidate extends BaseCommand {
-  static description = `Beta: check a workflow definition without saving it
+  static description = `Check a workflow definition without saving it
 
 Runs every save check and writes nothing. Prints whether it is valid, then each error and warning: code, step, message, path and line / column. Then what each step takes and gives (the format on each connection, the steps a step also uses, and what a field that takes the whole input can take) — a connection that carries a format the next step cannot take is an error (CM-ERRORS-WORKFLOWS-055). Warnings never make it invalid. Exits 6 when it is not valid (also with --json, which prints the answer with its ports).`
 

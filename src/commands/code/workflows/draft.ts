@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {FORMATS, formatAs} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsDraft extends BaseCommand {
-  static description = `Beta: show the unpublished draft of a workflow, or discard it
+  static description = `Show the unpublished draft of a workflow, or discard it
 
 Prints the workflow with the draft as its definition; --format yaml prints the draft definition alone as YAML. --discard deletes the draft (asks first); the published version stays.`
 

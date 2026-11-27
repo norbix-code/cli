@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {formatWorkflow, readDefinition} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsSave extends BaseCommand {
-  static description = `Beta: save a workflow definition as the draft
+  static description = `Save a workflow definition as the draft
 
 The file is the definition (YAML or JSON: by the .yaml / .yml / .json extension, by content for \`-\` stdin). Without workflowId a new workflow is created; with it, that workflow's draft is updated. Read-only fields (version, isEnabled) are ignored. Publish the draft with \`code workflows publish <id>\`; check it first with \`code workflows validate\`. Needs the Scheduler module enabled.`
 

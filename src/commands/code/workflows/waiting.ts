@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {formatWaitingRuns, RUN_STATUSES, WAITING_KINDS} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsWaiting extends BaseCommand {
-  static description = `Beta: the inbox — runs waiting on a person, an event, a delay or a child run
+  static description = `The inbox — runs waiting on a person, an event, a delay or a child run
 
 Across every workflow you may read: one row per wait with what it waits on (step, kind, key, until, child run), what it still ASKS for and whether it is YOURS. ASKS is the slots nobody has filled, each as its author wrote it — a person (usr_…) or a rule (role:Accountant, teamrole:Developer) — never the list of people told when the wait parked, which for a role approval is everybody who held it then. YOURS says "yes" when one of those open slots is yours and "override" when none of them is: answering such a row needs the override right and is recorded as your decision. A group approval gets a line under the table — how many approvals of how many slots, how many came by override, and which slots are still open — and one line per slot. --mine: only approvals assigned to you that you have not answered yet. --app-user calls the Api host's twin of this route, for an app user's login (a project user, not a team member): it lists only that user's own approvals.`
 

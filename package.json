@@ -138,7 +138,7 @@
         }
       },
       "code": {
-        "description": "Cloud functions: the functions a code integration may call, their aliases, a call by hand, a sample envelope, the last runs; the marketplace; workflows (beta)",
+        "description": "Cloud functions: the functions a code integration may call, their aliases, a call by hand, a sample envelope, the last runs; the marketplace; workflows",
         "subtopics": {
           "marketplace": {
             "description": "Marketplace: browse listings, enable and validate connections, add and call functions, the last runs",
@@ -160,12 +160,7 @@
             }
           },
           "workflows": {
-            "description": "Beta: workflows — write a definition (YAML or JSON), validate, save, publish, invoke, read runs and logs, resume, retry, stop. Workflows are in beta; bugs may occur.",
-            "subtopics": {
-              "beta": {
-                "description": "Beta: the Workflows beta switch of the environment (on by default)"
-              }
-            }
+            "description": "Workflows: write a definition (YAML or JSON), validate, save, publish, invoke, read runs and logs, resume, retry, stop"
           },
           "integration": {
             "description": "One code integration: show, save (keyless or key), test, confirm delivery, turn on/off, delete"

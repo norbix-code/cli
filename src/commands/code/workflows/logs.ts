@@ -3,7 +3,7 @@ import {Args, Flags} from '@oclif/core'
 import {BaseCommand} from '../../../base.js'
 
 export default class CodeWorkflowsLogs extends BaseCommand {
-  static description = `Beta: the log lines of a workflow run, newest first
+  static description = `The log lines of a workflow run, newest first
 
 Every step's lines, or one step's with --step. Needs the Logs module enabled in this environment and logs:read.`
 

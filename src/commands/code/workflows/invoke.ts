@@ -9,7 +9,7 @@ import {formatRun, readObjectFlag} from '../../../lib/workflows.js'
 const SETTLED = new Set(['succeeded', 'failed', 'cancelled', 'waiting'])
 
 export default class CodeWorkflowsInvoke extends BaseCommand {
-  static description = `Beta: start a workflow run by hand
+  static description = `Start a workflow run by hand
 
 Sends the payload (checked against the definition's inputs when it has one) and waits up to --wait seconds (0-30, default 10 on the server) for the run. Finished: the runId, status succeeded or failed, the output, the duration and the error. Not finished: the runId and status running or waiting — read it later with \`code workflows run <runId>\`, or pass --follow to poll the run until it finishes or parks on a wait and print it as a step table. --version draft runs the draft (test before publishing); --version N a published version; default the latest published.`
 

@@ -4,7 +4,7 @@ import {BaseCommand} from '../../../base.js'
 import {formatWorkflow} from '../../../lib/workflows.js'
 
 export default class CodeWorkflowsDisable extends BaseCommand {
-  static description = `Beta: turn a workflow off
+  static description = `Turn a workflow off
 
 No new run starts from any source (trigger, scheduler task, invoke). Runs in flight continue and a waiting run may still be resumed. Turn it back on with \`code workflows enable <id>\`.`
 
