@@ -231,6 +231,9 @@ class DryRunStop extends Error {
  * Agent contract (docs/agent-contract.md): never hang, never act silently,
  * one JSON document on stdout with --json, documented exit codes.
  */
+/** Words that mean "show all" when typed where an id goes (see BaseCommand.listWordInIdSlot). */
+const LIST_WORDS = new Set(['list', 'ls'])
+
 export abstract class BaseCommand extends Command {
   static enableJsonFlag = true
 
@@ -396,6 +399,7 @@ export abstract class BaseCommand extends Command {
    */
   async init(): Promise<void> {
     await super.init()
+    this.listWordInIdSlot()
     const ctor = this.constructor as typeof BaseCommand
     if (!ctor.discoversHost) return
     let flags: GlobalFlags
@@ -410,6 +414,34 @@ export abstract class BaseCommand extends Command {
     }
 
     await this.prepareHost(flags)
+  }
+
+  /**
+   * The word "list" (or "ls") typed where an id goes. People and AI tools write
+   * `norbix users roles list` or `norbix email template list`, but those commands take an id
+   * there, so "list" used to reach the Hub as an id ("Property Id creation failed"). When the id
+   * is optional the word is dropped, which is the command's own "show all"; when it is required
+   * the command stops here and names the command that lists them, if there is one.
+   */
+  private listWordInIdSlot(): void {
+    const ctor = this.constructor as typeof BaseCommand & {args?: Record<string, {required?: boolean}>}
+    const defs = Object.values(ctor.args ?? {})
+    if (defs.length === 0) return
+    const at = this.argv.findIndex((token, i) => LIST_WORDS.has(token.toLowerCase()) && !(this.argv[i - 1] ?? '').startsWith('-'))
+    if (at < 0) return
+    if (defs.every((d) => !d?.required)) {
+      this.argv = this.argv.filter((_, i) => i !== at)
+      return
+    }
+
+    const id = this.id ?? ''
+    const lister = [`${id}s`, id.endsWith('y') ? `${id.slice(0, -1)}ies` : '', `${id}:list`]
+      .filter(Boolean)
+      .find((c) => this.config.findCommand(c))
+    this.error(
+      `"${this.argv[at]}" is not an id here. ${lister ? `To list them: norbix ${lister.replaceAll(':', ' ')}` : 'This command shows one item: give its id.'}`,
+      {exit: 2},
+    )
   }
 
   /** The argv `init` parses to find the host; commands that split their own argv (hub, api) pass the global part only. */
