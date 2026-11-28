@@ -149,6 +149,9 @@ const routes: Array<[string[], Route[]]> = [
   // Roles and Policies
   [['users', 'roles'], [['GET', `${M}/roles`]]],
   [['users', 'roles', ROLE], [['GET', `${M}/roles/${ROLE}`]]],
+  // "list" / "ls" typed where the optional id goes means "show all", never an id called "list".
+  [['users', 'roles', 'list'], [['GET', `${M}/roles`]]],
+  [['users', 'roles', 'ls'], [['GET', `${M}/roles`]]],
   [['users', 'roles', 'create', '--name', 'Editor'], [['POST', `${M}/roles`]]],
   [['users', 'roles', 'update', ROLE, '--description', 'Edits'], [['GET', `${M}/roles/${ROLE}`], ['PATCH', `${M}/roles`]]],
   [['users', 'roles', 'delete', ROLE, '--yes'], [['DELETE', `${M}/roles`]]],
@@ -636,3 +639,13 @@ describe('service-user API keys and the password-reset test', () => {
     expect(out()).toContain('Nothing sent in PROD: no-login.')
   })
 })
+
+describe('a list word where a required id goes', () => {
+  it('stops before any call and names the command that lists them', async () => {
+    const {error} = await runCommand(['email', 'template', 'list', ...globalArgs])
+
+    expect(error?.message).toBe('"list" is not an id here. To list them: norbix email templates')
+    expect(calls).toEqual([])
+  })
+})
+
